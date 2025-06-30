@@ -12,13 +12,17 @@
   },
   "dependencies": {
     "@astrojs/mdx": "^1.1.0",
+    "@astrojs/preact": "^3.0.1",
     "@astrojs/react": "^3.0.4",
     "@astrojs/rss": "^3.0.0",
     "@astrojs/sitemap": "^3.0.0",
+    "@giscus/react": "^3.1.0",
     "@types/react": "^18.2.33",
     "@types/react-dom": "^18.2.14",
-    "astro": "^3.1.1",
+    "astro": "^3.4.3",
+    "preact": "^10.18.2",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.18.0"
   }
 }
