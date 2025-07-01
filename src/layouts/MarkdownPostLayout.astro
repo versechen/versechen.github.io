@@ -1,0 +1,58 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Comments from '../components/react/Comments.jsx';
+const { frontmatter } = Astro.props;
+---
+<BaseLayout pageTitle={frontmatter.title}>
+  <p><em>{frontmatter.description}</em></p>
+  <p>{frontmatter.pubDate.slice(0,10)}</p>
+
+  <p>Written by: {frontmatter.author}</p>
+
+  <img src={frontmatter.image.url} width="300" alt={frontmatter.image.alt} />
+
+  <div class="tags">
+    {frontmatter.tags.map((tag) => (
+      <p class="tag"><a href={`/tags/${tag}`}>{tag}</a></p>
+    ))}
+  </div>
+
+  <slot />
+  
+  <!-- Comments Section -->
+  <section class="comments-wrapper">
+    <h3>评论</h3>
+    <Comments client:only="react" />
+  </section>
+</BaseLayout>
+<style>
+  a {
+    color: #00539F;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    margin: 0.25em;
+    border: dotted 1px #a1a1a1;
+    border-radius: .5em;
+    padding: .5em 1em;
+    font-size: 1.15em;
+    background-color: #F8FCFD;
+  }
+
+  .comments-wrapper {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e5e5e5;
+  }
+
+  .comments-wrapper h3 {
+    margin-bottom: 1rem;
+    color: #333;
+    font-size: 1.5em;
+  }
+</style>
