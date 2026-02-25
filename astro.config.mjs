@@ -7,7 +7,7 @@ import preact from "@astrojs/preact";
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://example.com',
+  site: 'https://versechen.github.io',
   integrations: [mdx(), sitemap(), react({
     include: ['**/react/*'],
     experimentalReactChildren: true
