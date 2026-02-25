@@ -1,9 +1,0 @@
-import{_ as O}from"./preload-helper.cf010ec4.js";import{r as p}from"./index.ed373d49.js";import{o as c}from"./jsxRuntime.module.9f809971.js";import"./preact.module.027475cc.js";var d={exports:{}},s={};/**
- * @license React
- * react-jsx-runtime.production.min.js
- *
- * Copyright (c) Facebook, Inc. and its affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */var R=p,I=Symbol.for("react.element"),P=Symbol.for("react.fragment"),b=Object.prototype.hasOwnProperty,j=R.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentOwner,w={key:!0,ref:!0,__self:!0,__source:!0};function l(r,e,i){var t,o={},n=null,a=null;i!==void 0&&(n=""+i),e.key!==void 0&&(n=""+e.key),e.ref!==void 0&&(a=e.ref);for(t in e)b.call(e,t)&&!w.hasOwnProperty(t)&&(o[t]=e[t]);if(r&&r.defaultProps)for(t in e=r.defaultProps,e)o[t]===void 0&&(o[t]=e[t]);return{$$typeof:I,type:r,key:n,ref:a,props:o,_owner:j.current}}s.Fragment=P;s.jsx=l;s.jsxs=l;d.exports=s;var S=d.exports;function k({id:r,host:e,repo:i,repoId:t,category:o,categoryId:n,mapping:a,term:u,strict:_,reactionsEnabled:f,emitMetadata:g,inputPosition:y,theme:h,lang:v,loading:x}){const[m,E]=p.useState(!1);return p.useEffect(()=>{m||O(()=>import("./giscus-Ci9LqPcC.56d93341.js"),[]).then(()=>E(!0))},[]),m?S.jsx("giscus-widget",{id:r,host:e,repo:i,repoid:t,category:o,categoryid:n,mapping:a,term:u,strict:_,reactionsenabled:f,emitmetadata:g,inputposition:y,theme:h,lang:v,loading:x}):null}function D(){return c("div",{className:"comments-section",children:c(k,{id:"comments",repo:"chenwei/codeverse",repoId:"",category:"General",categoryId:"",mapping:"pathname",term:"Welcome to @giscus/react component!",reactionsEnabled:"1",emitMetadata:"0",inputPosition:"top",theme:"light",lang:"zh-CN",loading:"lazy"})})}export{D as default};

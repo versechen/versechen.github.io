@@ -1,0 +1,225 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  const seriesNames = [...new Set(posts.map(p => p.data.series).filter(Boolean))] as string[];
+  return seriesNames.map(name => ({
+    params: { series: name },
+    props: { seriesName: name },
+  }));
+}
+
+interface Props { seriesName: string; }
+const { seriesName } = Astro.props;
+
+const allPosts = await getCollection('blog');
+const seriesPosts = allPosts
+  .filter(p => p.data.series === seriesName)
+  .sort((a, b) => (a.data.seriesOrder ?? 0) - (b.data.seriesOrder ?? 0));
+
+function fmt(d: Date) {
+  return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+---
+
+<BaseLayout title={`系列：${seriesName}`} description={`「${seriesName}」系列全部文章`}>
+  <div class="page-hero container">
+    <div class="series-hero-icon" aria-hidden="true">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+    </div>
+    <h1 class="page-hero-title"><span class="gradient-text">{seriesName}</span></h1>
+    <p class="page-hero-desc">系列共 {seriesPosts.length} 篇 · 按顺序阅读效果最佳</p>
+  </div>
+
+  <section class="section" style="padding-top:1rem">
+    <div class="container">
+      <a href="/blog" class="back-link">← 返回博客列表</a>
+
+      <div class="series-posts-list">
+        {seriesPosts.map((post, i) => (
+          <a href={`/blog/${post.slug}`} class="series-post-card">
+            <div class="spc-num">
+              <span>{String(i + 1).padStart(2, '0')}</span>
+            </div>
+            <div class="spc-body">
+              {post.data.heroImage && (
+                <img src={post.data.heroImage} alt={post.data.title} class="spc-img" loading="lazy" />
+              )}
+              <div class="spc-content">
+                <div class="spc-meta">
+                  <time datetime={post.data.pubDate.toISOString()}>{fmt(post.data.pubDate)}</time>
+                  {(post.data.tags ?? []).map((t: string) => <span class="ptag">{t}</span>)}
+                </div>
+                <h2 class="spc-title">{post.data.title}</h2>
+                <p class="spc-desc">{post.data.description}</p>
+              </div>
+            </div>
+            <div class="spc-arrow">→</div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .series-hero-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(232,121,164,.35);
+  }
+
+  .back-link {
+    display: inline-block;
+    font-size: .85rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-bottom: 2rem;
+    transition: color .2s;
+  }
+  .back-link:hover { color: var(--primary); }
+
+  .series-posts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .series-post-card {
+    display: flex;
+    align-items: stretch;
+    gap: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    text-decoration: none;
+    color: inherit;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all var(--spring);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .series-post-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--gradient);
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  }
+
+  .series-post-card:hover {
+    border-color: var(--primary);
+    transform: translateX(4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .spc-num {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .spc-num span {
+    font-size: 2.2rem;
+    font-weight: 900;
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    opacity: .4;
+    line-height: 1;
+  }
+
+  .spc-body {
+    flex: 1;
+    display: flex;
+    gap: 1rem;
+    min-width: 0;
+  }
+
+  .spc-img {
+    flex-shrink: 0;
+    width: 90px;
+    height: 66px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+  }
+
+  .spc-content { flex: 1; min-width: 0; }
+
+  .spc-meta {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .78rem;
+    color: var(--text-muted);
+    margin-bottom: .4rem;
+    flex-wrap: wrap;
+  }
+
+  .spc-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-1);
+    margin-bottom: .35rem;
+    line-height: 1.4;
+    transition: color .2s;
+  }
+
+  .series-post-card:hover .spc-title { color: var(--primary); }
+
+  .spc-desc {
+    font-size: .85rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .spc-arrow {
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    transition: all .2s;
+  }
+
+  .series-post-card:hover .spc-arrow {
+    color: var(--primary);
+    transform: translateX(4px);
+  }
+
+  .ptag {
+    font-size: .7rem;
+    padding: .12em .6em;
+    border-radius: 999px;
+    background: rgba(147,51,234,.07);
+    color: var(--secondary);
+    border: 1px solid rgba(147,51,234,.12);
+  }
+
+  @media (max-width: 520px) {
+    .spc-img { display: none; }
+    .spc-num span { font-size: 1.5rem; }
+  }
+</style>
