@@ -1,12 +1,502 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro'
-import BlogPost from '../components/BlogPost.astro';
-const allPosts = await Astro.glob('../pages/posts/*.md');
-const pageTitle = "我的 Astro 学习博客";
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const allPosts = await getCollection('blog');
+const posts = allPosts.sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+
+// All unique tags
+const allTags = [...new Set(posts.flatMap(p => p.data.tags ?? []))].sort();
+
+// Group by series (preserve insertion / sort-by-order)
+const seriesMap = new Map<string, typeof posts>();
+for (const post of [...posts].sort(
+  (a, b) => (a.data.seriesOrder ?? 99) - (b.data.seriesOrder ?? 99)
+)) {
+  if (post.data.series) {
+    if (!seriesMap.has(post.data.series)) seriesMap.set(post.data.series, []);
+    seriesMap.get(post.data.series)!.push(post);
+  }
+}
+
+function fmt(date: Date) {
+  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
 ---
-<BaseLayout pageTitle={pageTitle}>
-  <p>在这里，我将分享我的学习 Astro 的之旅。</p>
-  <ul>
-    {allPosts.map((post) => <BlogPost url={post.url} title={post.frontmatter.title} />)}
-  </ul>
+
+<BaseLayout title="博客" description="陈诗的技术文章与思考">
+
+  <!-- ── Hero ── -->
+  <div class="blog-hero container">
+    <div class="blog-hero-deco" aria-hidden="true">
+      <span class="deco-star s1">✦</span>
+      <span class="deco-star s2">✧</span>
+      <span class="deco-star s3">✦</span>
+    </div>
+    <h1 class="blog-hero-title">
+      <span class="gradient-text">博 客</span>
+    </h1>
+    <p class="blog-hero-sub">技术思考 · 学习笔记 · 项目经历</p>
+    <p class="blog-hero-count">共 <strong id="vis-count">{posts.length}</strong> 篇文章</p>
+  </div>
+
+  <!-- ── Tag Filter ── -->
+  <div class="tag-bar-wrap">
+    <div class="container">
+      <div class="tag-bar">
+        <button class="filter-pill active" data-tag="">全部</button>
+        {allTags.map(t => (
+          <button class="filter-pill" data-tag={t}>{t}</button>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <section class="blog-body section" style="padding-top:1.5rem">
+    <div class="container">
+
+      <!-- ── Series ── -->
+      {seriesMap.size > 0 && (
+        <div class="series-section" id="series-wrap">
+          <h2 class="subsec-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+            系列文章
+          </h2>
+          <div class="series-grid">
+            {[...seriesMap.entries()].map(([name, sPosts]) => (
+              <div class="series-card" data-series-posts={sPosts.map(p => p.slug).join(',')}>
+                <div class="series-card-head">
+                  <span class="series-name">{name}</span>
+                  <span class="series-badge">{sPosts.length} 篇</span>
+                </div>
+                <ol class="series-ol">
+                  {sPosts.map((p, i) => (
+                    <li class="series-li">
+                      <span class="series-num">{i + 1}</span>
+                      <a href={`/blog/${p.slug}`} class="series-link">{p.data.title}</a>
+                    </li>
+                  ))}
+                </ol>
+                <a href={`/blog/series/${encodeURIComponent(name)}`} class="series-more">
+                  查看系列详情 →
+                </a>
+              </div>
+            ))}
+          </div>
+          <hr class="series-divider" />
+        </div>
+      )}
+
+      <!-- ── Post List ── -->
+      <div class="post-list" id="post-list">
+        {posts.map(post => (
+          <a
+            href={`/blog/${post.slug}`}
+            class="post-row"
+            data-tags={(post.data.tags ?? []).join(',')}
+          >
+            {post.data.heroImage && (
+              <div class="post-row-img">
+                <img src={post.data.heroImage} alt={post.data.title} loading="lazy" />
+              </div>
+            )}
+            <div class="post-row-body">
+              <div class="post-row-meta">
+                {post.data.series && (
+                  <span class="series-chip">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    {post.data.series}
+                  </span>
+                )}
+                <time datetime={post.data.pubDate.toISOString()} class="post-date">
+                  {fmt(post.data.pubDate)}
+                </time>
+              </div>
+              <h2 class="post-title">{post.data.title}</h2>
+              <p class="post-desc">{post.data.description}</p>
+              <div class="post-tags">
+                {(post.data.tags ?? []).map((t: string) => (
+                  <span class="ptag">{t}</span>
+                ))}
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+
+    </div>
+  </section>
 </BaseLayout>
+
+<!-- ── Client-side Tag Filter ── -->
+<script>
+  const pills = document.querySelectorAll<HTMLButtonElement>('.filter-pill');
+  const rows  = document.querySelectorAll<HTMLElement>('.post-row');
+  const count = document.getElementById('vis-count');
+  const seriesWrap = document.getElementById('series-wrap');
+
+  pills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const tag = pill.dataset.tag ?? '';
+      pills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+
+      let vis = 0;
+      rows.forEach(row => {
+        const tags = row.dataset.tags?.split(',').filter(Boolean) ?? [];
+        const show = !tag || tags.includes(tag);
+        row.style.display = show ? '' : 'none';
+        if (show) vis++;
+      });
+      if (count) count.textContent = String(vis);
+      // Hide series section when filtering by tag
+      if (seriesWrap) seriesWrap.style.display = tag ? 'none' : '';
+    });
+  });
+</script>
+
+<style>
+  /* Hero */
+  .blog-hero {
+    padding: 4rem 0 2rem;
+    text-align: center;
+    position: relative;
+  }
+
+  .blog-hero-deco {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .deco-star {
+    position: absolute;
+    font-size: 1.2rem;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: twinkle 3s ease-in-out infinite;
+  }
+  .s1 { top: 30%; left: 15%; animation-delay: 0s; }
+  .s2 { top: 50%; right: 18%; animation-delay: .8s; font-size: .9rem; }
+  .s3 { bottom: 20%; left: 30%; animation-delay: 1.6s; font-size: .8rem; }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+    50% { opacity: .25; transform: scale(.6) rotate(180deg); }
+  }
+
+  .blog-hero-title {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 900;
+    letter-spacing: .12em;
+    margin-bottom: .5rem;
+  }
+
+  .blog-hero-sub {
+    color: var(--text-muted);
+    font-size: .95rem;
+    letter-spacing: .06em;
+    margin-bottom: .5rem;
+  }
+
+  .blog-hero-count {
+    font-size: .85rem;
+    color: var(--text-muted);
+  }
+
+  .blog-hero-count strong {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  /* Tag bar */
+  .tag-bar-wrap {
+    position: sticky;
+    top: var(--nav-height);
+    z-index: 50;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: .65rem 0;
+  }
+
+  .tag-bar {
+    display: flex;
+    gap: .5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .tag-bar::-webkit-scrollbar { display: none; }
+
+  .filter-pill {
+    flex-shrink: 0;
+    padding: .3rem .95rem;
+    border-radius: 999px;
+    font-size: .82rem;
+    font-weight: 500;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all .2s ease;
+    white-space: nowrap;
+  }
+
+  .filter-pill:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .filter-pill.active {
+    background: var(--gradient);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 3px 12px rgba(232,121,164,.35);
+  }
+
+  /* Sub-section title */
+  .subsec-title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-1);
+    margin-bottom: 1.25rem;
+  }
+
+  /* Series */
+  .series-section { margin-bottom: 1rem; }
+
+  .series-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .series-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: border-color .2s, box-shadow .2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .series-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--gradient);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .series-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .series-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .series-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-1);
+  }
+
+  .series-badge {
+    font-size: .72rem;
+    padding: .15em .65em;
+    border-radius: 999px;
+    background: rgba(232,121,164,.12);
+    color: var(--primary);
+    font-weight: 700;
+    border: 1px solid rgba(232,121,164,.2);
+  }
+
+  .series-ol {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    margin-bottom: 1rem;
+  }
+
+  .series-li {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+  }
+
+  .series-num {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--gradient);
+    color: #fff;
+    font-size: .65rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: .1em;
+  }
+
+  .series-link {
+    font-size: .87rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    line-height: 1.4;
+    transition: color .2s;
+  }
+
+  .series-link:hover { color: var(--primary); }
+
+  .series-more {
+    font-size: .78rem;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .series-divider {
+    border: none;
+    height: 1px;
+    background: var(--border);
+    margin: 1.5rem 0 2rem;
+  }
+
+  /* Post rows */
+  .post-list { display: flex; flex-direction: column; }
+
+  .post-row {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--border);
+    text-decoration: none;
+    color: inherit;
+    transition: all .25s ease;
+  }
+
+  .post-row:first-child { border-top: 1px solid var(--border); }
+
+  .post-row:hover {
+    background: rgba(232,121,164,.04);
+    padding-left: .85rem;
+    padding-right: .85rem;
+    margin: 0 -.85rem;
+    border-radius: var(--radius);
+    border-color: transparent;
+  }
+
+  .post-row-img {
+    flex-shrink: 0;
+    width: 100px;
+    height: 72px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .post-row-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform .4s ease;
+  }
+
+  .post-row:hover .post-row-img img { transform: scale(1.06); }
+
+  .post-row-body { flex: 1; min-width: 0; }
+
+  .post-row-meta {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .4rem;
+    flex-wrap: wrap;
+  }
+
+  .post-date {
+    font-size: .8rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .series-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    font-size: .72rem;
+    padding: .15em .65em;
+    border-radius: 999px;
+    background: rgba(147,51,234,.1);
+    color: var(--secondary);
+    border: 1px solid rgba(147,51,234,.18);
+    font-weight: 600;
+  }
+
+  .post-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-1);
+    margin-bottom: .35rem;
+    line-height: 1.4;
+    transition: color .2s;
+  }
+
+  .post-row:hover .post-title { color: var(--primary); }
+
+  .post-desc {
+    font-size: .875rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin-bottom: .6rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .post-tags {
+    display: flex;
+    gap: .35rem;
+    flex-wrap: wrap;
+  }
+
+  .ptag {
+    font-size: .72rem;
+    padding: .15em .65em;
+    border-radius: 999px;
+    background: rgba(147,51,234,.07);
+    color: var(--secondary);
+    border: 1px solid rgba(147,51,234,.12);
+  }
+
+  @media (max-width: 520px) {
+    .post-row-img { display: none; }
+  }
+</style>

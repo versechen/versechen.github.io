@@ -1,9 +1,950 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Greeting from '../components/Greeting.jsx';
-const pageTitle = "首页";
+import { getCollection } from 'astro:content';
+
+const allPosts = await getCollection('blog');
+const recentPosts = allPosts.sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+
+// Life records
+const lifeRecords = [
+  { date: new Date('2024-02-15'), emoji: '🌸', title: '春日徒步', desc: '趁着春光正好，去山里徒步了一天。满山的野花，空气清新。', tags: ['户外', '自然'], image: '/blog-placeholder-4.jpg' },
+  { date: new Date('2024-01-10'), emoji: '📚', title: '读完《人类简史》', desc: '花了两周读完这本宏大著作，对人类文明有了全新的认识。', tags: ['阅读', '历史'], image: '' },
+  { date: new Date('2023-12-20'), emoji: '🍜', title: '学会做汤包', desc: '下厨实验成功！做出了皮薄馅多的汤包，厨艺进步了。', tags: ['美食', '生活'], image: '' },
+  { date: new Date('2023-11-05'), emoji: '🎸', title: '重拾吉他', desc: '把落灰的吉他擦干净，重新开始练习。生活需要与代码无关的事。', tags: ['音乐', '爱好'], image: '/blog-placeholder-5.jpg' },
+];
+
+// Project updates
+const projectUpdates = [
+  { date: new Date('2024-02-01'), icon: '🌸', title: '代码陈诗 v2.0', desc: '完成博客全面重构，引入玻璃拟态设计与 Canvas 粒子动画。', tags: ['Astro', 'CSS'], image: '/blog-placeholder-about.jpg' },
+  { date: new Date('2023-12-10'), icon: '⚡', title: '全栈脚手架发布', desc: '整合 React + Node.js + PostgreSQL 的现代项目模板正式开源。', tags: ['开源', 'React'], image: '' },
+];
+
+// Merge into unified dynamic feed
+interface DynItem {
+  type: 'blog' | 'life' | 'project';
+  date: Date;
+  title: string;
+  desc: string;
+  tags: string[];
+  href: string;
+  icon: string;
+  image: string;
+  featured?: boolean;
+}
+
+const dynamics: DynItem[] = [
+  ...recentPosts.map((p, i) => ({
+    type: 'blog' as const,
+    date: p.data.pubDate,
+    title: p.data.title,
+    desc: p.data.description,
+    tags: p.data.tags ?? [],
+    href: `/blog/${p.slug}`,
+    icon: '📝',
+    image: p.data.heroImage ?? '',
+    featured: i === 0,
+  })),
+  ...lifeRecords.map(r => ({
+    type: 'life' as const,
+    date: r.date,
+    title: r.title,
+    desc: r.desc,
+    tags: r.tags,
+    href: '/life',
+    icon: r.emoji,
+    image: r.image,
+  })),
+  ...projectUpdates.map(p => ({
+    type: 'project' as const,
+    date: p.date,
+    title: p.title,
+    desc: p.desc,
+    tags: p.tags,
+    href: '/projects',
+    icon: p.icon,
+    image: p.image,
+  })),
+].sort((a, b) => b.date.valueOf() - a.date.valueOf());
+
+const typeLabels: Record<string, string> = {
+  blog: '文章',
+  life: '生活',
+  project: '项目',
+};
+
+function timeAgo(date: Date): string {
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return '今天';
+  if (days < 7) return `${days} 天前`;
+  if (days < 30) return `${Math.floor(days / 7)} 周前`;
+  if (days < 365) return `${Math.floor(days / 30)} 个月前`;
+  return `${Math.floor(days / 365)} 年前`;
+}
 ---
-<BaseLayout pageTitle={pageTitle}>
-  <h2>My awesome blog subtitle</h2>
-  <Greeting client:load messages={["Hej", "Hallo", "Hola", "Habari"]} />
+
+<BaseLayout title="首页">
+  <!-- ===== HERO ===== -->
+  <section class="hero-wrap">
+    <!-- Canvas: sakura petals -->
+    <canvas id="petal-canvas" aria-hidden="true"></canvas>
+
+    <!-- Gradient background -->
+    <div class="hero-gradient"></div>
+
+    <!-- Anime floating sparkles -->
+    <div class="sp sp1" aria-hidden="true">✦</div>
+    <div class="sp sp2" aria-hidden="true">✧</div>
+    <div class="sp sp3" aria-hidden="true">✦</div>
+    <div class="sp sp4" aria-hidden="true">❋</div>
+    <div class="sp sp5" aria-hidden="true">✧</div>
+    <div class="sp sp6" aria-hidden="true">✦</div>
+
+    <!-- Content -->
+    <div class="hero-body">
+      <div class="hero-eyebrow animate-in" style="--delay:0s">
+        <span class="eyebrow-dot"></span>
+        <span>欢迎来到我的数字花园</span>
+      </div>
+
+      <h1 class="hero-site-name animate-in" style="--delay:.1s">
+        代码<span class="name-accent">陈诗</span>
+      </h1>
+
+      <p class="hero-typewriter-row animate-in" style="--delay:.2s">
+        <span id="typewriter-text"></span><span class="typewriter-cursor" aria-hidden="true"></span>
+      </p>
+
+      <div class="hero-ctas animate-in" style="--delay:.35s">
+        <a href="/blog" class="cta-btn cta-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14"/><path d="m5 12 7 7 7-7"/></svg>
+          开始阅读
+        </a>
+        <a href="/reading" class="cta-btn cta-glass">📚 读书笔记</a>
+        <a href="/projects" class="cta-btn cta-glass">🚀 开源项目</a>
+      </div>
+    </div>
+
+    <!-- Scroll hint -->
+    <div class="scroll-hint" aria-hidden="true">
+      <div class="scroll-mouse">
+        <div class="scroll-wheel"></div>
+      </div>
+      <span>向下探索</span>
+    </div>
+  </section>
+
+  <!-- ===== DYNAMIC WALL ===== -->
+  <section class="wall-section">
+    <div class="container">
+      <div class="wall-header">
+        <h2 class="wall-title">
+          <span class="wall-title-icon">✦</span>
+          最新动态
+        </h2>
+        <p class="wall-subtitle">博客 · 生活 · 项目更新</p>
+      </div>
+
+      <div class="masonry" id="masonry-wall">
+        {dynamics.map((item) => (
+          <a
+            href={item.href}
+            class:list={['wall-card tilt-card', `type-${item.type}`, { featured: item.featured, 'has-img': !!item.image }]}
+            style={item.image ? `--card-img: url(${item.image})` : ''}
+            data-type={item.type}
+          >
+            <!-- Image background (only when has-img) -->
+            {item.image && <div class="card-img-bg" aria-hidden="true"></div>}
+
+            <!-- Card shine overlay -->
+            <div class="card-shine" aria-hidden="true"></div>
+
+            <!-- Type badge + date -->
+            <div class="card-meta">
+              <span class:list={['card-type-badge', `badge-${item.type}`]}>
+                {typeLabels[item.type]}
+              </span>
+              <span class="card-date">{timeAgo(item.date)}</span>
+            </div>
+
+            <!-- Icon (for life/project) -->
+            {item.type !== 'blog' && (
+              <div class="card-emoji">{item.icon}</div>
+            )}
+
+            <!-- Title -->
+            <h3 class="card-title">
+              {item.featured && <span class="featured-mark">精选 </span>}
+              {item.title}
+            </h3>
+
+            <!-- Desc -->
+            <p class="card-desc">{item.desc}</p>
+
+            <!-- Tags -->
+            {item.tags.length > 0 && (
+              <div class="card-tags">
+                {item.tags.slice(0, 3).map(t => (
+                  <span class="card-tag">{t}</span>
+                ))}
+              </div>
+            )}
+
+            <!-- Arrow -->
+            <div class="card-arrow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+              </svg>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
 </BaseLayout>
+
+<!-- ==================== STYLES ==================== -->
+<style>
+  /* ---- Hero ---- */
+  .hero-wrap {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    min-height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    text-align: center;
+  }
+
+  #petal-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .hero-gradient {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: radial-gradient(ellipse 80% 80% at 50% 0%,
+      rgba(232,121,164,0.22) 0%,
+      rgba(147,51,234,0.14) 40%,
+      transparent 70%),
+      var(--bg);
+  }
+
+  :global(html.dark) .hero-gradient {
+    background: radial-gradient(ellipse 80% 80% at 50% 0%,
+      rgba(232,121,164,0.18) 0%,
+      rgba(147,51,234,0.12) 40%,
+      transparent 70%),
+      var(--bg);
+  }
+
+  /* ── Anime sparkle decorations ── */
+  .sp {
+    position: absolute;
+    z-index: 1;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: sp-float var(--d, 5s) ease-in-out infinite;
+    animation-delay: var(--delay-sp, 0s);
+    pointer-events: none;
+    user-select: none;
+    line-height: 1;
+  }
+
+  .sp1 { top: 14%; left: 7%;   font-size: 1.5rem; --d: 5s;   --delay-sp: 0s; }
+  .sp2 { top: 22%; right: 9%;  font-size: .9rem;  --d: 6.5s; --delay-sp: .7s; }
+  .sp3 { top: 58%; left: 5%;   font-size: 1.2rem; --d: 7s;   --delay-sp: 1.4s; }
+  .sp4 { top: 68%; right: 7%;  font-size: 1.4rem; --d: 5.5s; --delay-sp: .3s; }
+  .sp5 { top: 38%; right: 4%;  font-size: .8rem;  --d: 6s;   --delay-sp: 2s; }
+  .sp6 { top: 80%; left: 18%;  font-size: 1rem;   --d: 8s;   --delay-sp: 1s; }
+
+  @keyframes sp-float {
+    0%,100% { transform: translateY(0) rotate(0deg) scale(1); opacity: .7; }
+    33%      { transform: translateY(-20px) rotate(120deg) scale(1.2); opacity: 1; }
+    66%      { transform: translateY(10px) rotate(240deg) scale(.85); opacity: .45; }
+  }
+
+  .hero-body {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.1rem;
+    padding: 0 1.5rem;
+    max-width: 700px;
+  }
+
+  /* Animate-in keyframe */
+  @keyframes anim-in {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in {
+    opacity: 0;
+    animation: anim-in .7s cubic-bezier(.22,1,.36,1) forwards;
+    animation-delay: var(--delay, 0s);
+  }
+
+  /* Eyebrow */
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .3rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    font-size: .82rem;
+    color: var(--text-muted);
+    letter-spacing: .04em;
+  }
+
+  .eyebrow-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .5; transform: scale(.8); }
+  }
+
+  /* Site name */
+  .hero-site-name {
+    font-size: clamp(3.5rem, 10vw, 7rem);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: var(--text-1);
+  }
+
+  .name-accent {
+    background: linear-gradient(135deg, #e879a4 0%, #c084fc 50%, #818cf8 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradient-shift 4s ease infinite;
+  }
+
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* Typewriter */
+  .hero-typewriter-row {
+    font-size: clamp(1rem, 2.5vw, 1.4rem);
+    color: var(--text-muted);
+    font-weight: 300;
+    letter-spacing: .06em;
+    height: 2em;
+  }
+
+  .typewriter-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.1em;
+    background: var(--primary);
+    margin-left: 2px;
+    vertical-align: middle;
+    border-radius: 1px;
+    animation: cursor-blink 1.1s step-end infinite;
+  }
+
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* CTAs */
+  .hero-ctas {
+    display: flex;
+    gap: .9rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: .5rem;
+  }
+
+  .cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .7rem 1.6rem;
+    border-radius: 999px;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .25s ease;
+    text-decoration: none;
+  }
+
+  .cta-primary {
+    background: var(--gradient);
+    color: #fff;
+    box-shadow: 0 6px 24px rgba(232,121,164,.4);
+  }
+
+  .cta-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(232,121,164,.5);
+  }
+
+  .cta-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    color: var(--text-1);
+  }
+
+  .cta-glass:hover {
+    transform: translateY(-3px);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  /* Scroll hint */
+  .scroll-hint {
+    position: absolute;
+    bottom: 2.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .6rem;
+    color: var(--text-muted);
+    font-size: .75rem;
+    letter-spacing: .08em;
+    animation: anim-in 1s ease .8s both;
+  }
+
+  .scroll-mouse {
+    width: 22px;
+    height: 34px;
+    border: 2px solid currentColor;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    padding-top: 5px;
+    opacity: .5;
+  }
+
+  .scroll-wheel {
+    width: 3px;
+    height: 7px;
+    background: currentColor;
+    border-radius: 2px;
+    animation: wheel-scroll 1.8s ease-in-out infinite;
+  }
+
+  @keyframes wheel-scroll {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(12px); opacity: 0; }
+  }
+
+  /* ---- Dynamic Wall ---- */
+  .wall-section {
+    padding: 5rem 0 6rem;
+  }
+
+  .wall-header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .wall-title {
+    font-size: clamp(1.5rem, 3vw, 2.2rem);
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: .6rem;
+    margin-bottom: .5rem;
+  }
+
+  .wall-title-icon {
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: spin 6s linear infinite;
+    display: inline-block;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  .wall-subtitle {
+    font-size: .9rem;
+    color: var(--text-muted);
+    letter-spacing: .06em;
+  }
+
+  /* Masonry columns */
+  .masonry {
+    columns: 3 280px;
+    column-gap: 1.4rem;
+  }
+
+  /* ---- Wall Card (base) ---- */
+  .wall-card {
+    display: block;
+    break-inside: avoid;
+    margin-bottom: 1.4rem;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    border-radius: 18px;
+    padding: 1.5rem;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 20px rgba(147,51,234,.06);
+    transition: box-shadow .3s ease;
+    will-change: transform;
+  }
+
+  /* Top accent line per type */
+  .wall-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 18px 18px 0 0;
+    opacity: .8;
+    z-index: 2;
+  }
+
+  .type-blog::before   { background: linear-gradient(90deg, #e879a4, #c084fc); }
+  .type-life::before   { background: linear-gradient(90deg, #f59e0b, #ec4899); }
+  .type-project::before { background: linear-gradient(90deg, #06b6d4, #6366f1); }
+
+  /* ── Image background card ── */
+  .card-img-bg {
+    position: absolute;
+    inset: 0;
+    background: var(--card-img) center / cover no-repeat;
+    border-radius: inherit;
+    transition: transform .6s cubic-bezier(.22,1,.36,1);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* Dark gradient overlay on image */
+  .card-img-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      170deg,
+      rgba(0,0,0,.08) 0%,
+      rgba(0,0,0,.52) 45%,
+      rgba(0,0,0,.92) 100%
+    );
+    border-radius: inherit;
+  }
+
+  .wall-card.has-img:hover .card-img-bg {
+    transform: scale(1.07);
+  }
+
+  /* All card content above image bg */
+  .wall-card.has-img > *:not(.card-img-bg) {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Text color on image cards */
+  .wall-card.has-img .card-title {
+    color: #fff;
+  }
+
+  .wall-card.has-img:hover .card-title {
+    color: #fce7f3;
+  }
+
+  .wall-card.has-img .card-desc {
+    color: rgba(255,255,255,.72);
+  }
+
+  .wall-card.has-img .card-date {
+    color: rgba(255,255,255,.6);
+  }
+
+  .wall-card.has-img .card-type-badge {
+    background: rgba(255,255,255,.18);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.28);
+  }
+
+  .wall-card.has-img .card-tag {
+    background: rgba(255,255,255,.12);
+    color: rgba(255,255,255,.85);
+    border-color: rgba(255,255,255,.22);
+  }
+
+  .wall-card.has-img .card-arrow {
+    color: rgba(255,255,255,.6);
+  }
+
+  .wall-card.has-img:hover .card-arrow {
+    color: #fff;
+  }
+
+  /* Shine overlay */
+  .card-shine {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: radial-gradient(
+      circle at var(--mx, 50%) var(--my, 50%),
+      rgba(255,255,255,.15) 0%,
+      transparent 60%
+    );
+    opacity: 0;
+    transition: opacity .3s ease;
+    z-index: 3;
+  }
+
+  .wall-card:hover .card-shine {
+    opacity: 1;
+  }
+
+  .wall-card:hover {
+    box-shadow: 0 16px 48px rgba(147,51,234,.16);
+  }
+
+  /* Featured card */
+  .wall-card.featured:not(.has-img) {
+    background: linear-gradient(135deg,
+      rgba(232,121,164,.1) 0%,
+      rgba(147,51,234,.08) 100%);
+    border-color: rgba(232,121,164,.25);
+  }
+
+  /* Card internals */
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .85rem;
+  }
+
+  .card-type-badge {
+    font-size: .7rem;
+    font-weight: 700;
+    padding: .15em .65em;
+    border-radius: 999px;
+    letter-spacing: .04em;
+  }
+
+  .badge-blog    { background: rgba(232,121,164,.12); color: #e879a4; }
+  .badge-life    { background: rgba(245,158,11,.12);  color: #d97706; }
+  .badge-project { background: rgba(6,182,212,.12);   color: #0891b2; }
+
+  :global(html.dark) .badge-blog    { color: #f9a8d4; }
+  :global(html.dark) .badge-life    { color: #fcd34d; }
+  :global(html.dark) .badge-project { color: #67e8f9; }
+
+  .card-date {
+    font-size: .75rem;
+    color: var(--text-muted);
+    margin-left: auto;
+  }
+
+  .card-emoji {
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: .6rem;
+  }
+
+  .card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--text-1);
+    margin-bottom: .5rem;
+    transition: color .2s ease;
+  }
+
+  .wall-card:not(.has-img):hover .card-title { color: var(--primary); }
+
+  .featured-mark {
+    display: inline-block;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: .75em;
+    font-weight: 800;
+    letter-spacing: .04em;
+    margin-right: .2em;
+  }
+
+  .card-desc {
+    font-size: .875rem;
+    color: var(--text-muted);
+    line-height: 1.75;
+    margin-bottom: .85rem;
+  }
+
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    margin-bottom: .85rem;
+  }
+
+  .card-tag {
+    font-size: .72rem;
+    padding: .2em .7em;
+    border-radius: 999px;
+    background: rgba(147,51,234,.07);
+    color: var(--secondary);
+    border: 1px solid rgba(147,51,234,.12);
+  }
+
+  .card-arrow {
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+    transition: transform .25s ease, color .25s ease;
+  }
+
+  .wall-card:hover .card-arrow {
+    transform: translateX(5px);
+  }
+
+  .wall-card:not(.has-img):hover .card-arrow {
+    color: var(--primary);
+  }
+
+  /* Responsive */
+  @media (max-width: 860px) {
+    .masonry { columns: 2 240px; }
+  }
+
+  @media (max-width: 520px) {
+    .masonry { columns: 1; }
+    .wall-card { margin-bottom: 1rem; }
+    .hero-ctas { flex-direction: column; align-items: center; }
+  }
+</style>
+
+<!-- ==================== SCRIPTS ==================== -->
+<script>
+/* ── 1. Sakura Petal Canvas ── */
+(function initPetals() {
+  const canvas = document.getElementById('petal-canvas') as HTMLCanvasElement | null;
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  let W = 0, H = 0;
+  function resize() {
+    W = canvas!.offsetWidth;
+    H = canvas!.offsetHeight;
+    canvas!.width = W;
+    canvas!.height = H;
+  }
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
+
+  const isDark = () => document.documentElement.classList.contains('dark');
+
+  class Petal {
+    x!: number; y!: number;
+    size!: number; speedY!: number; speedX!: number;
+    rotation!: number; rotSpeed!: number;
+    opacity!: number; wobble!: number; wobbleSpeed!: number;
+
+    constructor() { this.init(true); }
+
+    init(scatter = false) {
+      this.x = Math.random() * W;
+      this.y = scatter ? Math.random() * H : -20;
+      this.size = Math.random() * 7 + 4;
+      this.speedY = Math.random() * 0.8 + 0.4;
+      this.speedX = (Math.random() - 0.5) * 0.5;
+      this.rotation = Math.random() * Math.PI * 2;
+      this.rotSpeed = (Math.random() - 0.5) * 0.04;
+      this.opacity = Math.random() * 0.45 + 0.2;
+      this.wobble = Math.random() * Math.PI * 2;
+      this.wobbleSpeed = Math.random() * 0.015 + 0.008;
+    }
+
+    update() {
+      this.y += this.speedY;
+      this.wobble += this.wobbleSpeed;
+      this.x += this.speedX + Math.sin(this.wobble) * 0.6;
+      this.rotation += this.rotSpeed;
+      if (this.y > H + 20 || this.x < -30 || this.x > W + 30) this.init();
+    }
+
+    draw(ctx: CanvasRenderingContext2D) {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.rotation);
+      ctx.globalAlpha = this.opacity;
+
+      const s = this.size;
+      const dark = isDark();
+      ctx.beginPath();
+      ctx.moveTo(0, -s);
+      ctx.bezierCurveTo(s * 0.9, -s * 0.5, s * 0.9, s * 0.5, 0, s);
+      ctx.bezierCurveTo(-s * 0.9, s * 0.5, -s * 0.9, -s * 0.5, 0, -s);
+
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, s);
+      if (dark) {
+        grad.addColorStop(0, 'rgba(249,168,212,.9)');
+        grad.addColorStop(1, 'rgba(216,180,254,.4)');
+      } else {
+        grad.addColorStop(0, 'rgba(249,168,212,.8)');
+        grad.addColorStop(1, 'rgba(232,121,164,.3)');
+      }
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  const COUNT = Math.min(50, Math.floor(W / 20));
+  const petals = Array.from({ length: COUNT }, () => new Petal());
+
+  let raf: number;
+  function loop() {
+    ctx!.clearRect(0, 0, W, H);
+    petals.forEach(p => { p.update(); p.draw(ctx!); });
+    raf = requestAnimationFrame(loop);
+  }
+  loop();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelAnimationFrame(raf);
+    else loop();
+  });
+})();
+
+/* ── 2. Typewriter Effect ── */
+(function initTypewriter() {
+  const el = document.getElementById('typewriter-text');
+  if (!el) return;
+  const phrases = ['像诗一样写代码', '用技术探索世界', '全栈 · 探索 · 创造', '代码是另一种诗', '追逐灵感的工程师'];
+  let pi = 0, ci = 0, deleting = false;
+
+  function tick() {
+    const phrase = phrases[pi];
+    if (deleting) {
+      el.textContent = phrase.slice(0, --ci);
+    } else {
+      el.textContent = phrase.slice(0, ++ci);
+    }
+
+    let delay = deleting ? 70 : 130;
+
+    if (!deleting && ci === phrase.length) {
+      deleting = true; delay = 2200;
+    } else if (deleting && ci === 0) {
+      deleting = false;
+      pi = (pi + 1) % phrases.length;
+      delay = 400;
+    }
+    setTimeout(tick, delay);
+  }
+  setTimeout(tick, 800);
+})();
+
+/* ── 3. 3D Tilt + Shine Effect ── */
+(function initTilt() {
+  const cards = document.querySelectorAll<HTMLElement>('.tilt-card');
+
+  cards.forEach(card => {
+    card.addEventListener('mousemove', (e: MouseEvent) => {
+      const rect = card.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      const rx = (y - 0.5) * -10;
+      const ry = (x - 0.5) * 10;
+      // Override transition to be immediate for tilt (avoid 0.5s scroll-reveal delay)
+      card.style.transition = 'box-shadow .3s ease';
+      card.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg) scale(1.02)`;
+      card.style.setProperty('--mx', `${x * 100}%`);
+      card.style.setProperty('--my', `${y * 100}%`);
+    });
+
+    card.addEventListener('mouseleave', () => {
+      // Smooth snap-back on leave
+      card.style.transition = 'transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s ease';
+      card.style.transform = '';
+    });
+  });
+})();
+
+/* ── 4. Scroll-reveal for wall cards ── */
+(function initReveal() {
+  const items = document.querySelectorAll('.wall-card');
+  if (!('IntersectionObserver' in window)) {
+    items.forEach(el => (el as HTMLElement).style.opacity = '1');
+    return;
+  }
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        (entry.target as HTMLElement).classList.add('revealed');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+  items.forEach((el, i) => {
+    (el as HTMLElement).style.setProperty('--reveal-delay', `${(i % 6) * 60}ms`);
+    io.observe(el);
+  });
+})();
+</script>
+
+<style>
+  /* Scroll-reveal animation */
+  .wall-card {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity .5s ease var(--reveal-delay, 0ms),
+      transform .5s cubic-bezier(.22,1,.36,1) var(--reveal-delay, 0ms),
+      box-shadow .3s ease;
+  }
+
+  .wall-card.revealed {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>

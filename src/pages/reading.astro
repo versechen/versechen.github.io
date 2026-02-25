@@ -1,0 +1,489 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+interface Book {
+  title: string;
+  author: string;
+  cover: string;       // emoji used as cover art
+  rating: number;      // 1-5
+  date: string;        // finish date YYYY-MM
+  tags: string[];
+  summary: string;     // one-liner intro
+  keyPoints: string[]; // core knowledge points
+  thoughts: string;    // personal reflection
+}
+
+const books: Book[] = [
+  {
+    title: '人类简史',
+    author: '尤瓦尔·赫拉利',
+    cover: '📜',
+    rating: 5,
+    date: '2024-01',
+    tags: ['历史', '人文', '哲学'],
+    summary: '从认知革命到人工智能，以宏观视角重新审视人类文明进程。',
+    keyPoints: [
+      '认知革命：约 7 万年前，智人发展出"讲故事"的能力，凭此超越其他物种',
+      '农业革命是"史上最大骗局"——让人类过得更辛苦，却让物种数量爆炸式增长',
+      '金钱、宗教、国家皆为"共同想象"，是人类大规模协作的底层操作系统',
+      '科学革命的核心是承认"无知"，愿意主动探索未知，而非固守已有知识',
+      '现代幸福感研究：客观条件改善与主观幸福感之间并无强相关',
+    ],
+    thoughts:
+      '读完此书，最大的冲击是意识到我们习以为常的一切——金融、法律、民族——都是人类编织的神话。理解这一点既令人不安，也让人觉得充满可能性：既然规则是人定的，那就可以被改变。',
+  },
+  {
+    title: '思考，快与慢',
+    author: '丹尼尔·卡尼曼',
+    cover: '🧠',
+    rating: 5,
+    date: '2023-11',
+    tags: ['心理学', '认知科学', '决策'],
+    summary: '诺贝尔奖得主揭示人类两套思维系统的运作机制与认知偏误。',
+    keyPoints: [
+      '系统 1（快思考）：自动、直觉、情绪驱动；系统 2（慢思考）：理性、费力、慢速',
+      '锚定效应：第一个接触到的数字会显著影响后续判断',
+      '峰终定律：人们对一段体验的记忆，主要由峰值和结尾决定，而非平均值',
+      '损失厌恶：失去 100 元的痛苦约等于获得 200 元的快乐',
+      '规划谬误：人们惯于对项目工期过于乐观，忽视"基准率"信息',
+    ],
+    thoughts:
+      '作为程序员，我发现自己日常决策中充满了系统 1 的影子——看到某个方案"感觉对"就直接写代码。这本书让我养成了一个习惯：重要决策前先强制用文字把理由写下来，逼自己激活系统 2。',
+  },
+  {
+    title: '置身事内：中国政府与经济发展',
+    author: '兰小欢',
+    cover: '🏛️',
+    rating: 5,
+    date: '2023-09',
+    tags: ['经济', '政治', '中国'],
+    summary: '以地方政府视角解析中国经济奇迹背后的制度逻辑。',
+    keyPoints: [
+      '土地财政：地方政府通过出让土地使用权获取资金，是基础设施建设的核心引擎',
+      '招商引资竞争：地方官员的晋升激励与 GDP 增长深度绑定，推动地区间激烈竞争',
+      '债务驱动：城投公司（地方政府融资平台）承担了大量表外债务',
+      '产业政策：政府通过补贴、土地优惠、特许经营权引导资源向特定产业集中',
+      '政策执行的"最后一公里"问题：中央决策与基层落地之间存在大量信息损耗',
+    ],
+    thoughts:
+      '理解中国经济，必须理解地方政府的激励结构。这本书给了我一把钥匙，让我重新审视身边很多"显而易见"的现象——为什么某地突然大规模建设？为什么一些产业集中在特定城市？答案往往在制度设计里。',
+  },
+  {
+    title: '算法导论（精选章节）',
+    author: 'CLRS',
+    cover: '⚙️',
+    rating: 4,
+    date: '2023-07',
+    tags: ['算法', '计算机科学', '技术'],
+    summary: '系统性精读动态规划、图算法与分治法三大核心章节。',
+    keyPoints: [
+      '动态规划本质：将问题拆解为重叠子问题，用记忆化避免重复计算',
+      '贪心算法 vs DP：贪心每步局部最优；DP 需要考察所有子问题才能得到全局最优',
+      'Dijkstra 适用于非负权图；Bellman-Ford 可处理负权边，时间复杂度 O(VE)',
+      '分治法的主定理：T(n) = aT(n/b) + f(n)，根据 f(n) 的量级判断时间复杂度',
+      'NP 完全性：旅行商、背包等问题至今无多项式时间精确算法，近似算法是工程实践关键',
+    ],
+    thoughts:
+      '这本书很厚，我没有从头读到尾，而是带着问题去读。最大的收获不是记住了哪些算法，而是建立了"问题→结构→策略"的思维框架：先看问题是否有最优子结构，再决定用什么方法。',
+  },
+  {
+    title: '非暴力沟通',
+    author: '马歇尔·卢森堡',
+    cover: '🕊️',
+    rating: 4,
+    date: '2023-05',
+    tags: ['沟通', '心理学', '人际关系'],
+    summary: '一套以观察、感受、需要、请求为核心的沟通框架，化解冲突。',
+    keyPoints: [
+      '区分"观察"与"评判"：描述具体行为而非贴标签（"你迟到了20分钟"vs"你不守时"）',
+      '感受来自内在需要，而非他人行为：他人的话是触发器，不是原因',
+      '倾听需要：批评、指责背后往往隐藏着未被满足的需要',
+      '"请求"而非"要求"：请求可被拒绝；要求会引发对方防御或服从',
+      '自我同理：以同等的非暴力方式对待自己内心的批评声音',
+    ],
+    thoughts:
+      '这本书改变了我在 code review 时的表达方式。以前会说"这段代码写得太烂了"，现在会说"这里的循环嵌套让我很难理解数据流，你能加一个注释或者拆成子函数吗？"——效果截然不同。',
+  },
+];
+
+function stars(n: number) {
+  return '★'.repeat(n) + '☆'.repeat(5 - n);
+}
+---
+
+<BaseLayout title="读书" description="陈诗的读书笔记与书评">
+
+  <!-- Hero -->
+  <div class="page-hero container">
+    <span class="rsp rsp1" aria-hidden="true">✦</span>
+    <span class="rsp rsp2" aria-hidden="true">✧</span>
+    <span class="rsp rsp3" aria-hidden="true">❋</span>
+    <div class="reading-hero-icon" aria-hidden="true">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+      </svg>
+    </div>
+    <h1 class="page-hero-title"><span class="gradient-text">读 书</span></h1>
+    <p class="page-hero-desc">读书笔记 · 知识提炼 · 思考感想 · 已读 {books.length} 本</p>
+  </div>
+
+  <!-- Book list -->
+  <section class="section" style="padding-top:1rem">
+    <div class="container">
+      <div class="book-list">
+        {books.map((book, idx) => (
+          <article class="book-card">
+
+            <!-- Left: cover + meta -->
+            <div class="book-cover-col">
+              <div class="book-cover">
+                <span class="book-cover-emoji">{book.cover}</span>
+                <div class="book-spine"></div>
+              </div>
+              <div class="book-meta-col">
+                <span class="book-rating" title={`评分 ${book.rating}/5`}>{stars(book.rating)}</span>
+                <span class="book-date">{book.date}</span>
+              </div>
+            </div>
+
+            <!-- Right: content -->
+            <div class="book-body">
+
+              <!-- Header -->
+              <div class="book-header">
+                <div>
+                  <h2 class="book-title">{book.title}</h2>
+                  <p class="book-author">by {book.author}</p>
+                </div>
+                <div class="book-tags">
+                  {book.tags.map(t => (
+                    <a href={`/tags/${t}`} class="btag">{t}</a>
+                  ))}
+                </div>
+              </div>
+
+              <p class="book-summary">{book.summary}</p>
+
+              <!-- Key points -->
+              <div class="book-section">
+                <h3 class="section-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                  核心知识点
+                </h3>
+                <ul class="key-points">
+                  {book.keyPoints.map(pt => (
+                    <li class="key-point">
+                      <span class="kp-dot" aria-hidden="true"></span>
+                      <span>{pt}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <!-- Personal thoughts -->
+              <div class="book-section">
+                <h3 class="section-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  读后感
+                </h3>
+                <blockquote class="book-thoughts">{book.thoughts}</blockquote>
+              </div>
+
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+</BaseLayout>
+
+<style>
+  /* ── Hero sparkles ── */
+  .page-hero { position: relative; }
+
+  .rsp {
+    position: absolute;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: rsp-float var(--d, 5s) ease-in-out infinite;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .rsp1 { top: 30%; left: 6%;   font-size: 1.3rem; --d: 5s; animation-delay: 0s; }
+  .rsp2 { top: 18%; right: 8%;  font-size: .85rem; --d: 7s; animation-delay: .9s; }
+  .rsp3 { bottom: 18%; right: 14%; font-size: 1.1rem; --d: 6s; animation-delay: 1.6s; }
+
+  @keyframes rsp-float {
+    0%,100% { transform: translateY(0) rotate(0deg); opacity: .7; }
+    50%      { transform: translateY(-14px) rotate(180deg); opacity: 1; }
+  }
+
+  .reading-hero-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(232,121,164,.35);
+  }
+
+  /* ── Book list ── */
+  .book-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  /* ── Book card ── */
+  .book-card {
+    display: flex;
+    gap: 2rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s, box-shadow .2s, transform .2s;
+  }
+
+  .book-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--gradient);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .book-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+  }
+
+  /* ── Left column: book cover ── */
+  .book-cover-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .75rem;
+    flex-shrink: 0;
+  }
+
+  .book-cover {
+    width: 80px;
+    height: 108px;
+    border-radius: 4px 10px 10px 4px;
+    background: var(--gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: 3px 4px 16px rgba(147,51,234,.25), inset -2px 0 6px rgba(0,0,0,.15);
+    flex-shrink: 0;
+  }
+
+  .book-cover-emoji {
+    font-size: 2.4rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.2));
+  }
+
+  /* Book spine accent */
+  .book-spine {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 8px;
+    background: rgba(0,0,0,.18);
+    border-radius: 4px 0 0 4px;
+  }
+
+  .book-meta-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .3rem;
+  }
+
+  .book-rating {
+    font-size: .9rem;
+    color: #f59e0b;
+    letter-spacing: .05em;
+  }
+
+  .book-date {
+    font-size: .72rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Right column: content ── */
+  .book-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .book-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .book-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text-1);
+    line-height: 1.2;
+    margin-bottom: .2rem;
+  }
+
+  .book-author {
+    font-size: .82rem;
+    color: var(--text-muted);
+  }
+
+  .book-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    flex-shrink: 0;
+  }
+
+  .btag {
+    font-size: .7rem;
+    padding: .18em .7em;
+    border-radius: 999px;
+    background: rgba(147,51,234,.08);
+    color: var(--secondary);
+    border: 1px solid rgba(147,51,234,.15);
+    text-decoration: none;
+    transition: background .2s, color .2s, border-color .2s;
+  }
+
+  .btag:hover {
+    background: var(--gradient);
+    color: #fff;
+    border-color: transparent;
+  }
+
+  .book-summary {
+    font-size: .95rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    padding-left: 1rem;
+    border-left: 3px solid rgba(232,121,164,.35);
+    font-style: italic;
+  }
+
+  /* ── Sections ── */
+  .book-section {
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+  }
+
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--primary);
+    text-transform: uppercase;
+  }
+
+  /* Key points */
+  .key-points {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+  }
+
+  .key-point {
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+    font-size: .88rem;
+    color: var(--text-1);
+    line-height: 1.65;
+  }
+
+  .kp-dot {
+    flex-shrink: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--gradient);
+    margin-top: .45em;
+  }
+
+  /* Thoughts blockquote */
+  .book-thoughts {
+    font-size: .9rem;
+    color: var(--text-muted);
+    line-height: 1.8;
+    padding: .9rem 1.1rem;
+    border-radius: var(--radius);
+    background: rgba(147,51,234,.04);
+    border: 1px solid rgba(147,51,234,.1);
+    border-left: 3px solid var(--secondary);
+    position: relative;
+  }
+
+  .book-thoughts::before {
+    content: '"';
+    position: absolute;
+    top: -.2rem;
+    left: .6rem;
+    font-size: 2.5rem;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    opacity: .4;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .book-card {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1.25rem;
+      padding: 1.25rem;
+    }
+
+    .book-cover-col {
+      flex-direction: row;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .book-meta-col {
+      flex-direction: row;
+      gap: .75rem;
+    }
+
+    .book-header {
+      flex-direction: column;
+    }
+  }
+</style>

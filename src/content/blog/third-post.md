@@ -1,8 +1,11 @@
 ---
-title: 'Third post'
-description: 'Lorem ipsum dolor sit amet'
-pubDate: 'Jul 15 2022'
+title: '为什么我选择 Astro 构建个人博客'
+description: '从 Next.js 到 Astro，聊聊我的迁移心路历程，以及 Astro Islands 架构带来的性能革命。'
+pubDate: 'Sep 15 2023'
 heroImage: '/blog-placeholder-2.jpg'
+tags: ['Astro', '前端', '性能优化']
+series: '从零搭建个人博客'
+seriesOrder: 2
 ---
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Vitae ultricies leo integer malesuada nunc vel risus commodo viverra. Adipiscing enim eu turpis egestas pretium. Euismod elementum nisi quis eleifend quam adipiscing. In hac habitasse platea dictumst vestibulum. Sagittis purus sit amet volutpat. Netus et malesuada fames ac turpis egestas. Eget magna fermentum iaculis eu non diam phasellus vestibulum lorem. Varius sit amet mattis vulputate enim. Habitasse platea dictumst quisque sagittis. Integer quis auctor elit sed vulputate mi. Dictumst quisque sagittis purus sit amet.

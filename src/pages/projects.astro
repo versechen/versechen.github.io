@@ -1,0 +1,177 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const projects = [
+  {
+    icon: '🌸',
+    name: '代码陈诗',
+    desc: '基于 Astro 构建的个人博客，追求极致的阅读体验与性能。玻璃拟态设计风格，支持深色模式。',
+    tags: ['Astro', 'TypeScript', 'CSS'],
+    github: 'https://github.com/chenwei/codeverse',
+    link: '/',
+    status: 'active',
+  },
+  {
+    icon: '⚡',
+    name: '全栈脚手架',
+    desc: '整合 React + Node.js + PostgreSQL 的现代全栈项目模板，开箱即用的工程化配置。',
+    tags: ['React', 'Node.js', 'PostgreSQL', 'Docker'],
+    github: 'https://github.com/chenwei',
+    status: 'active',
+  },
+  {
+    icon: '🤖',
+    name: 'AI 写作助手',
+    desc: '基于大语言模型的写作辅助工具，支持续写、润色、摘要等功能，提升写作效率。',
+    tags: ['Python', 'FastAPI', 'OpenAI'],
+    github: 'https://github.com/chenwei',
+    status: 'wip',
+  },
+  {
+    icon: '📊',
+    name: '数据可视化面板',
+    desc: '使用 D3.js 和 React 构建的可交互数据可视化组件库，支持多种图表类型。',
+    tags: ['React', 'D3.js', 'TypeScript'],
+    github: 'https://github.com/chenwei',
+    status: 'active',
+  },
+  {
+    icon: '🔧',
+    name: 'CLI 工具集',
+    desc: '一套提升日常开发效率的命令行工具，包含代码生成、项目初始化等常用功能。',
+    tags: ['Go', 'CLI', 'Shell'],
+    github: 'https://github.com/chenwei',
+    status: 'active',
+  },
+  {
+    icon: '🎨',
+    name: '设计系统',
+    desc: '面向 React 生态的 UI 组件库，遵循 Radix UI 可访问性规范，支持主题定制。',
+    tags: ['React', 'Storybook', 'Radix UI'],
+    github: 'https://github.com/chenwei',
+    status: 'wip',
+  },
+];
+
+const statusLabel: Record<string, string> = {
+  active: '已上线',
+  wip: '开发中',
+  archived: '已归档',
+};
+
+const statusColor: Record<string, string> = {
+  active: 'status-active',
+  wip: 'status-wip',
+  archived: 'status-archived',
+};
+---
+
+<BaseLayout title="项目" description="陈诗的开源项目与个人作品">
+  <div class="page-hero container animate-fade-up">
+    <h1 class="page-hero-title"><span class="gradient-text">项目</span></h1>
+    <p class="page-hero-desc">开源项目、个人工具与有趣的实验作品</p>
+  </div>
+
+  <section class="section" style="padding-top: 1rem">
+    <div class="container">
+      <div class="project-grid animate-fade-up animate-delay-1">
+        {projects.map((p) => (
+          <div class="card project-card">
+            <div class="project-card-top">
+              <div class="project-card-header">
+                <span class="project-icon">{p.icon}</span>
+                <div class="project-links">
+                  {p.github && (
+                    <a href={p.github} class="project-link" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+                      </svg>
+                    </a>
+                  )}
+                  {p.link && (
+                    <a href={p.link} class="project-link" target="_blank" rel="noopener" aria-label="预览">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div class="project-name-row">
+                <h3 class="project-name">{p.name}</h3>
+                <span class:list={['status-badge', statusColor[p.status]]}>
+                  {statusLabel[p.status]}
+                </span>
+              </div>
+
+              <p class="project-desc">{p.desc}</p>
+            </div>
+
+            <div class="project-tags">
+              {p.tags.map(t => <span class="tag">{t}</span>)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .project-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1.25rem;
+  }
+
+  .project-card-top {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .project-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .status-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.15em 0.65em;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+  }
+
+  .status-active {
+    background: rgba(34, 197, 94, 0.12);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+  }
+
+  :global(html.dark) .status-active {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+  }
+
+  .status-wip {
+    background: rgba(234, 179, 8, 0.12);
+    color: #ca8a04;
+    border: 1px solid rgba(234, 179, 8, 0.2);
+  }
+
+  :global(html.dark) .status-wip {
+    color: #facc15;
+    background: rgba(250, 204, 21, 0.1);
+  }
+
+  .status-archived {
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+</style>

@@ -1,31 +1,293 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro'
-const pageTitle = "关于我";
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { AUTHOR, AUTHOR_TITLE, AUTHOR_BIO, GITHUB_URL, EMAIL } from '../consts';
 
-const identity = {
-  firstName: "莎拉",
-  country: "加拿大",
-  occupation: "技术撰稿人",
-  hobbies: ["摄影", "观鸟", "棒球"],
-};
+const skills = [
+  { category: '前端', items: ['React', 'Vue', 'Astro', 'TypeScript', 'Tailwind CSS'] },
+  { category: '后端', items: ['Node.js', 'Python', 'Go', 'PostgreSQL', 'Redis'] },
+  { category: '工具链', items: ['Git', 'Docker', 'Linux', 'CI/CD', 'Nginx'] },
+];
 
-const skills = ["HTML", "CSS", "JavaScript", "React", "Astro", "Writing Docs"];
-
-const happy = true;
-const finished = false;
-const goal = 3;
+const timeline = [
+  {
+    date: '2024',
+    title: '独立开发者',
+    desc: '开始独立开发个人项目，探索全栈开发与 AI 应用方向。',
+  },
+  {
+    date: '2022',
+    title: '高级全栈工程师',
+    desc: '负责核心产品的架构设计与开发，带领团队完成多个关键项目。',
+  },
+  {
+    date: '2020',
+    title: '前端工程师',
+    desc: '深耕前端工程化，推动团队引入 TypeScript 与现代化工具链。',
+  },
+  {
+    date: '2018',
+    title: '开始编程之旅',
+    desc: '大学期间接触编程，爱上了用代码创造的感觉，从此一发不可收拾。',
+  },
+];
 ---
-<BaseLayout pageTitle={pageTitle}>
-    <p>以下是关于我的几个事实：</p>
-    <ul>
-      <li>我的名字是{identity.firstName}.</li>
-      <li>我住在{identity.country}。我的职业是{identity.occupation}。</li>
-      {identity.hobbies.length >= 2 &&
-        <li>我的两个习惯：{identity.hobbies[0]}和{identity.hobbies[1]}</li>
-      }
-    </ul>
-    <p>我的技能是：</p>
-    <ul>
-      {skills.map((skill) => <li>{skill}</li>)}
-    </ul>
-  </BaseLayout>
+
+<BaseLayout title="关于我" description={`关于${AUTHOR}的个人介绍`}>
+  <!-- Page Hero -->
+  <div class="page-hero container animate-fade-up">
+    <h1 class="page-hero-title"><span class="gradient-text">关于我</span></h1>
+    <p class="page-hero-desc">一个热爱技术与生活的全栈工程师</p>
+  </div>
+
+  <section class="section" style="padding-top: 1rem">
+    <div class="container">
+      <!-- Profile -->
+      <div class="about-grid animate-fade-up animate-delay-1">
+        <div class="avatar-wrapper">
+          <div class="avatar">
+            <span>陈</span>
+          </div>
+          <div class="avatar-info">
+            <p class="avatar-name">{AUTHOR}</p>
+            <p class="avatar-title">{AUTHOR_TITLE}</p>
+          </div>
+          <div class="avatar-links">
+            <a href={GITHUB_URL} class="avatar-link" target="_blank" rel="noopener">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+              </svg>
+              GitHub
+            </a>
+            <a href={`mailto:${EMAIL}`} class="avatar-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+              </svg>
+              邮件联系
+            </a>
+          </div>
+        </div>
+
+        <div class="about-body">
+          <div class="card about-bio">
+            <h2 class="section-label">自我介绍</h2>
+            <p>
+              你好！我是<strong>{AUTHOR}</strong>，一名热爱技术的{AUTHOR_TITLE}。{AUTHOR_BIO}
+            </p>
+            <p>
+              我热衷于构建高质量的 Web 应用，关注用户体验与代码质量的平衡。
+              业余时间喜欢研究新技术、为开源项目贡献代码，以及用文字记录技术旅程。
+            </p>
+            <p>
+              这个博客是我分享技术思考的地方，涵盖前端、后端、工程化实践等话题。
+              如果你有任何想法或合作意向，欢迎随时联系我 ✨
+            </p>
+          </div>
+
+          <!-- Skills -->
+          <div class="card about-skills">
+            <h2 class="section-label">技术栈</h2>
+            <div class="skills-categories">
+              {skills.map(({ category, items }) => (
+                <div class="skill-category">
+                  <span class="skill-category-name">{category}</span>
+                  <div class="skills-grid">
+                    {items.map(skill => (
+                      <span class="skill-tag">{skill}</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="timeline-section animate-fade-up animate-delay-2">
+        <h2 class="section-title" style="margin-bottom: 2rem">
+          经历时间线
+        </h2>
+        <div class="timeline">
+          {timeline.map(({ date, title, desc }) => (
+            <div class="timeline-item">
+              <div class="timeline-dot"></div>
+              <div class="timeline-date">{date}</div>
+              <h3 class="timeline-title">{title}</h3>
+              <p class="timeline-desc">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .about-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 2rem;
+    align-items: start;
+    margin-bottom: 3rem;
+  }
+
+  .avatar-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    position: sticky;
+    top: calc(var(--nav-height) + 1.5rem);
+  }
+
+  .avatar {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: var(--gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: #fff;
+    box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px rgba(232, 121, 164, 0.25);
+  }
+
+  .avatar-info {
+    text-align: center;
+  }
+
+  .avatar-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .avatar-title {
+    font-size: 0.85rem;
+    color: var(--primary);
+    margin-top: 0.2rem;
+  }
+
+  .avatar-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .avatar-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-full);
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: all var(--transition);
+    background: var(--surface);
+  }
+
+  .avatar-link:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: rgba(232, 121, 164, 0.06);
+  }
+
+  .about-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--primary);
+    margin-bottom: 1rem;
+  }
+
+  .about-bio p {
+    color: var(--text-muted);
+    line-height: 1.8;
+    margin-bottom: 0.75rem;
+  }
+
+  .about-bio p:last-child { margin-bottom: 0; }
+
+  .about-bio strong { color: var(--text-1); }
+
+  .skills-categories {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .skill-category {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .skill-category-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    width: 48px;
+    flex-shrink: 0;
+    padding-top: 0.3rem;
+  }
+
+  .skills-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .skill-tag {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.82rem;
+    font-weight: 500;
+    background: var(--gradient);
+    color: #fff;
+  }
+
+  .timeline-section {
+    padding-top: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .about-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .avatar-wrapper {
+      position: static;
+      flex-direction: row;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .avatar {
+      width: 80px;
+      height: 80px;
+      font-size: 2rem;
+    }
+
+    .avatar-info { text-align: left; }
+
+    .avatar-links {
+      flex-direction: row;
+      flex-wrap: wrap;
+      width: auto;
+    }
+  }
+</style>

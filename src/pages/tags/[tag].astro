@@ -1,27 +1,281 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import BlogPost from '../../components/BlogPost.astro';
 
 export async function getStaticPaths() {
-  const allPosts = await Astro.glob('../posts/*.md');
+  const posts = await getCollection('blog');
+  const allTags = [...new Set(posts.flatMap(p => p.data.tags ?? []))];
 
-  const uniqueTags = [...new Set(allPosts.map((post) => post.frontmatter.tags).flat())];
-
-  return uniqueTags.map((tag) => {
-    const filteredPosts = allPosts.filter((post) => post.frontmatter.tags.includes(tag));
-    return {
-      params: { tag },
-      props: { posts: filteredPosts },
-    };
-  });
+  return allTags.map(tag => ({
+    params: { tag },
+    props: {
+      posts: posts
+        .filter(p => (p.data.tags ?? []).includes(tag))
+        .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()),
+    },
+  }));
 }
+
+interface Props { posts: any[]; }
 
 const { tag } = Astro.params;
 const { posts } = Astro.props;
+
+function fmt(d: Date) {
+  return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
 ---
-<BaseLayout pageTitle={tag}>
-  <p>包含「{tag}」标签的文章</p>
-  <ul>
-    {posts.map((post) => <BlogPost url={post.url} title={post.frontmatter.title}/>)}
-  </ul>
+
+<BaseLayout title={`标签：${tag}`} description={`包含「${tag}」标签的全部文章`}>
+
+  <!-- Hero -->
+  <div class="page-hero container">
+    <div class="tag-hero-badge" aria-hidden="true">#</div>
+    <h1 class="page-hero-title"><span class="gradient-text">{tag}</span></h1>
+    <p class="page-hero-desc">共 <strong>{posts.length}</strong> 篇文章</p>
+  </div>
+
+  <section class="section" style="padding-top:1rem">
+    <div class="container">
+      <a href="/blog" class="back-link">← 返回博客</a>
+
+      <div class="tag-post-list">
+        {posts.map(post => (
+          <a href={`/blog/${post.slug}`} class="tag-post-card">
+            {post.data.heroImage && (
+              <div class="tpc-img">
+                <img src={post.data.heroImage} alt={post.data.title} loading="lazy" />
+              </div>
+            )}
+            <div class="tpc-body">
+              <div class="tpc-meta">
+                <time datetime={post.data.pubDate.toISOString()} class="tpc-date">
+                  {fmt(post.data.pubDate)}
+                </time>
+                {post.data.series && (
+                  <span class="series-chip">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    {post.data.series}
+                  </span>
+                )}
+              </div>
+              <h2 class="tpc-title">{post.data.title}</h2>
+              <p class="tpc-desc">{post.data.description}</p>
+              <div class="tpc-tags">
+                {(post.data.tags ?? []).map((t: string) => (
+                  <span class:list={['ptag', { 'ptag-active': t === tag }]}>{t}</span>
+                ))}
+              </div>
+            </div>
+            <div class="tpc-arrow">→</div>
+          </a>
+        ))}
+      </div>
+
+      {posts.length === 0 && (
+        <div class="empty-state">
+          <p class="empty-icon">🔍</p>
+          <p>暂无「{tag}」相关文章</p>
+        </div>
+      )}
+    </div>
+  </section>
 </BaseLayout>
+
+<style>
+  .tag-hero-badge {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    box-shadow: 0 8px 24px rgba(232,121,164,.35);
+  }
+
+  .page-hero-desc strong {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .back-link {
+    display: inline-block;
+    font-size: .85rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-bottom: 2rem;
+    transition: color .2s;
+  }
+  .back-link:hover { color: var(--primary); }
+
+  /* Post list */
+  .tag-post-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .tag-post-card {
+    display: flex;
+    align-items: stretch;
+    gap: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    text-decoration: none;
+    color: inherit;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all var(--spring);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tag-post-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--gradient);
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  }
+
+  .tag-post-card:hover {
+    border-color: var(--primary);
+    transform: translateX(4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .tpc-img {
+    flex-shrink: 0;
+    width: 96px;
+    height: 72px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .tpc-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform .4s ease;
+  }
+
+  .tag-post-card:hover .tpc-img img {
+    transform: scale(1.07);
+  }
+
+  .tpc-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tpc-meta {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .4rem;
+    flex-wrap: wrap;
+  }
+
+  .tpc-date {
+    font-size: .78rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .series-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    font-size: .7rem;
+    padding: .12em .6em;
+    border-radius: 999px;
+    background: rgba(147,51,234,.1);
+    color: var(--secondary);
+    border: 1px solid rgba(147,51,234,.18);
+    font-weight: 600;
+  }
+
+  .tpc-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-1);
+    margin-bottom: .35rem;
+    line-height: 1.4;
+    transition: color .2s;
+  }
+
+  .tag-post-card:hover .tpc-title { color: var(--primary); }
+
+  .tpc-desc {
+    font-size: .85rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: .5rem;
+  }
+
+  .tpc-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+  }
+
+  .ptag {
+    font-size: .7rem;
+    padding: .12em .6em;
+    border-radius: 999px;
+    background: rgba(147,51,234,.07);
+    color: var(--secondary);
+    border: 1px solid rgba(147,51,234,.12);
+  }
+
+  /* Highlight the current tag */
+  .ptag-active {
+    background: var(--gradient);
+    color: #fff;
+    border-color: transparent;
+  }
+
+  .tpc-arrow {
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    transition: all .2s;
+  }
+
+  .tag-post-card:hover .tpc-arrow {
+    color: var(--primary);
+    transform: translateX(4px);
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 4rem 0;
+    color: var(--text-muted);
+  }
+
+  .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 520px) {
+    .tpc-img { display: none; }
+  }
+</style>

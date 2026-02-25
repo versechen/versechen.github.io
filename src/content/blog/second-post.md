@@ -1,8 +1,9 @@
 ---
-title: 'Second post'
-description: 'Lorem ipsum dolor sit amet'
-pubDate: 'Jul 22 2022'
+title: '全栈工程师的技术选型思考'
+description: '前端、后端、数据库、部署……面对层出不穷的新技术，全栈工程师如何做出合理的技术选型？'
+pubDate: 'Aug 22 2023'
 heroImage: '/blog-placeholder-4.jpg'
+tags: ['全栈', '架构', '工程化']
 ---
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Vitae ultricies leo integer malesuada nunc vel risus commodo viverra. Adipiscing enim eu turpis egestas pretium. Euismod elementum nisi quis eleifend quam adipiscing. In hac habitasse platea dictumst vestibulum. Sagittis purus sit amet volutpat. Netus et malesuada fames ac turpis egestas. Eget magna fermentum iaculis eu non diam phasellus vestibulum lorem. Varius sit amet mattis vulputate enim. Habitasse platea dictumst quisque sagittis. Integer quis auctor elit sed vulputate mi. Dictumst quisque sagittis purus sit amet.

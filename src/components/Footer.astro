@@ -1,16 +1,167 @@
 ---
-import Social from './Social.astro';
+import { SITE_TITLE, GITHUB_URL, EMAIL } from '../consts';
+
+const year = new Date().getFullYear();
+
+const links = [
+  { href: '/blog',     label: '博客' },
+  { href: '/projects', label: '项目' },
+  { href: '/life',     label: '生活' },
+  { href: '/friends',  label: '友链' },
+  { href: '/about',    label: '关于' },
+];
 ---
+
+<footer class="site-footer">
+  <div class="footer-inner container">
+    <div class="footer-brand">
+      <a class="footer-logo" href="/">
+        <span class="footer-logo-star">✦</span>
+        <span>{SITE_TITLE}</span>
+      </a>
+      <p class="footer-tagline">像诗一样写代码</p>
+    </div>
+
+    <nav class="footer-nav">
+      {links.map(({ href, label }) => (
+        <a href={href} class="footer-link">{label}</a>
+      ))}
+    </nav>
+
+    <div class="footer-social">
+      <a href={GITHUB_URL} class="social-btn" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+      </a>
+      <a href={`mailto:${EMAIL}`} class="social-btn" aria-label="Email">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+        </svg>
+      </a>
+      <a href="/rss.xml" class="social-btn" aria-label="RSS">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>
+      © {year} <span class="gradient-text">{SITE_TITLE}</span>
+      · 用 <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> 构建
+      · 以诗之名
+    </p>
+  </div>
+</footer>
+
 <style>
-  footer {
+  .site-footer {
+    border-top: 1px solid var(--border);
+    margin-top: 4rem;
+  }
+
+  .footer-inner {
     display: flex;
-    gap: 1rem;
-    margin-top: 2rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    padding-top: 2.5rem;
+    padding-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .footer-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .footer-logo-star {
+    font-size: 1rem;
+    animation: spin 8s linear infinite;
+  }
+
+  .footer-tagline {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+  }
+
+  .footer-nav {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .footer-link {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .footer-link:hover {
+    color: var(--primary);
+  }
+
+  .footer-social {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .social-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    transition: all var(--transition);
+  }
+
+  .social-btn:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: rgba(232, 121, 164, 0.06);
+  }
+
+  .footer-bottom {
+    border-top: 1px solid var(--border);
+    padding: 1rem 1.5rem;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+
+  .footer-bottom a {
+    color: var(--primary);
+    text-decoration: none;
+  }
+
+  .footer-bottom a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 640px) {
+    .footer-inner {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1.5rem;
+    }
+
+    .footer-nav {
+      gap: 1rem;
+    }
   }
 </style>
-
-<footer>
-  <Social platform="twitter" username="astrodotbuild" />
-  <Social platform="github" username="withastro" />
-  <Social platform="youtube" username="astrodotbuild" />
-</footer>

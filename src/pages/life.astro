@@ -1,0 +1,618 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const photos = [
+  { src: '/blog-placeholder-1.jpg', title: '春日时光', caption: '樱花盛开的季节，漫步于花海之中' },
+  { src: '/blog-placeholder-2.jpg', title: '技术探索', caption: '代码与艺术的边界，在这里模糊' },
+  { src: '/blog-placeholder-3.jpg', title: '城市漫步', caption: '霓虹灯下，城市有它独特的韵律' },
+  { src: '/blog-placeholder-4.jpg', title: '山间徒步', caption: '登顶那一刻，所有疲惫都值得' },
+  { src: '/blog-placeholder-5.jpg', title: '海边随拍', caption: '海浪声声，心也跟着开阔起来' },
+  { src: '/blog-placeholder-about.jpg', title: '生活片段', caption: '记录每一个值得珍藏的瞬间' },
+];
+
+const records = [
+  {
+    date: '2024-02',
+    emoji: '🌸',
+    title: '春日徒步',
+    desc: '趁着春光正好，去山里徒步了一天。满山的野花，空气清新，暂时逃离了城市的喧嚣。',
+    tags: ['户外', '自然'],
+  },
+  {
+    date: '2024-01',
+    emoji: '📚',
+    title: '读完《人类简史》',
+    desc: '花了两周时间读完了这本宏大的历史著作。赫拉利的视角独特，让我对人类文明有了全新的认识。',
+    tags: ['阅读', '历史'],
+  },
+  {
+    date: '2023-12',
+    emoji: '🍜',
+    title: '学会做汤包',
+    desc: '下厨实验成功！花了一个下午研究配方，最终做出了皮薄馅多的汤包。厨艺又进步了一点点。',
+    tags: ['美食', '生活'],
+  },
+  {
+    date: '2023-11',
+    emoji: '🎸',
+    title: '重拾吉他',
+    desc: '把落灰的吉他擦干净，重新开始练习。生活需要一些与代码无关的事情来保持平衡。',
+    tags: ['音乐', '爱好'],
+  },
+  {
+    date: '2023-10',
+    emoji: '🌊',
+    title: '第一次潜水',
+    desc: '去三亚学习了浮潜。第一次看到这么多彩的海底世界，像打开了新的视角，震撼又感动。',
+    tags: ['旅行', '户外'],
+  },
+  {
+    date: '2023-09',
+    emoji: '☕',
+    title: '咖啡拉花初体验',
+    desc: '参加了一次手冲咖啡体验课，学习了不同产地的豆子特点和冲泡技巧。发现咖啡是一门大学问。',
+    tags: ['咖啡', '生活'],
+  },
+];
+---
+
+<BaseLayout title="生活" description="陈诗的生活记录与相册">
+
+  <!-- Hero -->
+  <div class="page-hero container">
+    <!-- Sparkle decorations -->
+    <span class="lsp lsp1" aria-hidden="true">✦</span>
+    <span class="lsp lsp2" aria-hidden="true">✧</span>
+    <span class="lsp lsp3" aria-hidden="true">❋</span>
+    <h1 class="page-hero-title"><span class="gradient-text">生 活</span></h1>
+    <p class="page-hero-desc">代码之外，记录那些值得珍藏的瞬间</p>
+  </div>
+
+  <!-- ── Photo Gallery ── -->
+  <section class="section" style="padding-top:0">
+    <div class="container">
+      <h2 class="subsec-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+        </svg>
+        相 册
+      </h2>
+
+      <div class="photo-wall">
+        {photos.map((p, i) => (
+          <button
+            class="photo-item"
+            data-index={String(i)}
+            data-src={p.src}
+            data-title={p.title}
+            data-caption={p.caption}
+            aria-label={`查看图片：${p.title}`}
+          >
+            <img src={p.src} alt={p.title} loading="lazy" />
+            <div class="photo-overlay">
+              <span class="photo-zoom-icon" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                  <path d="M11 8v6M8 11h6"/>
+                </svg>
+              </span>
+              <span class="photo-title-overlay">{p.title}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Lightbox ── -->
+  <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="图片预览" hidden>
+    <div class="lb-backdrop" id="lb-backdrop"></div>
+    <div class="lb-inner">
+      <button class="lb-close" id="lb-close" aria-label="关闭">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <button class="lb-prev" id="lb-prev" aria-label="上一张">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <button class="lb-next" id="lb-next" aria-label="下一张">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+      <div class="lb-img-wrap">
+        <img id="lb-img" src="" alt="" />
+      </div>
+      <div class="lb-caption">
+        <p id="lb-title" class="lb-title-text"></p>
+        <p id="lb-cap-text" class="lb-cap-text"></p>
+        <p class="lb-counter"><span id="lb-cur">1</span> / <span id="lb-total">{photos.length}</span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Life Records ── -->
+  <section class="section" style="padding-top:1rem">
+    <div class="container">
+      <h2 class="subsec-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        </svg>
+        日 记
+      </h2>
+
+      <div class="life-grid">
+        {records.map((r) => (
+          <div class="life-card">
+            <div class="life-card-top">
+              <span class="life-emoji">{r.emoji}</span>
+              <span class="life-date">{r.date}</span>
+            </div>
+            <h3 class="life-title">{r.title}</h3>
+            <p class="life-desc">{r.desc}</p>
+            <div class="life-tags">
+              {r.tags.map(t => <span class="tag">{t}</span>)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <!-- Quote -->
+      <blockquote class="life-quote">
+        <p>生活不止眼前的代码，还有诗和远方。</p>
+        <cite>— 代码陈诗</cite>
+      </blockquote>
+    </div>
+  </section>
+
+</BaseLayout>
+
+<style>
+  /* ── Page hero sparkles ── */
+  .page-hero { position: relative; }
+
+  .lsp {
+    position: absolute;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: lsp-float var(--d, 5s) ease-in-out infinite;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .lsp1 { top: 30%; left: 5%;  font-size: 1.3rem; --d: 5s; animation-delay: 0s; }
+  .lsp2 { top: 20%; right: 6%; font-size: .9rem;  --d: 7s; animation-delay: .8s; }
+  .lsp3 { bottom: 20%; right: 12%; font-size: 1.1rem; --d: 6s; animation-delay: 1.5s; }
+
+  @keyframes lsp-float {
+    0%,100% { transform: translateY(0) rotate(0deg); opacity: .7; }
+    50%      { transform: translateY(-14px) rotate(180deg); opacity: 1; }
+  }
+
+  /* Sub-section title */
+  .subsec-title {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-1);
+    margin-bottom: 1.5rem;
+    letter-spacing: .06em;
+  }
+
+  .subsec-title svg {
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+
+  /* ── Photo wall ── */
+  .photo-wall {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 200px;
+    gap: .8rem;
+    margin-bottom: 4rem;
+  }
+
+  /* Give some items more height for visual rhythm */
+  .photo-item:nth-child(1) { grid-row: span 2; }
+  .photo-item:nth-child(4) { grid-column: span 2; }
+
+  .photo-item {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    background: var(--bg-alt);
+    transition: transform .3s cubic-bezier(.22,1,.36,1), box-shadow .3s ease;
+  }
+
+  .photo-item:hover {
+    transform: scale(1.02);
+    box-shadow: 0 16px 48px rgba(147,51,234,.22);
+    z-index: 1;
+  }
+
+  .photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform .6s cubic-bezier(.22,1,.36,1);
+  }
+
+  .photo-item:hover img {
+    transform: scale(1.08);
+  }
+
+  .photo-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      170deg,
+      transparent 30%,
+      rgba(0,0,0,.7) 100%
+    );
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    opacity: 0;
+    transition: opacity .3s ease;
+  }
+
+  .photo-item:hover .photo-overlay {
+    opacity: 1;
+  }
+
+  .photo-zoom-icon {
+    color: #fff;
+    background: rgba(255,255,255,.2);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255,255,255,.35);
+    transition: transform .25s ease;
+  }
+
+  .photo-item:hover .photo-zoom-icon {
+    transform: scale(1.1);
+  }
+
+  .photo-title-overlay {
+    color: #fff;
+    font-size: .85rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-shadow: 0 1px 4px rgba(0,0,0,.5);
+  }
+
+  /* ── Lightbox ── */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lightbox[hidden] { display: none; }
+
+  .lb-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    cursor: pointer;
+  }
+
+  .lb-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: min(90vw, 900px);
+    max-height: 90vh;
+    gap: 1rem;
+  }
+
+  .lb-img-wrap {
+    position: relative;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,.6);
+    max-height: 72vh;
+  }
+
+  #lb-img {
+    display: block;
+    max-width: 100%;
+    max-height: 72vh;
+    object-fit: contain;
+    border-radius: var(--radius-lg);
+    transition: opacity .25s ease;
+  }
+
+  .lb-caption {
+    text-align: center;
+    color: rgba(255,255,255,.9);
+  }
+
+  .lb-title-text {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: .25rem;
+  }
+
+  .lb-cap-text {
+    font-size: .85rem;
+    color: rgba(255,255,255,.65);
+    margin-bottom: .4rem;
+  }
+
+  .lb-counter {
+    font-size: .78rem;
+    color: rgba(255,255,255,.45);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Nav buttons */
+  .lb-close,
+  .lb-prev,
+  .lb-next {
+    position: absolute;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background .2s ease, transform .2s ease;
+    z-index: 2;
+  }
+
+  .lb-close:hover,
+  .lb-prev:hover,
+  .lb-next:hover {
+    background: rgba(255,255,255,.25);
+    transform: scale(1.1);
+  }
+
+  .lb-close {
+    top: -52px;
+    right: 0;
+  }
+
+  .lb-prev {
+    left: -56px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .lb-prev:hover { transform: translateY(-50%) scale(1.1); }
+
+  .lb-next {
+    right: -56px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .lb-next:hover { transform: translateY(-50%) scale(1.1); }
+
+  @media (max-width: 680px) {
+    .lb-prev { left: 0; top: auto; bottom: -56px; transform: none; }
+    .lb-prev:hover { transform: scale(1.1); }
+    .lb-next { right: 0; top: auto; bottom: -56px; transform: none; }
+    .lb-next:hover { transform: scale(1.1); }
+    .lb-close { top: -52px; right: 0; }
+    .photo-wall { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 150px; }
+    .photo-item:nth-child(1) { grid-row: span 1; }
+    .photo-item:nth-child(4) { grid-column: span 1; }
+  }
+
+  @media (max-width: 420px) {
+    .photo-wall { grid-template-columns: 1fr; grid-auto-rows: 200px; }
+  }
+
+  /* ── Life records ── */
+  .life-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .life-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.35rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: border-color .2s, box-shadow .2s, transform .2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .life-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--gradient);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    opacity: .7;
+  }
+
+  .life-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-3px);
+  }
+
+  .life-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .life-emoji {
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  .life-date {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--surface);
+    padding: 0.2em 0.6em;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border);
+  }
+
+  .life-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-1);
+    line-height: 1.3;
+  }
+
+  .life-desc {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.75;
+    flex: 1;
+  }
+
+  .life-tags {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    font-size: .72rem;
+    padding: .15em .65em;
+    border-radius: 999px;
+    background: rgba(147,51,234,.07);
+    color: var(--secondary);
+    border: 1px solid rgba(147,51,234,.12);
+  }
+
+  /* Quote */
+  .life-quote {
+    text-align: center;
+    padding: 2.5rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(232,121,164,.2);
+    background: linear-gradient(135deg, rgba(232,121,164,.06), rgba(147,51,234,.06));
+    margin-top: 1rem;
+  }
+
+  .life-quote p {
+    font-size: 1.3rem;
+    font-weight: 600;
+    font-style: italic;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.75rem;
+  }
+
+  .life-quote cite {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: normal;
+  }
+</style>
+
+<script>
+(function initLightbox() {
+  const lb = document.getElementById('lightbox')!;
+  const lbImg = document.getElementById('lb-img') as HTMLImageElement;
+  const lbTitle = document.getElementById('lb-title')!;
+  const lbCap = document.getElementById('lb-cap-text')!;
+  const lbCur = document.getElementById('lb-cur')!;
+  const lbTotal = document.getElementById('lb-total')!;
+  const lbClose = document.getElementById('lb-close')!;
+  const lbPrev = document.getElementById('lb-prev')!;
+  const lbNext = document.getElementById('lb-next')!;
+  const lbBackdrop = document.getElementById('lb-backdrop')!;
+
+  const items = Array.from(document.querySelectorAll<HTMLButtonElement>('.photo-item'));
+  let current = 0;
+
+  function open(idx: number) {
+    current = idx;
+    render();
+    lb.removeAttribute('hidden');
+    document.body.style.overflow = 'hidden';
+    lbImg.focus();
+  }
+
+  function close() {
+    lb.setAttribute('hidden', '');
+    document.body.style.overflow = '';
+  }
+
+  function render() {
+    const item = items[current];
+    const src     = item.dataset.src ?? '';
+    const title   = item.dataset.title ?? '';
+    const caption = item.dataset.caption ?? '';
+
+    lbImg.style.opacity = '0';
+    lbImg.src = src;
+    lbImg.alt = title;
+    lbImg.onload = () => { lbImg.style.opacity = '1'; };
+
+    lbTitle.textContent = title;
+    lbCap.textContent   = caption;
+    lbCur.textContent   = String(current + 1);
+    lbTotal.textContent = String(items.length);
+  }
+
+  function prev() { current = (current - 1 + items.length) % items.length; render(); }
+  function next() { current = (current + 1) % items.length; render(); }
+
+  // Open on click
+  items.forEach((item, i) => {
+    item.addEventListener('click', () => open(i));
+  });
+
+  lbClose.addEventListener('click', close);
+  lbBackdrop.addEventListener('click', close);
+  lbPrev.addEventListener('click', prev);
+  lbNext.addEventListener('click', next);
+
+  // Keyboard navigation
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (lb.hasAttribute('hidden')) return;
+    if (e.key === 'Escape')      close();
+    if (e.key === 'ArrowLeft')   prev();
+    if (e.key === 'ArrowRight')  next();
+  });
+})();
+</script>
