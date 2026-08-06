@@ -1,9 +1,9 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('blog');
+  const posts = (await getCollection('blog')).filter((post) => !post.data.draft);
   const allTags = [...new Set(posts.flatMap(p => p.data.tags ?? []))];
 
   return allTags.map(tag => ({
@@ -16,9 +16,9 @@ export async function getStaticPaths() {
   }));
 }
 
-interface Props { posts: any[]; }
+interface Props { posts: CollectionEntry<'blog'>[]; }
 
-const { tag } = Astro.params;
+const tag = Astro.params.tag ?? '';
 const { posts } = Astro.props;
 
 function fmt(d: Date) {
@@ -41,7 +41,7 @@ function fmt(d: Date) {
 
       <div class="tag-post-list">
         {posts.map(post => (
-          <a href={`/blog/${post.slug}`} class="tag-post-card">
+          <a href={`/blog/${post.id}`} class="tag-post-card">
             {post.data.heroImage && (
               <div class="tpc-img">
                 <img src={post.data.heroImage} alt={post.data.title} loading="lazy" />

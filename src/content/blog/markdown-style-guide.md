@@ -1,214 +1,111 @@
 ---
-title: 'Markdown Style Guide'
-description: 'Here is a sample of some basic Markdown syntax that can be used when writing Markdown content in Astro.'
-pubDate: 'Jul 01 2022'
-heroImage: '/blog-placeholder-1.jpg'
+title: 'Markdown 写作能力指南'
+description: '集中演示本站支持的目录、提示块、任务列表、表格、代码高亮、数学公式、脚注与原生 HTML 扩展。'
+pubDate: '2026-07-15'
+updatedDate: '2026-07-15'
+heroImage: '/images/cover-markdown.svg'
+tags: ['Markdown', 'Astro', '写作']
+category: '使用指南'
 ---
 
-Here is a sample of some basic Markdown syntax that can be used when writing Markdown content in Astro.
+本站基于 Astro 的内容集合管理文章，并使用 unified、remark、rehype 与 Shiki 完成 Markdown 渲染。右侧目录会根据二至四级标题自动生成；标题后的 `#` 可复制章节链接。
 
-## Headings
+> [!NOTE]
+> 普通 Markdown 和 MDX 共享同一套格式支持。文章正文请从二级标题开始，页面标题会作为唯一的一级标题。
 
-The following HTML `<h1>`—`<h6>` elements represent six levels of section headings. `<h1>` is the highest section level while `<h6>` is the lowest.
+## GitHub Flavored Markdown
 
-# H1
+### 任务列表与删除线
 
-## H2
+- [x] 支持 GFM 表格、自动链接与脚注
+- [x] 支持任务列表
+- [ ] 继续完善更多写作组件
 
-### H3
+需求变更后，可以用 ~~旧方案~~ 新方案清晰记录修订结果。
 
-#### H4
+### 表格
 
-##### H5
+宽表格在手机端可以横向滚动，不会撑破页面：
 
-###### H6
+| 能力 | 语法 | 渲染方式 | 状态 |
+| --- | --- | --- | --- |
+| 代码高亮 | 围栏代码块 | Shiki 双主题 | 已支持 |
+| 数学公式 | `$...$` / `$$...$$` | KaTeX | 已支持 |
+| 提示块 | `> [!NOTE]` | GitHub Alert | 已支持 |
+| 文章目录 | 二至四级标题 | 构建时生成 | 已支持 |
 
-## Paragraph
+## 提示块
 
-Xerum, quo qui aut unt expliquam qui dolut labo. Aque venitatiusda cum, voluptionse latur sitiae dolessi aut parist aut dollo enim qui voluptate ma dolestendit peritin re plis aut quas inctum laceat est volestemque commosa as cus endigna tectur, offic to cor sequas etum rerum idem sintibus eiur? Quianimin porecus evelectur, cum que nis nust voloribus ratem aut omnimi, sitatur? Quiatem. Nam, omnis sum am facea corem alique molestrunt et eos evelece arcillit ut aut eos eos nus, sin conecerem erum fuga. Ri oditatquam, ad quibus unda veliamenimin cusam et facea ipsamus es exerum sitate dolores editium rerore eost, temped molorro ratiae volorro te reribus dolorer sperchicium faceata tiustia prat.
+支持 GitHub 风格的 `NOTE`、`TIP`、`IMPORTANT`、`WARNING` 与 `CAUTION`：
 
-Itatur? Quiatae cullecum rem ent aut odis in re eossequodi nonsequ idebis ne sapicia is sinveli squiatum, core et que aut hariosam ex eat.
+> [!TIP]
+> 一篇文章只解决一个核心问题，标题层级尽量保持连续。
 
-## Images
+> [!WARNING]
+> Markdown 中的原生 HTML 只适合可信内容。若将来开放用户投稿，需要额外启用 HTML 白名单过滤。
 
-#### Syntax
+## 代码高亮与复制
 
-```markdown
-![Alt text](./full/or/relative/path/of/image)
+代码块会根据浅色或深色主题自动切换配色，并提供复制按钮：
+
+```ts
+interface Article {
+  title: string;
+  tags: string[];
+  draft?: boolean;
+}
+
+export function publish(article: Article) {
+  return {
+    ...article,
+    draft: false,
+    publishedAt: new Date().toISOString(),
+  };
+}
 ```
 
-#### Output
+行内代码适合展示命令或变量，例如 `npm run check` 与 `Astro.site`。
 
-![blog placeholder](/blog-placeholder-about.jpg)
+## 数学公式
 
-## Blockquotes
+行内公式示例：圆的面积为 $S = \pi r^2$。
 
-The blockquote element represents content that is quoted from another source, optionally with a citation which must be within a `footer` or `cite` element, and optionally with in-line changes such as annotations and abbreviations.
+块级公式会自动居中，内容过宽时可以横向滚动：
 
-### Blockquote without attribution
+$$
+\operatorname{softmax}(x_i) =
+\frac{\exp(x_i)}{\sum_{j=1}^{n}\exp(x_j)}
+$$
 
-#### Syntax
+## 引用与脚注
 
-```markdown
-> Tiam, ad mint andaepu dandae nostion secatur sequo quae.  
-> **Note** that you can use _Markdown syntax_ within a blockquote.
-```
+> 程序首先是写给人读的，只是偶尔让计算机执行。<br>
+> —— Harold Abelson
 
-#### Output
+Astro 将内容在构建时转换为静态 HTML，因此文章页面不依赖客户端 JavaScript[^static]。
 
-> Tiam, ad mint andaepu dandae nostion secatur sequo quae.  
-> **Note** that you can use _Markdown syntax_ within a blockquote.
+[^static]: 目录高亮和代码复制属于渐进增强；即使 JavaScript 不可用，正文仍可完整阅读。
 
-### Blockquote with attribution
+## 链接与图片
 
-#### Syntax
+[Astro 官方文档](https://docs.astro.build/)这类外部链接会在新标签页打开，并自动补充安全属性。
 
-```markdown
-> Don't communicate by sharing memory, share memory by communicating.<br>
-> — <cite>Rob Pike[^1]</cite>
-```
+![Markdown 与代码写作的抽象插图](/images/cover-markdown.svg)
 
-#### Output
+## 原生 HTML 扩展
 
-> Don't communicate by sharing memory, share memory by communicating.<br>
-> — <cite>Rob Pike[^1]</cite>
+可以使用少量语义化 HTML 丰富技术文档：
 
-[^1]: The above quote is excerpted from Rob Pike's [talk](https://www.youtube.com/watch?v=PAAkCSZUG1c) during Gopherfest, November 18, 2015.
+- 按下 <kbd>Command</kbd> + <kbd>K</kbd> 打开命令面板。
+- 使用 <mark>高亮文本</mark> 标记重点。
+- <abbr title="Web Content Accessibility Guidelines">WCAG</abbr> 是 Web 内容无障碍指南。
 
-## Tables
+<details>
+  <summary>展开查看写作建议</summary>
 
-#### Syntax
+  保持段落简短，为图片填写有意义的替代文本，并让链接文字描述真实目的。
+</details>
 
-```markdown
-| Italics   | Bold     | Code   |
-| --------- | -------- | ------ |
-| _italics_ | **bold** | `code` |
-```
+---
 
-#### Output
-
-| Italics   | Bold     | Code   |
-| --------- | -------- | ------ |
-| _italics_ | **bold** | `code` |
-
-## Code Blocks
-
-#### Syntax
-
-we can use 3 backticks ``` in new line and write snippet and close with 3 backticks on new line and to highlight language specific syntac, write one word of language name after first 3 backticks, for eg. html, javascript, css, markdown, typescript, txt, bash
-
-````markdown
-```html
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Example HTML5 Document</title>
-  </head>
-  <body>
-    <p>Test</p>
-  </body>
-</html>
-```
-````
-
-Output
-
-```html
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Example HTML5 Document</title>
-  </head>
-  <body>
-    <p>Test</p>
-  </body>
-</html>
-```
-
-## List Types
-
-### Ordered List
-
-#### Syntax
-
-```markdown
-1. First item
-2. Second item
-3. Third item
-```
-
-#### Output
-
-1. First item
-2. Second item
-3. Third item
-
-### Unordered List
-
-#### Syntax
-
-```markdown
-- List item
-- Another item
-- And another item
-```
-
-#### Output
-
-- List item
-- Another item
-- And another item
-
-### Nested list
-
-#### Syntax
-
-```markdown
-- Fruit
-  - Apple
-  - Orange
-  - Banana
-- Dairy
-  - Milk
-  - Cheese
-```
-
-#### Output
-
-- Fruit
-  - Apple
-  - Orange
-  - Banana
-- Dairy
-  - Milk
-  - Cheese
-
-## Other Elements — abbr, sub, sup, kbd, mark
-
-#### Syntax
-
-```markdown
-<abbr title="Graphics Interchange Format">GIF</abbr> is a bitmap image format.
-
-H<sub>2</sub>O
-
-X<sup>n</sup> + Y<sup>n</sup> = Z<sup>n</sup>
-
-Press <kbd><kbd>CTRL</kbd>+<kbd>ALT</kbd>+<kbd>Delete</kbd></kbd> to end the session.
-
-Most <mark>salamanders</mark> are nocturnal, and hunt for insects, worms, and other small creatures.
-```
-
-#### Output
-
-<abbr title="Graphics Interchange Format">GIF</abbr> is a bitmap image format.
-
-H<sub>2</sub>O
-
-X<sup>n</sup> + Y<sup>n</sup> = Z<sup>n</sup>
-
-Press <kbd><kbd>CTRL</kbd>+<kbd>ALT</kbd>+<kbd>Delete</kbd></kbd> to end the session.
-
-Most <mark>salamanders</mark> are nocturnal, and hunt for insects, worms, and other small creatures.
+以上格式均经过生产构建验证，可直接用于 `src/content/blog/` 下的 `.md` 或 `.mdx` 文件。

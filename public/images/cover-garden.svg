@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title">
+  <title id="title">pW���a��</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#172554"/><stop offset=".52" stop-color="#4c1d95"/><stop offset="1" stop-color="#be185d"/>
+    </linearGradient>
+    <linearGradient id="petal" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fbcfe8"/><stop offset="1" stop-color="#c4b5fd"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" rx="36" fill="url(#bg)"/>
+  <g fill="none" stroke="#67e8f9" stroke-width="8" opacity=".45">
+    <path d="M600 520V250M600 365 450 265M600 410l165-130M450 265 315 335M765 280l145 70"/>
+  </g>
+  <g fill="#0f172a" stroke="#f9a8d4" stroke-width="8">
+    <circle cx="600" cy="520" r="45"/><circle cx="600" cy="365" r="38"/>
+    <circle cx="450" cy="265" r="34"/><circle cx="765" cy="280" r="34"/>
+    <circle cx="315" cy="335" r="28"/><circle cx="910" cy="350" r="28"/>
+  </g>
+  <g fill="url(#petal)">
+    <ellipse cx="600" cy="175" rx="48" ry="95"/>
+    <ellipse cx="600" cy="175" rx="48" ry="95" transform="rotate(72 600 250)"/>
+    <ellipse cx="600" cy="175" rx="48" ry="95" transform="rotate(144 600 250)"/>
+    <ellipse cx="600" cy="175" rx="48" ry="95" transform="rotate(216 600 250)"/>
+    <ellipse cx="600" cy="175" rx="48" ry="95" transform="rotate(288 600 250)"/>
+  </g>
+  <circle cx="600" cy="250" r="42" fill="#f59e0b"/>
+</svg>

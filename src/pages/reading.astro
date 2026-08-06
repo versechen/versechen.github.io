@@ -1,117 +1,27 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection, render } from 'astro:content';
+import { hasMath } from '../utils/math';
 
-interface Book {
-  title: string;
-  author: string;
-  cover: string;       // emoji used as cover art
-  rating: number;      // 1-5
-  date: string;        // finish date YYYY-MM
-  tags: string[];
-  summary: string;     // one-liner intro
-  keyPoints: string[]; // core knowledge points
-  thoughts: string;    // personal reflection
-}
-
-const books: Book[] = [
-  {
-    title: '人类简史',
-    author: '尤瓦尔·赫拉利',
-    cover: '📜',
-    rating: 5,
-    date: '2024-01',
-    tags: ['历史', '人文', '哲学'],
-    summary: '从认知革命到人工智能，以宏观视角重新审视人类文明进程。',
-    keyPoints: [
-      '认知革命：约 7 万年前，智人发展出"讲故事"的能力，凭此超越其他物种',
-      '农业革命是"史上最大骗局"——让人类过得更辛苦，却让物种数量爆炸式增长',
-      '金钱、宗教、国家皆为"共同想象"，是人类大规模协作的底层操作系统',
-      '科学革命的核心是承认"无知"，愿意主动探索未知，而非固守已有知识',
-      '现代幸福感研究：客观条件改善与主观幸福感之间并无强相关',
-    ],
-    thoughts:
-      '读完此书，最大的冲击是意识到我们习以为常的一切——金融、法律、民族——都是人类编织的神话。理解这一点既令人不安，也让人觉得充满可能性：既然规则是人定的，那就可以被改变。',
-  },
-  {
-    title: '思考，快与慢',
-    author: '丹尼尔·卡尼曼',
-    cover: '🧠',
-    rating: 5,
-    date: '2023-11',
-    tags: ['心理学', '认知科学', '决策'],
-    summary: '诺贝尔奖得主揭示人类两套思维系统的运作机制与认知偏误。',
-    keyPoints: [
-      '系统 1（快思考）：自动、直觉、情绪驱动；系统 2（慢思考）：理性、费力、慢速',
-      '锚定效应：第一个接触到的数字会显著影响后续判断',
-      '峰终定律：人们对一段体验的记忆，主要由峰值和结尾决定，而非平均值',
-      '损失厌恶：失去 100 元的痛苦约等于获得 200 元的快乐',
-      '规划谬误：人们惯于对项目工期过于乐观，忽视"基准率"信息',
-    ],
-    thoughts:
-      '作为程序员，我发现自己日常决策中充满了系统 1 的影子——看到某个方案"感觉对"就直接写代码。这本书让我养成了一个习惯：重要决策前先强制用文字把理由写下来，逼自己激活系统 2。',
-  },
-  {
-    title: '置身事内：中国政府与经济发展',
-    author: '兰小欢',
-    cover: '🏛️',
-    rating: 5,
-    date: '2023-09',
-    tags: ['经济', '政治', '中国'],
-    summary: '以地方政府视角解析中国经济奇迹背后的制度逻辑。',
-    keyPoints: [
-      '土地财政：地方政府通过出让土地使用权获取资金，是基础设施建设的核心引擎',
-      '招商引资竞争：地方官员的晋升激励与 GDP 增长深度绑定，推动地区间激烈竞争',
-      '债务驱动：城投公司（地方政府融资平台）承担了大量表外债务',
-      '产业政策：政府通过补贴、土地优惠、特许经营权引导资源向特定产业集中',
-      '政策执行的"最后一公里"问题：中央决策与基层落地之间存在大量信息损耗',
-    ],
-    thoughts:
-      '理解中国经济，必须理解地方政府的激励结构。这本书给了我一把钥匙，让我重新审视身边很多"显而易见"的现象——为什么某地突然大规模建设？为什么一些产业集中在特定城市？答案往往在制度设计里。',
-  },
-  {
-    title: '算法导论（精选章节）',
-    author: 'CLRS',
-    cover: '⚙️',
-    rating: 4,
-    date: '2023-07',
-    tags: ['算法', '计算机科学', '技术'],
-    summary: '系统性精读动态规划、图算法与分治法三大核心章节。',
-    keyPoints: [
-      '动态规划本质：将问题拆解为重叠子问题，用记忆化避免重复计算',
-      '贪心算法 vs DP：贪心每步局部最优；DP 需要考察所有子问题才能得到全局最优',
-      'Dijkstra 适用于非负权图；Bellman-Ford 可处理负权边，时间复杂度 O(VE)',
-      '分治法的主定理：T(n) = aT(n/b) + f(n)，根据 f(n) 的量级判断时间复杂度',
-      'NP 完全性：旅行商、背包等问题至今无多项式时间精确算法，近似算法是工程实践关键',
-    ],
-    thoughts:
-      '这本书很厚，我没有从头读到尾，而是带着问题去读。最大的收获不是记住了哪些算法，而是建立了"问题→结构→策略"的思维框架：先看问题是否有最优子结构，再决定用什么方法。',
-  },
-  {
-    title: '非暴力沟通',
-    author: '马歇尔·卢森堡',
-    cover: '🕊️',
-    rating: 4,
-    date: '2023-05',
-    tags: ['沟通', '心理学', '人际关系'],
-    summary: '一套以观察、感受、需要、请求为核心的沟通框架，化解冲突。',
-    keyPoints: [
-      '区分"观察"与"评判"：描述具体行为而非贴标签（"你迟到了20分钟"vs"你不守时"）',
-      '感受来自内在需要，而非他人行为：他人的话是触发器，不是原因',
-      '倾听需要：批评、指责背后往往隐藏着未被满足的需要',
-      '"请求"而非"要求"：请求可被拒绝；要求会引发对方防御或服从',
-      '自我同理：以同等的非暴力方式对待自己内心的批评声音',
-    ],
-    thoughts:
-      '这本书改变了我在 code review 时的表达方式。以前会说"这段代码写得太烂了"，现在会说"这里的循环嵌套让我很难理解数据流，你能加一个注释或者拆成子函数吗？"——效果截然不同。',
-  },
-];
+const bookEntries = (await getCollection('books')).sort((a, b) =>
+  b.data.finishDate.localeCompare(a.data.finishDate)
+);
+const books = await Promise.all(
+  bookEntries.map(async (book) => ({
+    id: book.id,
+    ...book.data,
+    Content: (await render(book)).Content,
+  }))
+);
+const needsMath = bookEntries.some((book) => hasMath(book.body));
+const allBookTags = [...new Set(books.flatMap((book) => book.tags))].sort();
 
 function stars(n: number) {
   return '★'.repeat(n) + '☆'.repeat(5 - n);
 }
 ---
 
-<BaseLayout title="读书" description="陈诗的读书笔记与书评">
+<BaseLayout title="读书" description="陈诗的读书笔记与书评" math={needsMath}>
 
   <!-- Hero -->
   <div class="page-hero container">
@@ -125,15 +35,24 @@ function stars(n: number) {
       </svg>
     </div>
     <h1 class="page-hero-title"><span class="gradient-text">读 书</span></h1>
-    <p class="page-hero-desc">读书笔记 · 知识提炼 · 思考感想 · 已读 {books.length} 本</p>
+    <p class="page-hero-desc" aria-live="polite">
+      读书笔记 · 知识提炼 · 思考感想 · 显示 <strong id="book-count">{books.length}</strong> 本
+    </p>
   </div>
 
   <!-- Book list -->
   <section class="section" style="padding-top:1rem">
     <div class="container">
+      <div class="book-filters" aria-label="按标签筛选书籍">
+        <button class="book-filter active" data-book-filter="" aria-pressed="true">全部</button>
+        {allBookTags.map((tag) => (
+          <button class="book-filter" data-book-filter={tag} aria-pressed="false">{tag}</button>
+        ))}
+      </div>
+
       <div class="book-list">
-        {books.map((book, idx) => (
-          <article class="book-card">
+        {books.map(({ Content, ...book }) => (
+          <article class="book-card" data-book-tags={book.tags.join(',')}>
 
             <!-- Left: cover + meta -->
             <div class="book-cover-col">
@@ -142,8 +61,8 @@ function stars(n: number) {
                 <div class="book-spine"></div>
               </div>
               <div class="book-meta-col">
-                <span class="book-rating" title={`评分 ${book.rating}/5`}>{stars(book.rating)}</span>
-                <span class="book-date">{book.date}</span>
+                <span class="book-rating" title={`评分 ${book.rating}/5`} aria-label={`评分 ${book.rating}/5`}>{stars(book.rating)}</span>
+                <span class="book-date">{book.finishDate}</span>
               </div>
             </div>
 
@@ -158,7 +77,7 @@ function stars(n: number) {
                 </div>
                 <div class="book-tags">
                   {book.tags.map(t => (
-                    <a href={`/tags/${t}`} class="btag">{t}</a>
+                    <button class="btag" type="button" data-filter-tag={t}>{t}</button>
                   ))}
                 </div>
               </div>
@@ -187,13 +106,16 @@ function stars(n: number) {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                   读后感
                 </h3>
-                <blockquote class="book-thoughts">{book.thoughts}</blockquote>
+                <div class="book-thoughts">
+                  <Content />
+                </div>
               </div>
 
             </div>
           </article>
         ))}
       </div>
+      <p id="book-empty" class="book-empty" hidden>没有匹配该标签的读书笔记。</p>
     </div>
   </section>
 
@@ -236,11 +158,51 @@ function stars(n: number) {
     box-shadow: 0 8px 24px rgba(232,121,164,.35);
   }
 
+  .page-hero-desc strong {
+    color: var(--primary);
+  }
+
+  .book-filters {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.25rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .book-filter {
+    flex: 0 0 auto;
+    padding: 0.35rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    transition: color var(--transition), border-color var(--transition), background var(--transition);
+  }
+
+  .book-filter:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .book-filter.active {
+    border-color: transparent;
+    background: var(--gradient);
+    color: #fff;
+  }
+
   /* ── Book list ── */
   .book-list {
     display: flex;
     flex-direction: column;
     gap: 2rem;
+  }
+
+  .book-empty {
+    padding: 4rem 1rem;
+    color: var(--text-muted);
+    text-align: center;
   }
 
   /* ── Book card ── */
@@ -256,6 +218,10 @@ function stars(n: number) {
     position: relative;
     overflow: hidden;
     transition: border-color .2s, box-shadow .2s, transform .2s;
+  }
+
+  .book-card[hidden] {
+    display: none;
   }
 
   .book-card::before {
@@ -462,6 +428,24 @@ function stars(n: number) {
     opacity: .4;
   }
 
+  :global(.book-thoughts p) {
+    margin-bottom: 0.8rem;
+  }
+
+  :global(.book-thoughts p:last-child) {
+    margin-bottom: 0;
+  }
+
+  :global(.book-thoughts :is(ul, ol)) {
+    margin: 0.5rem 0 0.8rem 1.25rem;
+  }
+
+  :global(.book-thoughts a) {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
   /* ── Responsive ── */
   @media (max-width: 640px) {
     .book-card {
@@ -487,3 +471,42 @@ function stars(n: number) {
     }
   }
 </style>
+
+<script>
+  const filterButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-book-filter]')];
+  const tagButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-filter-tag]')];
+  const bookCards = [...document.querySelectorAll<HTMLElement>('[data-book-tags]')];
+  const bookCount = document.getElementById('book-count');
+  const emptyState = document.getElementById('book-empty');
+
+  const applyFilter = (tag: string) => {
+    let visibleCount = 0;
+
+    bookCards.forEach((card) => {
+      const tags = card.dataset.bookTags?.split(',').filter(Boolean) ?? [];
+      const visible = !tag || tags.includes(tag);
+      card.hidden = !visible;
+      if (visible) visibleCount += 1;
+    });
+
+    filterButtons.forEach((button) => {
+      const active = (button.dataset.bookFilter ?? '') === tag;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+
+    if (bookCount) bookCount.textContent = String(visibleCount);
+    if (emptyState) emptyState.hidden = visibleCount > 0;
+  };
+
+  filterButtons.forEach((button) => {
+    button.addEventListener('click', () => applyFilter(button.dataset.bookFilter ?? ''));
+  });
+
+  tagButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      applyFilter(button.dataset.filterTag ?? '');
+      document.querySelector('.book-filters')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  });
+</script>

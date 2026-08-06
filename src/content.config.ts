@@ -1,26 +1,37 @@
-import { defineCollection, z } from 'astro:content';
+import { defineCollection } from 'astro:content';
+import { glob } from 'astro/loaders';
+import { z } from 'astro/zod';
 
 const blog = defineCollection({
+  loader: glob({
+    pattern: '**/[^_]*.{md,mdx}',
+    base: './src/content/blog',
+  }),
   schema: z.object({
     title: z.string(),
     description: z.string(),
     pubDate: z.coerce.date(),
     updatedDate: z.coerce.date().optional(),
     heroImage: z.string().optional(),
-    tags: z.array(z.string()).optional(),
+    tags: z.array(z.string()).default([]),
     category: z.string().optional(),
     series: z.string().optional(),
-    seriesOrder: z.number().optional(),
+    seriesOrder: z.number().int().positive().optional(),
+    draft: z.boolean().default(false),
   }),
 });
 
 const books = defineCollection({
+  loader: glob({
+    pattern: '**/[^_]*.md',
+    base: './src/content/books',
+  }),
   schema: z.object({
     title: z.string(),
     author: z.string(),
-    cover: z.string(),                        // emoji
-    rating: z.number().min(1).max(5),
-    finishDate: z.string(),                   // YYYY-MM
+    cover: z.string(),
+    rating: z.number().int().min(1).max(5),
+    finishDate: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     tags: z.array(z.string()).default([]),
     summary: z.string(),
     keyPoints: z.array(z.string()).default([]),

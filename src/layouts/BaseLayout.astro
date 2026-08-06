@@ -1,13 +1,17 @@
 ---
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+// ?url 让 KaTeX 样式作为独立资源产出，只有含公式的页面才会引用它。
+import katexStylesheet from 'katex/dist/katex.min.css?url';
 import '../styles/global.css';
-import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+import { SITE_TITLE, SITE_DESCRIPTION, SITE_URL } from '../consts';
 
 interface Props {
   title?: string;
   description?: string;
   image?: string;
+  type?: 'website' | 'article';
+  math?: boolean;
   pageTitle?: string; // backward compat
 }
 
@@ -15,6 +19,9 @@ const {
   title,
   pageTitle,
   description = SITE_DESCRIPTION,
+  image,
+  type = 'website',
+  math = false,
 } = Astro.props;
 
 const resolvedTitle = title || pageTitle;
@@ -22,7 +29,8 @@ const fullTitle = resolvedTitle
   ? `${resolvedTitle} | ${SITE_TITLE}`
   : SITE_TITLE;
 
-const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://codeverse.example.com');
+const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? SITE_URL);
+const socialImageURL = image ? new URL(image, Astro.site ?? SITE_URL) : undefined;
 ---
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -34,15 +42,25 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://codevers
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonicalURL} />
+    <link rel="alternate" type="application/rss+xml" title={`${SITE_TITLE} RSS`} href="/rss.xml" />
+    <meta name="theme-color" content="#e879a4" />
+    {math && <link rel="stylesheet" href={katexStylesheet} />}
     <!-- Open Graph -->
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={type} />
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
+    {socialImageURL && <meta property="og:image" content={socialImageURL} />}
+    <meta name="twitter:card" content={socialImageURL ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    {socialImageURL && <meta name="twitter:image" content={socialImageURL} />}
     <!-- Dark mode: prevent flash -->
     <script is:inline>
       (function () {
-        const stored = localStorage.getItem('theme');
+        let stored = null;
+        // 隐私模式或禁用存储时 localStorage 会抛异常。
+        try { stored = localStorage.getItem('theme'); } catch (e) {}
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (stored === 'dark' || (!stored && prefersDark)) {
           document.documentElement.classList.add('dark');
@@ -51,8 +69,9 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? 'https://codevers
     </script>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">跳到正文</a>
     <Header />
-    <main>
+    <main id="main-content" tabindex="-1">
       <slot />
     </main>
     <Footer />

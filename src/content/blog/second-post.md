@@ -1,17 +1,59 @@
 ---
 title: '全栈工程师的技术选型思考'
-description: '前端、后端、数据库、部署……面对层出不穷的新技术，全栈工程师如何做出合理的技术选型？'
+description: '前端、后端、数据库、部署不断变化，技术选型应如何在交付速度、团队能力与长期成本之间取舍？'
 pubDate: 'Aug 22 2023'
-heroImage: '/blog-placeholder-4.jpg'
+heroImage: '/images/cover-mountain.svg'
 tags: ['全栈', '架构', '工程化']
+category: '工程实践'
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Vitae ultricies leo integer malesuada nunc vel risus commodo viverra. Adipiscing enim eu turpis egestas pretium. Euismod elementum nisi quis eleifend quam adipiscing. In hac habitasse platea dictumst vestibulum. Sagittis purus sit amet volutpat. Netus et malesuada fames ac turpis egestas. Eget magna fermentum iaculis eu non diam phasellus vestibulum lorem. Varius sit amet mattis vulputate enim. Habitasse platea dictumst quisque sagittis. Integer quis auctor elit sed vulputate mi. Dictumst quisque sagittis purus sit amet.
+技术选型不是评选“最先进”的工具，而是在约束条件下寻找风险最可控的组合。脱离团队、业务和生命周期讨论技术优劣，通常只会得到一张漂亮但无用的对比表。
 
-Morbi tristique senectus et netus. Id semper risus in hendrerit gravida rutrum quisque non tellus. Habitasse platea dictumst quisque sagittis purus sit amet. Tellus molestie nunc non blandit massa. Cursus vitae congue mauris rhoncus. Accumsan tortor posuere ac ut. Fringilla urna porttitor rhoncus dolor. Elit ullamcorper dignissim cras tincidunt lobortis. In cursus turpis massa tincidunt dui ut ornare lectus. Integer feugiat scelerisque varius morbi enim nunc. Bibendum neque egestas congue quisque egestas diam. Cras ornare arcu dui vivamus arcu felis bibendum. Dignissim suspendisse in est ante in nibh mauris. Sed tempus urna et pharetra pharetra massa massa ultricies mi.
+## 先写清楚约束
 
-Mollis nunc sed id semper risus in. Convallis a cras semper auctor neque. Diam sit amet nisl suscipit. Lacus viverra vitae congue eu consequat ac felis donec. Egestas integer eget aliquet nibh praesent tristique magna sit amet. Eget magna fermentum iaculis eu non diam. In vitae turpis massa sed elementum. Tristique et egestas quis ipsum suspendisse ultrices. Eget lorem dolor sed viverra ipsum. Vel turpis nunc eget lorem dolor sed viverra. Posuere ac ut consequat semper viverra nam. Laoreet suspendisse interdum consectetur libero id faucibus. Diam phasellus vestibulum lorem sed risus ultricies tristique. Rhoncus dolor purus non enim praesent elementum facilisis. Ultrices tincidunt arcu non sodales neque. Tempus egestas sed sed risus pretium quam vulputate. Viverra suspendisse potenti nullam ac tortor vitae purus faucibus ornare. Fringilla urna porttitor rhoncus dolor purus non. Amet dictum sit amet justo donec enim.
+我会在调研前回答四个问题：
 
-Mattis ullamcorper velit sed ullamcorper morbi tincidunt. Tortor posuere ac ut consequat semper viverra. Tellus mauris a diam maecenas sed enim ut sem viverra. Venenatis urna cursus eget nunc scelerisque viverra mauris in. Arcu ac tortor dignissim convallis aenean et tortor at. Curabitur gravida arcu ac tortor dignissim convallis aenean et tortor. Egestas tellus rutrum tellus pellentesque eu. Fusce ut placerat orci nulla pellentesque dignissim enim sit amet. Ut enim blandit volutpat maecenas volutpat blandit aliquam etiam. Id donec ultrices tincidunt arcu. Id cursus metus aliquam eleifend mi.
+1. 产品必须在什么时候交付？
+2. 团队已经熟悉哪些技术？
+3. 系统最可能先遇到的是流量、数据还是协作复杂度？
+4. 如果判断错误，哪项选择最容易回退？
 
-Tempus quam pellentesque nec nam aliquam sem. Risus at ultrices mi tempus imperdiet. Id porta nibh venenatis cras sed felis eget velit. Ipsum a arcu cursus vitae. Facilisis magna etiam tempor orci eu lobortis elementum. Tincidunt dui ut ornare lectus sit. Quisque non tellus orci ac. Blandit libero volutpat sed cras. Nec tincidunt praesent semper feugiat nibh sed pulvinar proin gravida. Egestas integer eget aliquet nibh praesent tristique magna.
+最后一个问题尤其重要。数据库和公共 API 的迁移成本通常远高于样式方案，因此值得投入更多验证时间。
+
+## 用决策记录代替口头共识
+
+一次简短的架构决策记录（ADR）至少应包含：
+
+- 当前上下文与限制；
+- 参与比较的候选方案；
+- 选择结果及核心理由；
+- 已知代价和重新评估条件。
+
+> [!IMPORTANT]
+> “社区很流行”只能作为生态活跃度的证据，不能直接成为项目采用它的理由。
+
+## 控制技术栈的数量
+
+每增加一种语言、框架或基础设施，团队都会新增一份升级、监控、安全和招聘成本。一个中小型产品往往不需要同时维护多套前端渲染方式，也不需要为了未来可能出现的规模预先引入复杂的分布式系统。
+
+可以用一个简单评分表帮助团队对齐：
+
+| 维度 | 权重 | 需要验证的事实 |
+| --- | ---: | --- |
+| 团队熟悉度 | 30% | 是否有人能排查生产问题 |
+| 维护成本 | 25% | 升级频率、依赖数量、可观测性 |
+| 需求匹配度 | 25% | 是否直接解决核心业务问题 |
+| 生态与寿命 | 20% | 文档、社区、长期维护承诺 |
+
+评分不是为了制造精确结论，而是迫使讨论从偏好回到事实。
+
+## 让原型回答高风险问题
+
+原型应验证最不确定的部分，而不是重复实现一个普通列表页。例如：
+
+- 身份认证能否覆盖目标平台；
+- 核心查询在真实数据量下是否达标；
+- 部署环境是否支持所需运行时；
+- 关键第三方服务失败时如何降级。
+
+技术选型的最终产物不是一份工具清单，而是一组可解释、可验证、可回退的工程决策。

@@ -1,31 +1,41 @@
 ---
-title: 'Using MDX'
-description: 'Lorem ipsum dolor sit amet'
-pubDate: 'Jul 02 2022'
-heroImage: '/blog-placeholder-5.jpg'
+title: '在 Astro 中使用 MDX'
+description: '通过 MDX 在 Markdown 内容中安全地复用 Astro 组件。'
+pubDate: '2026-07-14'
+heroImage: '/images/cover-markdown.svg'
+tags: ['Astro', 'MDX', 'Markdown']
+category: '使用指南'
 ---
-
-This theme comes with the [@astrojs/mdx](https://docs.astro.build/en/guides/integrations-guide/mdx/) integration installed and configured in your `astro.config.mjs` config file. If you prefer not to use MDX, you can disable support by removing the integration from your config file.
-
-## Why MDX?
-
-MDX is a special flavor of Markdown that supports embedded JavaScript & JSX syntax. This unlocks the ability to [mix JavaScript and UI Components into your Markdown content](https://docs.astro.build/en/guides/markdown-content/#mdx-features) for things like interactive charts or alerts.
-
-If you have existing content authored in MDX, this integration will hopefully make migrating to Astro a breeze.
-
-## Example
-
-Here is how you import and use a UI component inside of MDX.  
-When you open this page in the browser, you should see the clickable button below.
 
 import HeaderLink from '../../components/HeaderLink.astro';
 
-<HeaderLink href="#" onclick="alert('clicked!')">
-	Embedded component in MDX
+MDX 在 Markdown 基础上增加了组件与表达式能力，适合需要复用设计组件、数据卡片或交互岛的文章。
+
+## 什么时候使用 MDX
+
+- 普通技术文章优先使用 `.md`，内容更容易迁移。
+- 需要嵌入 Astro 组件时使用 `.mdx`。
+- 真正需要浏览器交互时，再为框架组件添加 `client:*` 指令。
+
+> [!IMPORTANT]
+> Astro 组件默认在构建时渲染，不会自动向浏览器发送 JavaScript。这能保持文章页面快速、稳定。
+
+## 嵌入组件
+
+下面的链接复用了项目已有的 `HeaderLink.astro` 组件：
+
+<HeaderLink href="/blog">
+  返回博客列表
 </HeaderLink>
 
-## More Links
+对应的 MDX 写法：
 
-- [MDX Syntax Documentation](https://mdxjs.com/docs/what-is-mdx)
-- [Astro Usage Documentation](https://docs.astro.build/en/guides/markdown-content/#markdown-and-mdx-pages)
-- **Note:** [Client Directives](https://docs.astro.build/en/reference/directives-reference/#client-directives) are still required to create interactive components. Otherwise, all components in your MDX will render as static HTML (no JavaScript) by default.
+```mdx
+import HeaderLink from '../../components/HeaderLink.astro';
+
+<HeaderLink href="/blog">
+  返回博客列表
+</HeaderLink>
+```
+
+更多细节可参考 [Astro MDX 官方文档](https://docs.astro.build/en/guides/integrations-guide/mdx/)。

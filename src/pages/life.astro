@@ -2,12 +2,12 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 
 const photos = [
-  { src: '/blog-placeholder-1.jpg', title: '春日时光', caption: '樱花盛开的季节，漫步于花海之中' },
-  { src: '/blog-placeholder-2.jpg', title: '技术探索', caption: '代码与艺术的边界，在这里模糊' },
-  { src: '/blog-placeholder-3.jpg', title: '城市漫步', caption: '霓虹灯下，城市有它独特的韵律' },
-  { src: '/blog-placeholder-4.jpg', title: '山间徒步', caption: '登顶那一刻，所有疲惫都值得' },
-  { src: '/blog-placeholder-5.jpg', title: '海边随拍', caption: '海浪声声，心也跟着开阔起来' },
-  { src: '/blog-placeholder-about.jpg', title: '生活片段', caption: '记录每一个值得珍藏的瞬间' },
+  { src: '/images/cover-spring.svg', title: '春日时光', caption: '樱花盛开的季节，漫步于花海之中' },
+  { src: '/images/cover-architecture.svg', title: '技术探索', caption: '代码与艺术的边界，在这里模糊' },
+  { src: '/images/cover-code.svg', title: '城市漫步', caption: '霓虹灯下，城市有它独特的韵律' },
+  { src: '/images/cover-mountain.svg', title: '山间徒步', caption: '登顶那一刻，所有疲惫都值得' },
+  { src: '/images/cover-music.svg', title: '海边随拍', caption: '海浪声声，心也跟着开阔起来' },
+  { src: '/images/cover-garden.svg', title: '生活片段', caption: '记录每一个值得珍藏的瞬间' },
 ];
 
 const records = [
@@ -88,7 +88,7 @@ const records = [
             data-caption={p.caption}
             aria-label={`查看图片：${p.title}`}
           >
-            <img src={p.src} alt={p.title} loading="lazy" />
+            <img src={p.src} alt={p.title} loading="lazy" decoding="async" />
             <div class="photo-overlay">
               <span class="photo-zoom-icon" aria-hidden="true">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -118,7 +118,7 @@ const records = [
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
       </button>
       <div class="lb-img-wrap">
-        <img id="lb-img" src="" alt="" />
+        <img id="lb-img" src="" alt="" decoding="async" />
       </div>
       <div class="lb-caption">
         <p id="lb-title" class="lb-title-text"></p>
@@ -563,18 +563,21 @@ const records = [
 
   const items = Array.from(document.querySelectorAll<HTMLButtonElement>('.photo-item'));
   let current = 0;
+  let opener: HTMLButtonElement | null = null;
 
   function open(idx: number) {
     current = idx;
+    opener = items[idx];
     render();
     lb.removeAttribute('hidden');
     document.body.style.overflow = 'hidden';
-    lbImg.focus();
+    lbClose.focus();
   }
 
   function close() {
     lb.setAttribute('hidden', '');
     document.body.style.overflow = '';
+    opener?.focus();
   }
 
   function render() {
@@ -587,6 +590,8 @@ const records = [
     lbImg.src = src;
     lbImg.alt = title;
     lbImg.onload = () => { lbImg.style.opacity = '1'; };
+    // 命中缓存时 load 可能不再触发，避免图片永远停在透明状态。
+    if (lbImg.complete) lbImg.style.opacity = '1';
 
     lbTitle.textContent = title;
     lbCap.textContent   = caption;
@@ -613,6 +618,19 @@ const records = [
     if (e.key === 'Escape')      close();
     if (e.key === 'ArrowLeft')   prev();
     if (e.key === 'ArrowRight')  next();
+    if (e.key === 'Tab') {
+      const focusable = [lbClose, lbPrev, lbNext] as HTMLElement[];
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
   });
 })();
 </script>

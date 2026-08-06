@@ -1,33 +1,96 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
-const allPosts = await getCollection('blog');
-const tags = [...new Set(allPosts.map((post) => post.data.tags ?? []).flat())];
-const pageTitle = "Tag Index";
+const allPosts = (await getCollection('blog')).filter((post) => !post.data.draft);
+const tagCounts = new Map<string, number>();
+
+allPosts.forEach((post) => {
+  post.data.tags.forEach((tag) => {
+    tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+  });
+});
+
+const tags = [...tagCounts.entries()].sort(
+  ([tagA, countA], [tagB, countB]) => countB - countA || tagA.localeCompare(tagB, 'zh-CN')
+);
 ---
-<BaseLayout pageTitle={pageTitle}>
-  <div class="tags">
-    {tags.map((tag) => (
-      <p class="tag"><a href={`/tags/${tag}`}>{tag}</a></p>
-    ))}
+<BaseLayout title="标签" description="按主题浏览代码陈诗的全部文章">
+  <div class="page-hero container">
+    <div class="tag-hero-icon" aria-hidden="true">#</div>
+    <h1 class="page-hero-title"><span class="gradient-text">文章标签</span></h1>
+    <p class="page-hero-desc">{tags.length} 个主题 · {allPosts.length} 篇文章</p>
   </div>
+
+  <section class="section" style="padding-top: 1rem">
+    <div class="container">
+      <div class="tags">
+        {tags.map(([tag, count]) => (
+          <a class="tag-card" href={`/tags/${encodeURIComponent(tag)}`}>
+            <span class="tag-name">#{tag}</span>
+            <span class="tag-count">{count} 篇</span>
+          </a>
+        ))}
+      </div>
+
+      {tags.length === 0 && <p class="empty-state">暂时还没有文章标签。</p>}
+    </div>
+  </section>
 </BaseLayout>
+
 <style>
-  a {
-    color: #00539F;
+  .tag-hero-icon {
+    display: grid;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--gradient);
+    box-shadow: 0 8px 24px rgba(232, 121, 164, 0.35);
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.8rem;
+    font-weight: 900;
   }
 
   .tags {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
   }
 
-  .tag {
-    margin: 0.25em;
-    border: dotted 1px #a1a1a1;
-    border-radius: .5em;
-    padding: .5em 1em;
-    font-size: 1.15em;
-    background-color: #F8FCFD;
+  .tag-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--glass-bg);
+    transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+  }
+
+  .tag-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow);
+    transform: translateY(-2px);
+  }
+
+  .tag-name {
+    color: var(--text-1);
+    font-weight: 650;
+  }
+
+  .tag-count {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  .empty-state {
+    padding: 4rem 1rem;
+    color: var(--text-muted);
+    text-align: center;
   }
 </style>

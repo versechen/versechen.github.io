@@ -1,11 +1,13 @@
 ---
 import { getCollection, render, type CollectionEntry } from 'astro:content';
+import TableOfContents from '../../components/TableOfContents.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { hasMath } from '../../utils/math';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('blog');
+  const posts = (await getCollection('blog')).filter((post) => !post.data.draft);
   return posts.map((post) => ({
-    params: { slug: post.slug },
+    params: { slug: post.id },
     props: post,
   }));
 }
@@ -13,7 +15,13 @@ export async function getStaticPaths() {
 type Props = CollectionEntry<'blog'>;
 
 const post = Astro.props;
-const { Content } = await render(post);
+const { Content, headings } = await render(post);
+const allPosts = (await getCollection('blog'))
+  .filter((entry) => !entry.data.draft)
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const postIndex = allPosts.findIndex((entry) => entry.id === post.id);
+const newerPost = postIndex > 0 ? allPosts[postIndex - 1] : undefined;
+const olderPost = postIndex >= 0 ? allPosts[postIndex + 1] : undefined;
 
 function formatDate(date: Date) {
   return date.toLocaleDateString('zh-CN', {
@@ -24,7 +32,13 @@ function formatDate(date: Date) {
 }
 ---
 
-<BaseLayout title={post.data.title} description={post.data.description}>
+<BaseLayout
+  title={post.data.title}
+  description={post.data.description}
+  image={post.data.heroImage}
+  type="article"
+  math={hasMath(post.body)}
+>
   <article class="post-page">
     <!-- Post Header -->
     <header class="post-header container animate-fade-up">
@@ -36,6 +50,7 @@ function formatDate(date: Date) {
         <time datetime={post.data.pubDate.toISOString()}>
           {formatDate(post.data.pubDate)}
         </time>
+        {post.data.category && <span> · {post.data.category}</span>}
         {post.data.updatedDate && (
           <span class="updated-date">
             · 更新于 {formatDate(post.data.updatedDate)}
@@ -49,7 +64,7 @@ function formatDate(date: Date) {
       {(post.data.tags ?? []).length > 0 && (
         <div class="post-tags">
           {(post.data.tags as string[]).map((t) => (
-            <a href={`/tags/${t}`} class="tag tag-link">{t}</a>
+            <a href={`/tags/${encodeURIComponent(t)}`} class="tag tag-link">{t}</a>
           ))}
         </div>
       )}
@@ -64,14 +79,33 @@ function formatDate(date: Date) {
     </header>
 
     <!-- Post Content -->
-    <div class="container">
-      <div class="prose animate-fade-up animate-delay-1">
-        <Content />
-      </div>
+    <div class="container article-layout">
+      <TableOfContents headings={headings} />
 
-      <!-- Navigation -->
-      <div class="post-nav animate-fade-up animate-delay-2">
-        <a href="/blog" class="btn btn-outline">← 返回博客列表</a>
+      <div class="article-main">
+        <div class="prose animate-fade-up animate-delay-1">
+          <Content />
+        </div>
+
+        <!-- Navigation -->
+        <nav class="post-nav animate-fade-up animate-delay-2" aria-label="文章翻页">
+          {newerPost ? (
+            <a href={`/blog/${newerPost.id}`} class="post-nav-link post-nav-prev">
+              <span>上一篇</span>
+              <strong>{newerPost.data.title}</strong>
+            </a>
+          ) : <span></span>}
+          {olderPost ? (
+            <a href={`/blog/${olderPost.id}`} class="post-nav-link post-nav-next">
+              <span>下一篇</span>
+              <strong>{olderPost.data.title}</strong>
+            </a>
+          ) : <span></span>}
+        </nav>
+
+        <div class="post-back">
+          <a href="/blog" class="btn btn-outline">← 返回博客列表</a>
+        </div>
       </div>
     </div>
   </article>
@@ -162,9 +196,138 @@ function formatDate(date: Date) {
     box-shadow: var(--shadow-lg);
   }
 
+  .article-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 2.5rem;
+  }
+
+  .article-main {
+    min-width: 0;
+    flex: 1;
+  }
+
   .post-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
     margin-top: 3rem;
     padding-top: 2rem;
     border-top: 1px solid var(--border);
   }
+
+  .post-nav-link {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-height: 92px;
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--glass-bg);
+    transition: border-color var(--transition), transform var(--transition);
+  }
+
+  .post-nav-link:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+  }
+
+  .post-nav-link span {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+
+  .post-nav-link strong {
+    color: var(--text-1);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .post-nav-next {
+    text-align: right;
+  }
+
+  .post-back {
+    margin-top: 1.5rem;
+    text-align: center;
+  }
+
+  :global(.copy-code-button) {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.65rem;
+    z-index: 1;
+    padding: 0.3rem 0.65rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.82);
+    color: #e2e8f0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    opacity: 0;
+    transition: opacity var(--transition), background var(--transition);
+  }
+
+  :global(.prose pre:hover .copy-code-button),
+  :global(.copy-code-button:focus-visible) {
+    opacity: 1;
+  }
+
+  :global(.copy-code-button:hover) {
+    background: rgba(232, 121, 164, 0.9);
+  }
+
+  @media (max-width: 980px) {
+    .article-layout {
+      display: block;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .post-header {
+      padding-top: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .post-nav {
+      grid-template-columns: 1fr;
+    }
+
+    .post-nav-next {
+      text-align: left;
+    }
+
+    :global(.copy-code-button) {
+      opacity: 1;
+    }
+  }
 </style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('.prose pre').forEach((pre) => {
+    const code = pre.querySelector<HTMLElement>('code');
+    if (!code || pre.querySelector('.copy-code-button')) return;
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'copy-code-button';
+    button.textContent = '复制';
+    button.setAttribute('aria-label', '复制代码');
+
+    button.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(code.textContent ?? '');
+        button.textContent = '已复制';
+        window.setTimeout(() => {
+          button.textContent = '复制';
+        }, 1600);
+      } catch {
+        button.textContent = '复制失败';
+        button.title = '请手动选择并复制代码';
+      }
+    });
+
+    pre.append(button);
+  });
+</script>

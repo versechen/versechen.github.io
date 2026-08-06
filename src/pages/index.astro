@@ -2,22 +2,22 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
-const allPosts = await getCollection('blog');
+const allPosts = (await getCollection('blog')).filter((post) => !post.data.draft);
 const recentPosts = allPosts.sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
 
 // Life records
 const lifeRecords = [
-  { date: new Date('2024-02-15'), emoji: '🌸', title: '春日徒步', desc: '趁着春光正好，去山里徒步了一天。满山的野花，空气清新。', tags: ['户外', '自然'], image: '/blog-placeholder-4.jpg' },
+  { date: new Date('2024-02-15'), emoji: '🌸', title: '春日徒步', desc: '趁着春光正好，去山里徒步了一天。满山的野花，空气清新。', tags: ['户外', '自然'], image: '/images/cover-mountain.svg' },
   { date: new Date('2024-01-10'), emoji: '📚', title: '读完《人类简史》', desc: '花了两周读完这本宏大著作，对人类文明有了全新的认识。', tags: ['阅读', '历史'], image: '' },
   { date: new Date('2023-12-20'), emoji: '🍜', title: '学会做汤包', desc: '下厨实验成功！做出了皮薄馅多的汤包，厨艺进步了。', tags: ['美食', '生活'], image: '' },
-  { date: new Date('2023-11-05'), emoji: '🎸', title: '重拾吉他', desc: '把落灰的吉他擦干净，重新开始练习。生活需要与代码无关的事。', tags: ['音乐', '爱好'], image: '/blog-placeholder-5.jpg' },
+  { date: new Date('2023-11-05'), emoji: '🎸', title: '重拾吉他', desc: '把落灰的吉他擦干净，重新开始练习。生活需要与代码无关的事。', tags: ['音乐', '爱好'], image: '/images/cover-music.svg' },
 ];
 
 // Project updates
 const projectUpdates = [
-  { date: new Date('2024-02-01'), icon: '🌸', title: '代码陈诗 v2.0', desc: '完成博客全面重构，引入玻璃拟态设计与 Canvas 粒子动画。', tags: ['Astro', 'CSS'], image: '/blog-placeholder-about.jpg' },
+  { date: new Date('2024-02-01'), icon: '🌸', title: '代码陈诗 v2.0', desc: '完成博客全面重构，引入玻璃拟态设计与 Canvas 粒子动画。', tags: ['Astro', 'CSS'], image: '/images/cover-garden.svg' },
   { date: new Date('2023-12-10'), icon: '⚡', title: '全栈脚手架发布', desc: '整合 React + Node.js + PostgreSQL 的现代项目模板正式开源。', tags: ['开源', 'React'], image: '' },
 ];
 
@@ -41,7 +41,7 @@ const dynamics: DynItem[] = [
     title: p.data.title,
     desc: p.data.description,
     tags: p.data.tags ?? [],
-    href: `/blog/${p.slug}`,
+    href: `/blog/${p.id}`,
     icon: '📝',
     image: p.data.heroImage ?? '',
     featured: i === 0,
@@ -115,7 +115,8 @@ function timeAgo(date: Date): string {
       </h1>
 
       <p class="hero-typewriter-row animate-in" style="--delay:.2s">
-        <span id="typewriter-text"></span><span class="typewriter-cursor" aria-hidden="true"></span>
+        <span class="sr-only">像诗一样写代码，用技术探索世界</span>
+        <span id="typewriter-text" aria-hidden="true"></span><span class="typewriter-cursor" aria-hidden="true"></span>
       </p>
 
       <div class="hero-ctas animate-in" style="--delay:.35s">
@@ -761,19 +762,28 @@ function timeAgo(date: Date): string {
 
 <!-- ==================== SCRIPTS ==================== -->
 <script>
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /* ── 1. Sakura Petal Canvas ── */
 (function initPetals() {
   const canvas = document.getElementById('petal-canvas') as HTMLCanvasElement | null;
   if (!canvas) return;
+  if (reduceMotion) {
+    canvas.hidden = true;
+    return;
+  }
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
   let W = 0, H = 0;
   function resize() {
+    // 按设备像素比放大位图，否则高分屏上花瓣是糊的。
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = canvas!.offsetWidth;
     H = canvas!.offsetHeight;
-    canvas!.width = W;
-    canvas!.height = H;
+    canvas!.width = Math.round(W * dpr);
+    canvas!.height = Math.round(H * dpr);
+    ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   resize();
   window.addEventListener('resize', resize, { passive: true });
@@ -836,10 +846,11 @@ function timeAgo(date: Date): string {
     }
   }
 
-  const COUNT = Math.min(50, Math.floor(W / 20));
+  // 布局未完成时 W 可能为 0，兜底保证至少有花瓣。
+  const COUNT = Math.max(12, Math.min(50, Math.floor(W / 20)));
   const petals = Array.from({ length: COUNT }, () => new Petal());
 
-  let raf: number;
+  let raf = 0;
   function loop() {
     ctx!.clearRect(0, 0, W, H);
     petals.forEach(p => { p.update(); p.draw(ctx!); });
@@ -848,8 +859,13 @@ function timeAgo(date: Date): string {
   loop();
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) cancelAnimationFrame(raf);
-    else loop();
+    if (document.hidden) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    } else if (raf === 0) {
+      // 只有在确实停止后才重启，避免重复事件叠加出多条动画循环。
+      loop();
+    }
   });
 })();
 
@@ -858,14 +874,18 @@ function timeAgo(date: Date): string {
   const el = document.getElementById('typewriter-text');
   if (!el) return;
   const phrases = ['像诗一样写代码', '用技术探索世界', '全栈 · 探索 · 创造', '代码是另一种诗', '追逐灵感的工程师'];
+  if (reduceMotion) {
+    el.textContent = phrases[0];
+    return;
+  }
   let pi = 0, ci = 0, deleting = false;
 
   function tick() {
     const phrase = phrases[pi];
     if (deleting) {
-      el.textContent = phrase.slice(0, --ci);
+      el!.textContent = phrase.slice(0, --ci);
     } else {
-      el.textContent = phrase.slice(0, ++ci);
+      el!.textContent = phrase.slice(0, ++ci);
     }
 
     let delay = deleting ? 70 : 130;
@@ -884,6 +904,7 @@ function timeAgo(date: Date): string {
 
 /* ── 3. 3D Tilt + Shine Effect ── */
 (function initTilt() {
+  if (reduceMotion || !window.matchMedia('(hover: hover)').matches) return;
   const cards = document.querySelectorAll<HTMLElement>('.tilt-card');
 
   cards.forEach(card => {
@@ -911,7 +932,7 @@ function timeAgo(date: Date): string {
 /* ── 4. Scroll-reveal for wall cards ── */
 (function initReveal() {
   const items = document.querySelectorAll('.wall-card');
-  if (!('IntersectionObserver' in window)) {
+  if (reduceMotion || !('IntersectionObserver' in window)) {
     items.forEach(el => (el as HTMLElement).style.opacity = '1');
     return;
   }

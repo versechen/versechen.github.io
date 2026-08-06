@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
-const allPosts = await getCollection('blog');
+const allPosts = (await getCollection('blog')).filter((post) => !post.data.draft);
 const posts = allPosts.sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
@@ -39,16 +39,16 @@ function fmt(date: Date) {
       <span class="gradient-text">博 客</span>
     </h1>
     <p class="blog-hero-sub">技术思考 · 学习笔记 · 项目经历</p>
-    <p class="blog-hero-count">共 <strong id="vis-count">{posts.length}</strong> 篇文章</p>
+    <p class="blog-hero-count" aria-live="polite">共 <strong id="vis-count">{posts.length}</strong> 篇文章</p>
   </div>
 
   <!-- ── Tag Filter ── -->
   <div class="tag-bar-wrap">
     <div class="container">
-      <div class="tag-bar">
-        <button class="filter-pill active" data-tag="">全部</button>
+      <div class="tag-bar" aria-label="按标签筛选文章">
+        <button class="filter-pill active" data-tag="" aria-pressed="true">全部</button>
         {allTags.map(t => (
-          <button class="filter-pill" data-tag={t}>{t}</button>
+          <button class="filter-pill" data-tag={t} aria-pressed="false">{t}</button>
         ))}
       </div>
     </div>
@@ -68,7 +68,7 @@ function fmt(date: Date) {
           </h2>
           <div class="series-grid">
             {[...seriesMap.entries()].map(([name, sPosts]) => (
-              <div class="series-card" data-series-posts={sPosts.map(p => p.slug).join(',')}>
+              <div class="series-card" data-series-posts={sPosts.map(p => p.id).join(',')}>
                 <div class="series-card-head">
                   <span class="series-name">{name}</span>
                   <span class="series-badge">{sPosts.length} 篇</span>
@@ -77,7 +77,7 @@ function fmt(date: Date) {
                   {sPosts.map((p, i) => (
                     <li class="series-li">
                       <span class="series-num">{i + 1}</span>
-                      <a href={`/blog/${p.slug}`} class="series-link">{p.data.title}</a>
+                      <a href={`/blog/${p.id}`} class="series-link">{p.data.title}</a>
                     </li>
                   ))}
                 </ol>
@@ -95,7 +95,7 @@ function fmt(date: Date) {
       <div class="post-list" id="post-list">
         {posts.map(post => (
           <a
-            href={`/blog/${post.slug}`}
+            href={`/blog/${post.id}`}
             class="post-row"
             data-tags={(post.data.tags ?? []).join(',')}
           >
@@ -142,8 +142,12 @@ function fmt(date: Date) {
   pills.forEach(pill => {
     pill.addEventListener('click', () => {
       const tag = pill.dataset.tag ?? '';
-      pills.forEach(p => p.classList.remove('active'));
+      pills.forEach(p => {
+        p.classList.remove('active');
+        p.setAttribute('aria-pressed', 'false');
+      });
       pill.classList.add('active');
+      pill.setAttribute('aria-pressed', 'true');
 
       let vis = 0;
       rows.forEach(row => {

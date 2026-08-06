@@ -1,68 +1,64 @@
-# Astro Starter Kit: Blog
+# 代码陈诗
 
-```sh
-npm create astro@latest -- --template blog
+基于 Astro 7 构建的个人博客与数字花园，内容涵盖技术文章、读书笔记、项目和生活记录。
+
+## 技术特点
+
+- Astro Content Layer 管理博客与读书内容
+- Markdown / MDX、GFM、GitHub 提示块和 KaTeX 数学公式
+- Shiki 浅色/深色双主题代码高亮与一键复制
+- 自动文章目录、标题锚点、标签和系列导航
+- RSS、Sitemap、Canonical、Open Graph 与 Twitter Card
+- 深色模式、响应式布局、键盘操作和减少动态效果支持
+- GitHub Pages 自动构建与部署
+
+## 开发环境
+
+- Node.js 22.12.0 或更高版本
+- npm 9.6.5 或更高版本
+
+```bash
+nvm use
+npm ci
+npm run dev
 ```
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/blog)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/blog)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/blog/devcontainer.json)
+开发服务器默认运行在 `http://localhost:4321`。
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## 常用命令
 
-![blog](https://github.com/withastro/astro/assets/2244813/ff10799f-a816-4703-b967-c78997e8323d)
+- `npm run dev`：启动开发服务器
+- `npm run check`：检查 Astro 模板与 TypeScript 类型
+- `npm run build`：构建生产站点到 `dist/`
+- `npm run verify`：依次执行检查与生产构建
+- `npm run preview`：本地预览生产构建
 
-Features:
-
-- ✅ Minimal styling (make it your own!)
-- ✅ 100/100 Lighthouse performance
-- ✅ SEO-friendly with canonical URLs and OpenGraph data
-- ✅ Sitemap support
-- ✅ RSS Feed support
-- ✅ Markdown & MDX support
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
+## 内容目录
 
 ```text
-├── public/
-├── src/
-│   ├── components/
-│   ├── content/
-│   ├── layouts/
-│   └── pages/
-├── astro.config.mjs
-├── README.md
-├── package.json
-└── tsconfig.json
+src/
+├── content.config.ts       # 内容集合与 frontmatter 校验
+├── content/
+│   ├── blog/               # Markdown / MDX 技术文章
+│   └── books/              # Markdown 读书笔记
+├── components/             # Astro 组件
+├── layouts/                # 页面布局与 SEO
+├── pages/                  # 文件路由
+└── styles/global.css       # 全站设计系统与 Markdown 排版
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+新增博客文章时，在 `src/content/blog/` 中创建 `.md` 或 `.mdx` 文件。正文应从二级标题开始，页面会根据 frontmatter 自动生成标题、描述、日期、标签和社交分享信息。
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+完整格式示例见 `src/content/blog/markdown-style-guide.md`。
 
-The `src/content/` directory contains "collections" of related Markdown and MDX documents. Use `getCollection()` to retrieve posts from `src/content/blog/`, and type-check your frontmatter using an optional schema. See [Astro's Content Collections docs](https://docs.astro.build/en/guides/content-collections/) to learn more.
+## 部署
 
-Any static assets, like images, can be placed in the `public/` directory.
+推送到 `main` 后，`.github/workflows/deploy.yml` 会使用 Node.js 22 执行：
 
-## 🧞 Commands
+```bash
+npm ci
+npm run check
+npm run build
+```
 
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Check out [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
-
-## Credit
-
-This theme is based off of the lovely [Bear Blog](https://github.com/HermanMartinus/bearblog/).
+构建产物随后发布到 GitHub Pages。

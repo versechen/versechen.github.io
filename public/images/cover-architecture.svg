@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title">
+  <title id="title">o������a��</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#111827"/><stop offset=".5" stop-color="#312e81"/><stop offset="1" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="node" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#f9a8d4"/><stop offset="1" stop-color="#c084fc"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" rx="36" fill="url(#bg)"/>
+  <g stroke="#a5f3fc" stroke-width="10" stroke-linecap="round" opacity=".55">
+    <path d="M600 160 310 315l290 155 290-155z"/>
+    <path d="M600 160v310M310 315h580"/>
+  </g>
+  <g fill="url(#node)" stroke="#fff" stroke-opacity=".65" stroke-width="5">
+    <rect x="510" y="90" width="180" height="135" rx="28"/>
+    <rect x="215" y="250" width="190" height="135" rx="28"/>
+    <rect x="795" y="250" width="190" height="135" rx="28"/>
+    <rect x="510" y="405" width="180" height="135" rx="28"/>
+  </g>
+  <g fill="#fff" opacity=".8">
+    <circle cx="600" cy="158" r="20"/><circle cx="310" cy="318" r="20"/><circle cx="890" cy="318" r="20"/><circle cx="600" cy="472" r="20"/>
+  </g>
+</svg>

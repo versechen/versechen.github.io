@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title">
+  <title id="title">q��eZ�a��</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#7c3aed"/><stop offset=".5" stop-color="#f472b6"/><stop offset="1" stop-color="#fed7aa"/>
+    </linearGradient>
+    <linearGradient id="hill" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#0f766e"/><stop offset="1" stop-color="#164e63"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" rx="36" fill="url(#sky)"/>
+  <circle cx="900" cy="155" r="90" fill="#fff7ed" opacity=".82"/>
+  <path d="M0 520 270 260l170 170 175-245 300 335z" fill="#312e81" opacity=".8"/>
+  <path d="m435 430 180-245 92 138-90-55-66 90z" fill="#f8fafc" opacity=".8"/>
+  <path d="M0 505c170-90 310-65 455 18 180 103 315-10 455-55 105-34 200-14 290 28v134H0z" fill="url(#hill)"/>
+  <path d="M80 535c185-55 335-22 470 50M770 548c120-55 245-55 360-5" fill="none" stroke="#a7f3d0" stroke-width="12" stroke-linecap="round" opacity=".55"/>
+</svg>

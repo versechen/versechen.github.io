@@ -1,19 +1,49 @@
 ---
-title: 'Hello World：开始我的技术博客之旅'
-description: '每一位工程师心里都有一篇 Hello World。这是我开始写作的初心，以及对未来内容的规划。'
-pubDate: 'Jul 08 2023'
-heroImage: '/blog-placeholder-3.jpg'
-tags: ['随笔', '博客']
+title: '从零搭建个人博客：目标与技术方案'
+description: '在写代码之前，先明确博客真正要解决的问题，并据此选择足够简单、可长期维护的技术方案。'
+pubDate: 'Sep 10 2023'
+heroImage: '/images/cover-code.svg'
+tags: ['博客', 'Astro', '工程化']
+category: '建站实践'
 series: '从零搭建个人博客'
 seriesOrder: 1
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Vitae ultricies leo integer malesuada nunc vel risus commodo viverra. Adipiscing enim eu turpis egestas pretium. Euismod elementum nisi quis eleifend quam adipiscing. In hac habitasse platea dictumst vestibulum. Sagittis purus sit amet volutpat. Netus et malesuada fames ac turpis egestas. Eget magna fermentum iaculis eu non diam phasellus vestibulum lorem. Varius sit amet mattis vulputate enim. Habitasse platea dictumst quisque sagittis. Integer quis auctor elit sed vulputate mi. Dictumst quisque sagittis purus sit amet.
+个人博客最难的并不是把页面做出来，而是让它在几年后仍然容易写、容易改、容易部署。我的目标可以归纳为三点：
 
-Morbi tristique senectus et netus. Id semper risus in hendrerit gravida rutrum quisque non tellus. Habitasse platea dictumst quisque sagittis purus sit amet. Tellus molestie nunc non blandit massa. Cursus vitae congue mauris rhoncus. Accumsan tortor posuere ac ut. Fringilla urna porttitor rhoncus dolor. Elit ullamcorper dignissim cras tincidunt lobortis. In cursus turpis massa tincidunt dui ut ornare lectus. Integer feugiat scelerisque varius morbi enim nunc. Bibendum neque egestas congue quisque egestas diam. Cras ornare arcu dui vivamus arcu felis bibendum. Dignissim suspendisse in est ante in nibh mauris. Sed tempus urna et pharetra pharetra massa massa ultricies mi.
+1. 内容以 Markdown 文件保存，不依赖数据库和后台。
+2. 默认输出静态 HTML，尽量减少文章页的客户端 JavaScript。
+3. 设计系统足够统一，但不引入难以维护的组件框架。
 
-Mollis nunc sed id semper risus in. Convallis a cras semper auctor neque. Diam sit amet nisl suscipit. Lacus viverra vitae congue eu consequat ac felis donec. Egestas integer eget aliquet nibh praesent tristique magna sit amet. Eget magna fermentum iaculis eu non diam. In vitae turpis massa sed elementum. Tristique et egestas quis ipsum suspendisse ultrices. Eget lorem dolor sed viverra ipsum. Vel turpis nunc eget lorem dolor sed viverra. Posuere ac ut consequat semper viverra nam. Laoreet suspendisse interdum consectetur libero id faucibus. Diam phasellus vestibulum lorem sed risus ultricies tristique. Rhoncus dolor purus non enim praesent elementum facilisis. Ultrices tincidunt arcu non sodales neque. Tempus egestas sed sed risus pretium quam vulputate. Viverra suspendisse potenti nullam ac tortor vitae purus faucibus ornare. Fringilla urna porttitor rhoncus dolor purus non. Amet dictum sit amet justo donec enim.
+## 为什么内容优先
 
-Mattis ullamcorper velit sed ullamcorper morbi tincidunt. Tortor posuere ac ut consequat semper viverra. Tellus mauris a diam maecenas sed enim ut sem viverra. Venenatis urna cursus eget nunc scelerisque viverra mauris in. Arcu ac tortor dignissim convallis aenean et tortor at. Curabitur gravida arcu ac tortor dignissim convallis aenean et tortor. Egestas tellus rutrum tellus pellentesque eu. Fusce ut placerat orci nulla pellentesque dignissim enim sit amet. Ut enim blandit volutpat maecenas volutpat blandit aliquam etiam. Id donec ultrices tincidunt arcu. Id cursus metus aliquam eleifend mi.
+很多博客项目从主题、动画或 CMS 开始，最后却发现写一篇文章需要填写十几个字段。对个人站点而言，内容才是长期资产，页面只是内容的一种呈现方式。
 
-Tempus quam pellentesque nec nam aliquam sem. Risus at ultrices mi tempus imperdiet. Id porta nibh venenatis cras sed felis eget velit. Ipsum a arcu cursus vitae. Facilisis magna etiam tempor orci eu lobortis elementum. Tincidunt dui ut ornare lectus sit. Quisque non tellus orci ac. Blandit libero volutpat sed cras. Nec tincidunt praesent semper feugiat nibh sed pulvinar proin gravida. Egestas integer eget aliquet nibh praesent tristique magna.
+因此，文章保存在 Git 仓库中，通过 frontmatter 描述标题、日期、标签和系列信息。内容集合负责校验这些字段，错误会在构建阶段暴露，而不是上线后才发现。
+
+> [!TIP]
+> Schema 不只是类型声明，也是写作约定。只有真正参与展示或查询的字段，才值得加入内容模型。
+
+## 技术方案
+
+| 需求 | 选择 | 原因 |
+| --- | --- | --- |
+| 页面生成 | Astro | 静态输出优先，组件按需注水 |
+| 内容管理 | Content Collections | Markdown 与类型校验统一 |
+| 样式 | 原生 CSS 变量 | 主题清晰，没有运行时依赖 |
+| 部署 | GitHub Pages | 与仓库工作流天然衔接 |
+
+Astro 的 Islands 架构允许大部分页面保持静态，只在主题切换、筛选或图片预览等位置增加少量脚本。这样的边界比整站单页应用更适合内容站。
+
+## 先建立可验证的基线
+
+项目从第一天就应具备至少两个命令：
+
+```bash
+npm run check
+npm run build
+```
+
+前者检查模板和类型，后者验证内容、路由、Markdown 插件与生产资源是否能一起工作。部署流程只要重复这两个步骤，就能尽早阻止大部分回归。
+
+下一篇会进一步说明为什么最终选择 Astro，以及它和常见全栈框架在博客场景中的差异。

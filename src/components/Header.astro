@@ -17,9 +17,9 @@ const isActive = (href: string) =>
 ---
 
 <header id="site-header">
-  <nav class="nav-inner">
+  <nav class="nav-inner" aria-label="主导航">
     <!-- Logo -->
-    <a class="logo" href="/">
+    <a class="logo" href="/" aria-label={`${SITE_TITLE}首页`}>
       <span class="logo-star">✦</span>
       <span class="logo-text">{SITE_TITLE}</span>
     </a>
@@ -31,6 +31,7 @@ const isActive = (href: string) =>
           <a
             href={href}
             class:list={['nav-link', { active: isActive(href) }]}
+            aria-current={isActive(href) ? 'page' : undefined}
           >
             {label}
           </a>
@@ -50,7 +51,7 @@ const isActive = (href: string) =>
       </button>
 
       <!-- Mobile hamburger -->
-      <button id="hamburger-btn" class="icon-btn hamburger-btn" aria-label="菜单" aria-expanded="false" aria-controls="nav-links">
+      <button id="hamburger-btn" class="icon-btn hamburger-btn" aria-label="打开菜单" aria-expanded="false" aria-controls="nav-links">
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
         <span class="hamburger-line"></span>
@@ -241,8 +242,12 @@ const isActive = (href: string) =>
       gap: 0.25rem;
       align-items: flex-start;
       transform: translateY(-110%);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition:
+        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        visibility 0s linear 0.3s;
       margin-left: 0;
+      visibility: hidden;
+      pointer-events: none;
     }
 
     :global(html.dark) .nav-links {
@@ -251,6 +256,11 @@ const isActive = (href: string) =>
 
     .nav-links.open {
       transform: translateY(0);
+      transition:
+        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        visibility 0s;
+      visibility: visible;
+      pointer-events: auto;
     }
 
     .nav-link {
@@ -265,26 +275,42 @@ const isActive = (href: string) =>
   const themeBtn = document.getElementById('theme-btn');
   themeBtn?.addEventListener('click', () => {
     const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    try {
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    } catch {
+      // 存储不可用时仅在当前页生效，不阻断切换。
+    }
   });
 
   // Mobile hamburger
   const hamburgerBtn = document.getElementById('hamburger-btn');
   const navLinks = document.getElementById('nav-links');
 
+  const closeMenu = ({ restoreFocus = false } = {}) => {
+    hamburgerBtn?.classList.remove('open');
+    navLinks?.classList.remove('open');
+    hamburgerBtn?.setAttribute('aria-expanded', 'false');
+    hamburgerBtn?.setAttribute('aria-label', '打开菜单');
+    if (restoreFocus) hamburgerBtn?.focus();
+  };
+
   hamburgerBtn?.addEventListener('click', () => {
     const isOpen = hamburgerBtn.classList.toggle('open');
     navLinks?.classList.toggle('open', isOpen);
     hamburgerBtn.setAttribute('aria-expanded', String(isOpen));
+    hamburgerBtn.setAttribute('aria-label', isOpen ? '关闭菜单' : '打开菜单');
+    if (isOpen) navLinks?.querySelector<HTMLAnchorElement>('a')?.focus({ preventScroll: true });
   });
 
   // Close mobile menu on link click
   navLinks?.querySelectorAll('a').forEach(link => {
-    link.addEventListener('click', () => {
-      hamburgerBtn?.classList.remove('open');
-      navLinks.classList.remove('open');
-      hamburgerBtn?.setAttribute('aria-expanded', 'false');
-    });
+    link.addEventListener('click', () => closeMenu());
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && navLinks?.classList.contains('open')) {
+      closeMenu({ restoreFocus: true });
+    }
   });
 
   // Scroll shadow

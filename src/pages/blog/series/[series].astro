@@ -3,7 +3,7 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('blog');
+  const posts = (await getCollection('blog')).filter((post) => !post.data.draft);
   const seriesNames = [...new Set(posts.map(p => p.data.series).filter(Boolean))] as string[];
   return seriesNames.map(name => ({
     params: { series: name },
@@ -14,10 +14,10 @@ export async function getStaticPaths() {
 interface Props { seriesName: string; }
 const { seriesName } = Astro.props;
 
-const allPosts = await getCollection('blog');
+const allPosts = (await getCollection('blog')).filter((post) => !post.data.draft);
 const seriesPosts = allPosts
   .filter(p => p.data.series === seriesName)
-  .sort((a, b) => (a.data.seriesOrder ?? 0) - (b.data.seriesOrder ?? 0));
+  .sort((a, b) => (a.data.seriesOrder ?? 99) - (b.data.seriesOrder ?? 99));
 
 function fmt(d: Date) {
   return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -41,7 +41,7 @@ function fmt(d: Date) {
 
       <div class="series-posts-list">
         {seriesPosts.map((post, i) => (
-          <a href={`/blog/${post.slug}`} class="series-post-card">
+          <a href={`/blog/${post.id}`} class="series-post-card">
             <div class="spc-num">
               <span>{String(i + 1).padStart(2, '0')}</span>
             </div>
