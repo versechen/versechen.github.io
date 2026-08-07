@@ -103,7 +103,6 @@ const hiddenTagCount = Math.max(0, tags.length - tagLimit);
             <svg class="tag-toggle-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
           </button>
         )}
-        <a href="/tags" class="side-footer-link">查看全部标签 →</a>
       </nav>
     )}
   </div>
@@ -327,17 +326,6 @@ const hiddenTagCount = Math.max(0, tags.length - tagLimit);
   .tag-toggle[aria-expanded='true'] .tag-toggle-icon {
     transform: rotate(180deg);
   }
-
-  .side-footer-link {
-    display: block;
-    margin-top: 0.6rem;
-    color: var(--text-muted);
-    font-size: 0.76rem;
-    text-decoration: none;
-    transition: color var(--transition);
-  }
-
-  .side-footer-link:hover { color: var(--primary); }
 
   @media (prefers-reduced-motion: reduce) {
     .side-item,

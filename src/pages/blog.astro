@@ -84,8 +84,8 @@ function fmt(date: Date) {
             type="search"
             id="search-input"
             class="search-input"
-            placeholder="搜索标题、摘要、标签…"
-            aria-label="搜索文章"
+            placeholder="搜索文章…"
+            aria-label="搜索文章标题、摘要、分类、系列与标签"
             autocomplete="off"
             spellcheck="false"
           />
@@ -431,7 +431,7 @@ function fmt(date: Date) {
     top: var(--nav-height);
     z-index: 40;
     margin-bottom: 1.5rem;
-    padding: 0.7rem 0;
+    padding: 0.5rem 0;
     border-bottom: 1px solid var(--border);
     background: var(--glass-bg);
     backdrop-filter: blur(16px);
@@ -446,7 +446,7 @@ function fmt(date: Date) {
 
   .search-box {
     position: relative;
-    flex: 1;
+    flex: 0 1 230px;
     min-width: 0;
     display: flex;
     align-items: center;
@@ -454,9 +454,9 @@ function fmt(date: Date) {
 
   .search-icon {
     position: absolute;
-    left: 0.75rem;
-    width: 15px;
-    height: 15px;
+    left: 0.65rem;
+    width: 13px;
+    height: 13px;
     fill: none;
     stroke: var(--text-muted);
     stroke-width: 2;
@@ -466,13 +466,13 @@ function fmt(date: Date) {
 
   .search-input {
     width: 100%;
-    padding: 0.5rem 2.4rem;
+    padding: 0.32rem 2rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-full);
     background: var(--surface);
     color: var(--text-1);
     font-family: inherit;
-    font-size: 0.88rem;
+    font-size: 0.8rem;
     transition: border-color var(--transition), box-shadow var(--transition);
   }
 
@@ -488,13 +488,13 @@ function fmt(date: Date) {
 
   .search-kbd {
     position: absolute;
-    right: 0.7rem;
-    padding: 0.05em 0.4em;
+    right: 0.6rem;
+    padding: 0.02em 0.35em;
     border: 1px solid var(--border);
-    border-radius: 5px;
+    border-radius: 4px;
     color: var(--text-muted);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     pointer-events: none;
   }
 
