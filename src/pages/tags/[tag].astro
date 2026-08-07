@@ -44,7 +44,13 @@ function fmt(d: Date) {
           <a href={`/blog/${post.id}`} class="tag-post-card">
             {post.data.heroImage && (
               <div class="tpc-img">
-                <img src={post.data.heroImage} alt={post.data.title} loading="lazy" />
+                <img
+                  src={post.data.heroImage.src}
+                  width={post.data.heroImage.width}
+                  height={post.data.heroImage.height}
+                  alt={post.data.title}
+                  loading="lazy"
+                />
               </div>
             )}
             <div class="tpc-body">

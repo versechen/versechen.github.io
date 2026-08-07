@@ -3,7 +3,7 @@ title: 'Markdown 写作能力指南'
 description: '集中演示本站支持的目录、提示块、任务列表、表格、代码高亮、数学公式、脚注与原生 HTML 扩展。'
 pubDate: '2026-07-15'
 updatedDate: '2026-07-15'
-heroImage: '/images/cover-markdown.svg'
+heroImage: '../../assets/images/cover-markdown.svg'
 tags: ['Markdown', 'Astro', '写作']
 category: '使用指南'
 ---
@@ -90,7 +90,7 @@ Astro 将内容在构建时转换为静态 HTML，因此文章页面不依赖客
 
 [Astro 官方文档](https://docs.astro.build/)这类外部链接会在新标签页打开，并自动补充安全属性。
 
-![Markdown 与代码写作的抽象插图](/images/cover-markdown.svg)
+![Markdown 与代码写作的抽象插图](../../assets/images/cover-markdown.svg)
 
 ## 原生 HTML 扩展
 

@@ -2,7 +2,7 @@
 title: '从零搭建个人博客：目标与技术方案'
 description: '在写代码之前，先明确博客真正要解决的问题，并据此选择足够简单、可长期维护的技术方案。'
 pubDate: 'Sep 10 2023'
-heroImage: '/images/cover-code.svg'
+heroImage: '../../assets/images/cover-code.svg'
 tags: ['博客', 'Astro', '工程化']
 category: '建站实践'
 series: '从零搭建个人博客'

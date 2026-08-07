@@ -1,13 +1,19 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import coverArchitecture from '../assets/images/cover-architecture.svg';
+import coverCode from '../assets/images/cover-code.svg';
+import coverGarden from '../assets/images/cover-garden.svg';
+import coverMountain from '../assets/images/cover-mountain.svg';
+import coverMusic from '../assets/images/cover-music.svg';
+import coverSpring from '../assets/images/cover-spring.svg';
 
 const photos = [
-  { src: '/images/cover-spring.svg', title: '春日时光', caption: '樱花盛开的季节，漫步于花海之中' },
-  { src: '/images/cover-architecture.svg', title: '技术探索', caption: '代码与艺术的边界，在这里模糊' },
-  { src: '/images/cover-code.svg', title: '城市漫步', caption: '霓虹灯下，城市有它独特的韵律' },
-  { src: '/images/cover-mountain.svg', title: '山间徒步', caption: '登顶那一刻，所有疲惫都值得' },
-  { src: '/images/cover-music.svg', title: '海边随拍', caption: '海浪声声，心也跟着开阔起来' },
-  { src: '/images/cover-garden.svg', title: '生活片段', caption: '记录每一个值得珍藏的瞬间' },
+  { src: coverSpring.src, title: '春日时光', caption: '樱花盛开的季节，漫步于花海之中' },
+  { src: coverArchitecture.src, title: '技术探索', caption: '代码与艺术的边界，在这里模糊' },
+  { src: coverCode.src, title: '城市漫步', caption: '霓虹灯下，城市有它独特的韵律' },
+  { src: coverMountain.src, title: '山间徒步', caption: '登顶那一刻，所有疲惫都值得' },
+  { src: coverMusic.src, title: '海边随拍', caption: '海浪声声，心也跟着开阔起来' },
+  { src: coverGarden.src, title: '生活片段', caption: '记录每一个值得珍藏的瞬间' },
 ];
 
 const records = [

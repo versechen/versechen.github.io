@@ -35,7 +35,7 @@ function formatDate(date: Date) {
 <BaseLayout
   title={post.data.title}
   description={post.data.description}
-  image={post.data.heroImage}
+  image={post.data.heroImage?.src}
   type="article"
   math={hasMath(post.body)}
 >
@@ -71,7 +71,9 @@ function formatDate(date: Date) {
 
       {post.data.heroImage && (
         <img
-          src={post.data.heroImage}
+          src={post.data.heroImage.src}
+          width={post.data.heroImage.width}
+          height={post.data.heroImage.height}
           alt={post.data.title}
           class="post-hero-image"
         />

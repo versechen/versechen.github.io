@@ -3,7 +3,7 @@ title: '为什么我选择 Astro 构建个人博客'
 description: '从整站 JavaScript 到内容优先的静态输出，聊聊 Astro Islands 架构为何更适合个人博客。'
 pubDate: 'Sep 15 2023'
 updatedDate: 'Jul 15 2026'
-heroImage: '/images/cover-architecture.svg'
+heroImage: '../../assets/images/cover-architecture.svg'
 tags: ['Astro', '前端', '性能优化']
 category: '建站实践'
 series: '从零搭建个人博客'

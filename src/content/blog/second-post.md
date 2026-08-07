@@ -2,7 +2,7 @@
 title: '全栈工程师的技术选型思考'
 description: '前端、后端、数据库、部署不断变化，技术选型应如何在交付速度、团队能力与长期成本之间取舍？'
 pubDate: 'Aug 22 2023'
-heroImage: '/images/cover-mountain.svg'
+heroImage: '../../assets/images/cover-mountain.svg'
 tags: ['全栈', '架构', '工程化']
 category: '工程实践'
 ---

@@ -1,6 +1,9 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
+import coverGarden from '../assets/images/cover-garden.svg';
+import coverMountain from '../assets/images/cover-mountain.svg';
+import coverMusic from '../assets/images/cover-music.svg';
 
 const allPosts = (await getCollection('blog')).filter((post) => !post.data.draft);
 const recentPosts = allPosts.sort(
@@ -9,15 +12,15 @@ const recentPosts = allPosts.sort(
 
 // Life records
 const lifeRecords = [
-  { date: new Date('2024-02-15'), emoji: '🌸', title: '春日徒步', desc: '趁着春光正好，去山里徒步了一天。满山的野花，空气清新。', tags: ['户外', '自然'], image: '/images/cover-mountain.svg' },
+  { date: new Date('2024-02-15'), emoji: '🌸', title: '春日徒步', desc: '趁着春光正好，去山里徒步了一天。满山的野花，空气清新。', tags: ['户外', '自然'], image: coverMountain.src },
   { date: new Date('2024-01-10'), emoji: '📚', title: '读完《人类简史》', desc: '花了两周读完这本宏大著作，对人类文明有了全新的认识。', tags: ['阅读', '历史'], image: '' },
   { date: new Date('2023-12-20'), emoji: '🍜', title: '学会做汤包', desc: '下厨实验成功！做出了皮薄馅多的汤包，厨艺进步了。', tags: ['美食', '生活'], image: '' },
-  { date: new Date('2023-11-05'), emoji: '🎸', title: '重拾吉他', desc: '把落灰的吉他擦干净，重新开始练习。生活需要与代码无关的事。', tags: ['音乐', '爱好'], image: '/images/cover-music.svg' },
+  { date: new Date('2023-11-05'), emoji: '🎸', title: '重拾吉他', desc: '把落灰的吉他擦干净，重新开始练习。生活需要与代码无关的事。', tags: ['音乐', '爱好'], image: coverMusic.src },
 ];
 
 // Project updates
 const projectUpdates = [
-  { date: new Date('2024-02-01'), icon: '🌸', title: '代码陈诗 v2.0', desc: '完成博客全面重构，引入玻璃拟态设计与 Canvas 粒子动画。', tags: ['Astro', 'CSS'], image: '/images/cover-garden.svg' },
+  { date: new Date('2024-02-01'), icon: '🌸', title: '代码陈诗 v2.0', desc: '完成博客全面重构，引入玻璃拟态设计与 Canvas 粒子动画。', tags: ['Astro', 'CSS'], image: coverGarden.src },
   { date: new Date('2023-12-10'), icon: '⚡', title: '全栈脚手架发布', desc: '整合 React + Node.js + PostgreSQL 的现代项目模板正式开源。', tags: ['开源', 'React'], image: '' },
 ];
 
@@ -43,7 +46,7 @@ const dynamics: DynItem[] = [
     tags: p.data.tags ?? [],
     href: `/blog/${p.id}`,
     icon: '📝',
-    image: p.data.heroImage ?? '',
+    image: p.data.heroImage?.src ?? '',
     featured: i === 0,
   })),
   ...lifeRecords.map(r => ({
