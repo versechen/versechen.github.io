@@ -1,512 +1,857 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import BlogSidebar from '../components/BlogSidebar.astro';
 import { getCollection } from 'astro:content';
 
-const allPosts = (await getCollection('blog')).filter((post) => !post.data.draft);
-const posts = allPosts.sort(
-  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
-);
+const posts = (await getCollection('blog'))
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
-// All unique tags
-const allTags = [...new Set(posts.flatMap(p => p.data.tags ?? []))].sort();
+// 年份归档，按年份倒序
+const yearCounts = new Map<number, number>();
+for (const post of posts) {
+  const y = post.data.pubDate.getFullYear();
+  yearCounts.set(y, (yearCounts.get(y) ?? 0) + 1);
+}
+const years = [...yearCounts.entries()]
+  .map(([year, count]) => ({ year, count }))
+  .sort((a, b) => b.year - a.year);
 
-// Group by series (preserve insertion / sort-by-order)
-const seriesMap = new Map<string, typeof posts>();
-for (const post of [...posts].sort(
-  (a, b) => (a.data.seriesOrder ?? 99) - (b.data.seriesOrder ?? 99)
-)) {
-  if (post.data.series) {
-    if (!seriesMap.has(post.data.series)) seriesMap.set(post.data.series, []);
-    seriesMap.get(post.data.series)!.push(post);
+// 文章已按发布时间倒序，首次遇到某个系列/标签时记录的即是它最新一篇的时间，
+// 据此让"最近还在更新"的主题排在前面。
+function facetsByRecency(pick: (post: (typeof posts)[number]) => string[]) {
+  const stat = new Map<string, { count: number; latest: number }>();
+  for (const post of posts) {
+    const time = post.data.pubDate.valueOf();
+    for (const name of pick(post)) {
+      const entry = stat.get(name);
+      if (entry) {
+        entry.count += 1;
+        entry.latest = Math.max(entry.latest, time);
+      } else {
+        stat.set(name, { count: 1, latest: time });
+      }
+    }
   }
+  return [...stat.entries()]
+    .map(([name, v]) => ({ name, count: v.count, latest: v.latest }))
+    .sort((a, b) => b.latest - a.latest || b.count - a.count || a.name.localeCompare(b.name, 'zh-CN'));
 }
 
+const seriesList = facetsByRecency((p) => (p.data.series ? [p.data.series] : []));
+const tagList = facetsByRecency((p) => p.data.tags ?? []);
+
+// 中英文混排的粗略阅读时长
+function readingMinutes(body?: string) {
+  const text = (body ?? '').replace(/```[\s\S]*?```/g, ' ');
+  const cjk = (text.match(/[\u4e00-\u9fa5]/g) ?? []).length;
+  const words = text.replace(/[\u4e00-\u9fa5]/g, ' ').split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(cjk / 350 + words / 220));
+}
+
+const grouped = years.map(({ year }) => ({
+  year,
+  items: posts.filter((p) => p.data.pubDate.getFullYear() === year),
+}));
+
 function fmt(date: Date) {
-  return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
 }
 ---
 
-<BaseLayout title="博客" description="陈诗的技术文章与思考">
+<BaseLayout title="博客" description="陈诗的技术文章与思考，可按年份、系列、标签检索">
+  <div class="blog-wrap">
+    <!-- 页头 -->
+    <header class="blog-head">
+      <h1 class="blog-head-title"><span class="gradient-text">博客</span></h1>
+      <p class="blog-head-sub">
+        {posts.length} 篇文章 · {years.length} 个年份 · {seriesList.length} 个系列 · {tagList.length} 个标签
+      </p>
+    </header>
 
-  <!-- ── Hero ── -->
-  <div class="blog-hero container">
-    <div class="blog-hero-deco" aria-hidden="true">
-      <span class="deco-star s1">✦</span>
-      <span class="deco-star s2">✧</span>
-      <span class="deco-star s3">✦</span>
-    </div>
-    <h1 class="blog-hero-title">
-      <span class="gradient-text">博 客</span>
-    </h1>
-    <p class="blog-hero-sub">技术思考 · 学习笔记 · 项目经历</p>
-    <p class="blog-hero-count" aria-live="polite">共 <strong id="vis-count">{posts.length}</strong> 篇文章</p>
-  </div>
+    <!-- 检索工具条 -->
+    <div class="toolbar">
+      <div class="toolbar-inner">
+        <button type="button" class="drawer-btn" id="drawer-open" aria-expanded="false" aria-controls="blog-sidebar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
+          筛选
+          <span class="drawer-btn-dot" id="drawer-dot" hidden></span>
+        </button>
 
-  <!-- ── Tag Filter ── -->
-  <div class="tag-bar-wrap">
-    <div class="container">
-      <div class="tag-bar" aria-label="按标签筛选文章">
-        <button class="filter-pill active" data-tag="" aria-pressed="true">全部</button>
-        {allTags.map(t => (
-          <button class="filter-pill" data-tag={t} aria-pressed="false">{t}</button>
-        ))}
-      </div>
-    </div>
-  </div>
-
-  <section class="blog-body section" style="padding-top:1.5rem">
-    <div class="container">
-
-      <!-- ── Series ── -->
-      {seriesMap.size > 0 && (
-        <div class="series-section" id="series-wrap">
-          <h2 class="subsec-title">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-            </svg>
-            系列文章
-          </h2>
-          <div class="series-grid">
-            {[...seriesMap.entries()].map(([name, sPosts]) => (
-              <div class="series-card" data-series-posts={sPosts.map(p => p.id).join(',')}>
-                <div class="series-card-head">
-                  <span class="series-name">{name}</span>
-                  <span class="series-badge">{sPosts.length} 篇</span>
-                </div>
-                <ol class="series-ol">
-                  {sPosts.map((p, i) => (
-                    <li class="series-li">
-                      <span class="series-num">{i + 1}</span>
-                      <a href={`/blog/${p.id}`} class="series-link">{p.data.title}</a>
-                    </li>
-                  ))}
-                </ol>
-                <a href={`/blog/series/${encodeURIComponent(name)}`} class="series-more">
-                  查看系列详情 →
-                </a>
-              </div>
-            ))}
-          </div>
-          <hr class="series-divider" />
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+          <input
+            type="search"
+            id="search-input"
+            class="search-input"
+            placeholder="搜索标题、摘要、标签…"
+            aria-label="搜索文章"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <kbd class="search-kbd" aria-hidden="true">/</kbd>
         </div>
-      )}
 
-      <!-- ── Post List ── -->
-      <div class="post-list" id="post-list">
-        {posts.map(post => (
-          <a
-            href={`/blog/${post.id}`}
-            class="post-row"
-            data-tags={(post.data.tags ?? []).join(',')}
-          >
-            {post.data.heroImage && (
-              <div class="post-row-img">
-                <img
-                  src={post.data.heroImage.src}
-                  width={post.data.heroImage.width}
-                  height={post.data.heroImage.height}
-                  alt={post.data.title}
-                  loading="lazy"
-                />
-              </div>
-            )}
-            <div class="post-row-body">
-              <div class="post-row-meta">
-                {post.data.series && (
-                  <span class="series-chip">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                    {post.data.series}
-                  </span>
-                )}
-                <time datetime={post.data.pubDate.toISOString()} class="post-date">
-                  {fmt(post.data.pubDate)}
-                </time>
-              </div>
-              <h2 class="post-title">{post.data.title}</h2>
-              <p class="post-desc">{post.data.description}</p>
-              <div class="post-tags">
-                {(post.data.tags ?? []).map((t: string) => (
-                  <span class="ptag">{t}</span>
-                ))}
-              </div>
-            </div>
-          </a>
-        ))}
+        <p class="result-count" role="status" aria-live="polite">
+          <strong id="vis-count">{posts.length}</strong> 篇
+        </p>
       </div>
 
+      <!-- 当前筛选条件 -->
+      <div class="active-bar" id="active-bar" hidden>
+        <span class="active-label">筛选：</span>
+        <div class="active-chips" id="active-chips"></div>
+        <button type="button" class="clear-all" id="clear-all">清除全部</button>
+      </div>
     </div>
-  </section>
+
+    <div class="blog-layout">
+      <div class="drawer-scrim" id="drawer-scrim" hidden></div>
+
+      <BlogSidebar years={years} series={seriesList} tags={tagList} total={posts.length} />
+
+      <div class="blog-main" id="blog-main">
+        {grouped.map(({ year, items }) => (
+          <section class="year-group" data-year={String(year)} aria-labelledby={`year-${year}`}>
+            <h2 class="year-head" id={`year-${year}`}>
+              <span class="year-num">{year}</span>
+              <span class="year-line" aria-hidden="true"></span>
+              <span class="year-count">{items.length} 篇</span>
+            </h2>
+
+            <div class="post-list">
+              {items.map((post) => (
+                <article
+                  class="post-row"
+                  data-year={String(year)}
+                  data-tags={(post.data.tags ?? []).join('|')}
+                  data-series={post.data.series ?? ''}
+                  data-search={[
+                    post.data.title,
+                    post.data.description,
+                    post.data.category ?? '',
+                    post.data.series ?? '',
+                    ...(post.data.tags ?? []),
+                  ]
+                    .join(' ')
+                    .toLowerCase()}
+                >
+                  <a href={`/blog/${post.id}`} class="post-link">
+                    {post.data.heroImage && (
+                      <div class="post-thumb">
+                        <img
+                          src={post.data.heroImage.src}
+                          width={post.data.heroImage.width}
+                          height={post.data.heroImage.height}
+                          alt=""
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+                    <div class="post-body">
+                      <div class="post-meta">
+                        <time datetime={post.data.pubDate.toISOString()} class="post-date">
+                          {fmt(post.data.pubDate)}
+                        </time>
+                        {post.data.series && (
+                          <span class="chip chip-series">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                            {post.data.series}
+                            {post.data.seriesOrder && <span class="chip-order">#{post.data.seriesOrder}</span>}
+                          </span>
+                        )}
+                        <span class="post-read">约 {readingMinutes(post.body)} 分钟</span>
+                      </div>
+                      <h3 class="post-title">{post.data.title}</h3>
+                      <p class="post-desc">{post.data.description}</p>
+                      <div class="post-tags">
+                        {(post.data.tags ?? []).map((t: string) => (
+                          <span class="chip chip-tag">{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </a>
+                </article>
+              ))}
+            </div>
+          </section>
+        ))}
+
+        <p class="empty-state" id="empty-state" hidden>
+          没有匹配的文章，换个关键词或
+          <button type="button" class="empty-reset" id="empty-reset">清除筛选</button>
+          试试。
+        </p>
+      </div>
+    </div>
+  </div>
 </BaseLayout>
 
-<!-- ── Client-side Tag Filter ── -->
 <script>
-  const pills = document.querySelectorAll<HTMLButtonElement>('.filter-pill');
-  const rows  = document.querySelectorAll<HTMLElement>('.post-row');
-  const count = document.getElementById('vis-count');
-  const seriesWrap = document.getElementById('series-wrap');
+  type Facet = 'year' | 'series' | 'tag';
 
-  pills.forEach(pill => {
-    pill.addEventListener('click', () => {
-      const tag = pill.dataset.tag ?? '';
-      pills.forEach(p => {
-        p.classList.remove('active');
-        p.setAttribute('aria-pressed', 'false');
-      });
-      pill.classList.add('active');
-      pill.setAttribute('aria-pressed', 'true');
+  const rows = Array.from(document.querySelectorAll<HTMLElement>('.post-row'));
+  const groups = Array.from(document.querySelectorAll<HTMLElement>('.year-group'));
+  const facetButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-facet]'));
+  const searchInput = document.getElementById('search-input') as HTMLInputElement | null;
+  const countEl = document.getElementById('vis-count');
+  const emptyEl = document.getElementById('empty-state');
+  const activeBar = document.getElementById('active-bar');
+  const activeChips = document.getElementById('active-chips');
+  const clearAllBtn = document.getElementById('clear-all');
+  const emptyReset = document.getElementById('empty-reset');
+  const drawerDot = document.getElementById('drawer-dot');
 
-      let vis = 0;
-      rows.forEach(row => {
-        const tags = row.dataset.tags?.split(',').filter(Boolean) ?? [];
-        const show = !tag || tags.includes(tag);
-        row.style.display = show ? '' : 'none';
-        if (show) vis++;
-      });
-      if (count) count.textContent = String(vis);
-      // Hide series section when filtering by tag
-      if (seriesWrap) seriesWrap.style.display = tag ? 'none' : '';
+  const state: Record<Facet, string> & { q: string } = { year: '', series: '', tag: '', q: '' };
+  const FACET_LABEL: Record<Facet, string> = { year: '年份', series: '系列', tag: '标签' };
+
+  function readURL() {
+    const sp = new URLSearchParams(location.search);
+    state.year = sp.get('year') ?? '';
+    state.series = sp.get('series') ?? '';
+    state.tag = sp.get('tag') ?? '';
+    state.q = sp.get('q') ?? '';
+    if (searchInput) searchInput.value = state.q;
+  }
+
+  function writeURL(replace = false) {
+    const sp = new URLSearchParams();
+    if (state.year) sp.set('year', state.year);
+    if (state.series) sp.set('series', state.series);
+    if (state.tag) sp.set('tag', state.tag);
+    if (state.q) sp.set('q', state.q);
+    const qs = sp.toString();
+    const url = qs ? `${location.pathname}?${qs}` : location.pathname;
+    history[replace ? 'replaceState' : 'pushState'](null, '', url);
+  }
+
+  function matches(row: HTMLElement) {
+    if (state.year && row.dataset.year !== state.year) return false;
+    if (state.series && row.dataset.series !== state.series) return false;
+    if (state.tag) {
+      const tags = (row.dataset.tags ?? '').split('|').filter(Boolean);
+      if (!tags.includes(state.tag)) return false;
+    }
+    if (state.q && !(row.dataset.search ?? '').includes(state.q.toLowerCase().trim())) return false;
+    return true;
+  }
+
+  function renderActiveChips() {
+    if (!activeChips || !activeBar) return;
+    activeChips.textContent = '';
+
+    const entries: Array<[Facet | 'q', string]> = [];
+    (['year', 'series', 'tag'] as Facet[]).forEach((f) => {
+      if (state[f]) entries.push([f, state[f]]);
     });
+    if (state.q) entries.push(['q', state.q]);
+
+    for (const [key, value] of entries) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'active-chip';
+      const label = key === 'q' ? '关键词' : FACET_LABEL[key];
+      chip.setAttribute('aria-label', `移除${label}筛选：${value}`);
+
+      const text = document.createElement('span');
+      text.textContent = `${label} · ${key === 'year' ? `${value} 年` : value}`;
+      chip.append(text, Object.assign(document.createElement('span'), { className: 'active-chip-x', textContent: '×' }));
+
+      chip.addEventListener('click', () => {
+        if (key === 'q') {
+          state.q = '';
+          if (searchInput) searchInput.value = '';
+        } else {
+          state[key] = '';
+        }
+        apply();
+      });
+      activeChips.appendChild(chip);
+    }
+
+    const hasAny = entries.length > 0;
+    activeBar.hidden = !hasAny;
+    if (drawerDot) drawerDot.hidden = !(state.year || state.series || state.tag);
+  }
+
+  function syncButtons() {
+    for (const btn of facetButtons) {
+      const facet = btn.dataset.facet as Facet;
+      const isOn = state[facet] === (btn.dataset.value ?? '');
+      btn.classList.toggle('is-active', isOn);
+      btn.setAttribute('aria-pressed', String(isOn));
+    }
+  }
+
+  function apply(updateURL = true) {
+    let visible = 0;
+    for (const row of rows) {
+      const show = matches(row);
+      row.hidden = !show;
+      if (show) visible++;
+    }
+    // 整年被过滤光时连年份标题一起收起，留下的年份计数跟随可见条目
+    for (const group of groups) {
+      const shown = Array.from(group.querySelectorAll<HTMLElement>('.post-row')).filter((r) => !r.hidden).length;
+      group.hidden = shown === 0;
+      const label = group.querySelector('.year-count');
+      if (label) label.textContent = `${shown} 篇`;
+    }
+
+    if (countEl) countEl.textContent = String(visible);
+    if (emptyEl) emptyEl.hidden = visible !== 0;
+    syncButtons();
+    renderActiveChips();
+    if (updateURL) writeURL(true);
+  }
+
+  for (const btn of facetButtons) {
+    btn.addEventListener('click', () => {
+      const facet = btn.dataset.facet as Facet;
+      const value = btn.dataset.value ?? '';
+      state[facet] = state[facet] === value ? '' : value;
+      apply();
+      closeDrawer();
+    });
+  }
+
+  let searchTimer = 0;
+  searchInput?.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => {
+      state.q = searchInput.value;
+      apply();
+    }, 120);
   });
+
+  searchInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      searchInput.value = '';
+      state.q = '';
+      apply();
+    }
+  });
+
+  function resetAll() {
+    state.year = state.series = state.tag = state.q = '';
+    if (searchInput) searchInput.value = '';
+    apply();
+  }
+  clearAllBtn?.addEventListener('click', resetAll);
+  emptyReset?.addEventListener('click', resetAll);
+
+  // 标签展开 / 收起
+  const tagToggle = document.getElementById('tag-toggle');
+  tagToggle?.addEventListener('click', () => {
+    const expanded = tagToggle.getAttribute('aria-expanded') === 'true';
+    tagToggle.setAttribute('aria-expanded', String(!expanded));
+    document.querySelectorAll<HTMLElement>('.tag-chip.is-overflow').forEach((chip) => {
+      chip.hidden = expanded;
+    });
+    const text = tagToggle.querySelector('.tag-toggle-text');
+    const hidden = document.querySelectorAll('.tag-chip.is-overflow').length;
+    if (text) text.textContent = expanded ? `展开其余 ${hidden} 个` : '收起标签';
+  });
+
+  // 移动端筛选抽屉
+  const sidebar = document.getElementById('blog-sidebar');
+  const drawerOpen = document.getElementById('drawer-open');
+  const scrim = document.getElementById('drawer-scrim');
+
+  function openDrawer() {
+    sidebar?.classList.add('is-open');
+    if (scrim) scrim.hidden = false;
+    drawerOpen?.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+    sidebar?.querySelector<HTMLElement>('button, a')?.focus({ preventScroll: true });
+  }
+
+  function closeDrawer() {
+    if (!sidebar?.classList.contains('is-open')) return;
+    sidebar.classList.remove('is-open');
+    if (scrim) scrim.hidden = true;
+    drawerOpen?.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+    drawerOpen?.focus({ preventScroll: true });
+  }
+
+  drawerOpen?.addEventListener('click', () => {
+    sidebar?.classList.contains('is-open') ? closeDrawer() : openDrawer();
+  });
+  scrim?.addEventListener('click', closeDrawer);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeDrawer();
+    // "/" 快速聚焦搜索，但不打断正在输入的用户
+    const target = e.target as HTMLElement | null;
+    const typing = target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName);
+    if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      searchInput?.focus();
+    }
+  });
+
+  window.addEventListener('popstate', () => {
+    readURL();
+    apply(false);
+  });
+
+  readURL();
+  apply(false);
 </script>
 
 <style>
-  /* Hero */
-  .blog-hero {
-    padding: 4rem 0 2rem;
-    text-align: center;
-    position: relative;
+  .blog-wrap {
+    width: 100%;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 1.5rem 5rem;
   }
 
-  .blog-hero-deco {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
+  /* 页头 */
+  .blog-head {
+    padding: 3rem 0 1.5rem;
   }
 
-  .deco-star {
-    position: absolute;
-    font-size: 1.2rem;
-    background: var(--gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: twinkle 3s ease-in-out infinite;
-  }
-  .s1 { top: 30%; left: 15%; animation-delay: 0s; }
-  .s2 { top: 50%; right: 18%; animation-delay: .8s; font-size: .9rem; }
-  .s3 { bottom: 20%; left: 30%; animation-delay: 1.6s; font-size: .8rem; }
-
-  @keyframes twinkle {
-    0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
-    50% { opacity: .25; transform: scale(.6) rotate(180deg); }
-  }
-
-  .blog-hero-title {
-    font-size: clamp(2.5rem, 6vw, 4rem);
+  .blog-head-title {
+    font-size: clamp(2rem, 4vw, 2.6rem);
     font-weight: 900;
-    letter-spacing: .12em;
-    margin-bottom: .5rem;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.3rem;
   }
 
-  .blog-hero-sub {
+  .blog-head-sub {
     color: var(--text-muted);
-    font-size: .95rem;
-    letter-spacing: .06em;
-    margin-bottom: .5rem;
+    font-size: 0.85rem;
   }
 
-  .blog-hero-count {
-    font-size: .85rem;
-    color: var(--text-muted);
-  }
-
-  .blog-hero-count strong {
-    color: var(--primary);
-    font-weight: 700;
-  }
-
-  /* Tag bar */
-  .tag-bar-wrap {
+  /* 工具条 */
+  .toolbar {
     position: sticky;
     top: var(--nav-height);
-    z-index: 50;
+    z-index: 40;
+    margin-bottom: 1.5rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--border);
     background: var(--glass-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border);
-    padding: .65rem 0;
   }
 
-  .tag-bar {
+  .toolbar-inner {
     display: flex;
-    gap: .5rem;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding-bottom: 2px;
+    align-items: center;
+    gap: 0.75rem;
   }
 
-  .tag-bar::-webkit-scrollbar { display: none; }
+  .search-box {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+  }
 
-  .filter-pill {
-    flex-shrink: 0;
-    padding: .3rem .95rem;
-    border-radius: 999px;
-    font-size: .82rem;
-    font-weight: 500;
-    border: 1.5px solid var(--border);
-    background: transparent;
+  .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: var(--text-muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.5rem 2.4rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--text-1);
+    font-family: inherit;
+    font-size: 0.88rem;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+
+  .search-input::placeholder { color: var(--text-muted); }
+
+  .search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(232, 121, 164, 0.15);
+  }
+
+  .search-input::-webkit-search-cancel-button { cursor: pointer; }
+
+  .search-kbd {
+    position: absolute;
+    right: 0.7rem;
+    padding: 0.05em 0.4em;
+    border: 1px solid var(--border);
+    border-radius: 5px;
     color: var(--text-muted);
-    cursor: pointer;
-    transition: all .2s ease;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    pointer-events: none;
+  }
+
+  .search-input:focus ~ .search-kbd { opacity: 0; }
+
+  .result-count {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 0.8rem;
     white-space: nowrap;
   }
 
-  .filter-pill:hover {
-    border-color: var(--primary);
+  .result-count strong {
     color: var(--primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
   }
 
-  .filter-pill.active {
-    background: var(--gradient);
-    border-color: transparent;
-    color: #fff;
-    box-shadow: 0 3px 12px rgba(232,121,164,.35);
-  }
-
-  /* Sub-section title */
-  .subsec-title {
+  /* 已选条件 */
+  .active-bar {
     display: flex;
     align-items: center;
-    gap: .5rem;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-1);
-    margin-bottom: 1.25rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.6rem;
   }
 
-  /* Series */
-  .series-section { margin-bottom: 1rem; }
+  .active-bar[hidden] { display: none; }
 
-  .series-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-
-  .series-card {
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 1.25rem;
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    transition: border-color .2s, box-shadow .2s;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .series-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: var(--gradient);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  }
-
-  .series-card:hover {
-    border-color: var(--primary);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .series-card-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1rem;
-  }
-
-  .series-name {
-    font-weight: 700;
-    font-size: 1rem;
-    color: var(--text-1);
-  }
-
-  .series-badge {
-    font-size: .72rem;
-    padding: .15em .65em;
-    border-radius: 999px;
-    background: rgba(232,121,164,.12);
-    color: var(--primary);
-    font-weight: 700;
-    border: 1px solid rgba(232,121,164,.2);
-  }
-
-  .series-ol {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: .5rem;
-    margin-bottom: 1rem;
-  }
-
-  .series-li {
-    display: flex;
-    align-items: flex-start;
-    gap: .6rem;
-  }
-
-  .series-num {
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--gradient);
-    color: #fff;
-    font-size: .65rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: .1em;
-  }
-
-  .series-link {
-    font-size: .87rem;
+  .active-label {
     color: var(--text-muted);
-    text-decoration: none;
-    line-height: 1.4;
-    transition: color .2s;
+    font-size: 0.76rem;
   }
 
-  .series-link:hover { color: var(--primary); }
-
-  .series-more {
-    font-size: .78rem;
-    color: var(--primary);
-    text-decoration: none;
-    font-weight: 500;
-  }
-
-  .series-divider {
-    border: none;
-    height: 1px;
-    background: var(--border);
-    margin: 1.5rem 0 2rem;
-  }
-
-  /* Post rows */
-  .post-list { display: flex; flex-direction: column; }
-
-  .post-row {
+  .active-chips {
     display: flex;
-    gap: 1.25rem;
-    align-items: flex-start;
-    padding: 1.5rem 0;
-    border-bottom: 1px solid var(--border);
-    text-decoration: none;
-    color: inherit;
-    transition: all .25s ease;
-  }
-
-  .post-row:first-child { border-top: 1px solid var(--border); }
-
-  .post-row:hover {
-    background: rgba(232,121,164,.04);
-    padding-left: .85rem;
-    padding-right: .85rem;
-    margin: 0 -.85rem;
-    border-radius: var(--radius);
-    border-color: transparent;
-  }
-
-  .post-row-img {
-    flex-shrink: 0;
-    width: 100px;
-    height: 72px;
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-  }
-
-  .post-row-img img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform .4s ease;
-  }
-
-  .post-row:hover .post-row-img img { transform: scale(1.06); }
-
-  .post-row-body { flex: 1; min-width: 0; }
-
-  .post-row-meta {
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    margin-bottom: .4rem;
+    gap: 0.35rem;
     flex-wrap: wrap;
   }
 
-  .post-date {
-    font-size: .8rem;
-    color: var(--text-muted);
-    font-family: 'JetBrains Mono', monospace;
-  }
-
-  .series-chip {
+  .active-bar :global(.active-chip) {
     display: inline-flex;
     align-items: center;
-    gap: .3rem;
-    font-size: .72rem;
-    padding: .15em .65em;
+    gap: 0.35rem;
+    padding: 0.15em 0.6em;
+    border: 1px solid rgba(232, 121, 164, 0.3);
     border-radius: 999px;
-    background: rgba(147,51,234,.1);
+    background: rgba(232, 121, 164, 0.1);
+    color: var(--primary);
+    font-family: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background var(--transition);
+  }
+
+  .active-bar :global(.active-chip:hover) {
+    background: rgba(232, 121, 164, 0.2);
+  }
+
+  .active-bar :global(.active-chip-x) {
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  .clear-all {
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.75rem;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .clear-all:hover { color: var(--primary); }
+
+  /* 双栏 */
+  .blog-layout {
+    display: grid;
+    grid-template-areas: 'side main';
+    grid-template-columns: 216px minmax(0, 1fr);
+    gap: 3rem;
+    align-items: start;
+  }
+
+  .blog-main { grid-area: main; min-width: 0; }
+
+  /* 年份分组 */
+  .year-group { margin-bottom: 2.5rem; }
+  .year-group[hidden] { display: none; }
+
+  .year-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .year-num {
+    color: var(--text-1);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+
+  .year-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  .year-count {
+    color: var(--text-muted);
+    font-size: 0.74rem;
+  }
+
+  /* 文章行 */
+  .post-list { display: flex; flex-direction: column; }
+  .post-row[hidden] { display: none; }
+
+  .post-link {
+    display: flex;
+    gap: 1.1rem;
+    align-items: flex-start;
+    padding: 1.15rem 0.85rem;
+    margin: 0 -0.85rem;
+    border-radius: var(--radius);
+    color: inherit;
+    text-decoration: none;
+    transition: background var(--transition);
+  }
+
+  .post-link:hover { background: rgba(232, 121, 164, 0.05); }
+
+  .post-row + .post-row .post-link {
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+  }
+
+  .post-row + .post-row .post-link:hover {
+    border-top-color: transparent;
+    border-radius: var(--radius);
+  }
+
+  .post-thumb {
+    flex-shrink: 0;
+    width: 104px;
+    height: 74px;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+  }
+
+  .post-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+
+  .post-link:hover .post-thumb img { transform: scale(1.06); }
+
+  .post-body { flex: 1; min-width: 0; }
+
+  .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.35rem;
+  }
+
+  .post-date,
+  .post-read {
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    padding: 0.14em 0.6em;
+    border-radius: 999px;
+    font-size: 0.71rem;
+  }
+
+  .chip svg {
+    width: 10px;
+    height: 10px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+  }
+
+  .chip-series {
+    border: 1px solid rgba(147, 51, 234, 0.2);
+    background: rgba(147, 51, 234, 0.1);
     color: var(--secondary);
-    border: 1px solid rgba(147,51,234,.18);
     font-weight: 600;
   }
 
-  .post-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-1);
-    margin-bottom: .35rem;
-    line-height: 1.4;
-    transition: color .2s;
+  .chip-order {
+    font-family: 'JetBrains Mono', monospace;
+    opacity: 0.7;
   }
 
-  .post-row:hover .post-title { color: var(--primary); }
+  .chip-tag {
+    border: 1px solid rgba(147, 51, 234, 0.12);
+    background: rgba(147, 51, 234, 0.07);
+    color: var(--secondary);
+  }
+
+  .post-title {
+    margin-bottom: 0.3rem;
+    color: var(--text-1);
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.45;
+    transition: color var(--transition);
+  }
+
+  .post-link:hover .post-title { color: var(--primary); }
 
   .post-desc {
-    font-size: .875rem;
-    color: var(--text-muted);
-    line-height: 1.7;
-    margin-bottom: .6rem;
     display: -webkit-box;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.86rem;
+    line-height: 1.65;
+    -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
   }
 
   .post-tags {
     display: flex;
-    gap: .35rem;
+    gap: 0.3rem;
     flex-wrap: wrap;
   }
 
-  .ptag {
-    font-size: .72rem;
-    padding: .15em .65em;
-    border-radius: 999px;
-    background: rgba(147,51,234,.07);
-    color: var(--secondary);
-    border: 1px solid rgba(147,51,234,.12);
+  .empty-state {
+    padding: 4rem 1rem;
+    color: var(--text-muted);
+    text-align: center;
+    font-size: 0.9rem;
   }
 
-  @media (max-width: 520px) {
-    .post-row-img { display: none; }
+  .empty-reset {
+    border: none;
+    background: none;
+    color: var(--primary);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  /* 抽屉（仅移动端出现） */
+  .drawer-btn {
+    display: none;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--text-1);
+    font-family: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+
+  .drawer-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .drawer-btn-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+
+  .drawer-btn-dot[hidden] { display: none; }
+
+  .drawer-scrim { display: none; }
+
+  @media (max-width: 900px) {
+    .blog-layout {
+      grid-template-areas: 'main';
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0;
+    }
+
+    .drawer-btn { display: inline-flex; }
+    .search-kbd { display: none; }
+
+    .drawer-scrim {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: block;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(2px);
+    }
+
+    .drawer-scrim[hidden] { display: none; }
+
+    .blog-layout :global(.blog-sidebar) {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 100;
+      width: min(300px, 84vw);
+      padding: 1.25rem 1rem;
+      overflow-y: auto;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow-xl);
+      transform: translateX(-100%);
+      transition: transform var(--transition);
+    }
+
+    .blog-layout :global(.blog-sidebar.is-open) { transform: translateX(0); }
+
+    .blog-layout :global(.sidebar-inner) {
+      position: static;
+      max-height: none;
+      padding-top: var(--nav-height);
+    }
+  }
+
+  @media (max-width: 560px) {
+    .post-thumb { display: none; }
+    .blog-head { padding: 2rem 0 1rem; }
+
+    /* 窄屏让搜索框独占一行，避免和筛选按钮、计数挤在一起 */
+    .toolbar-inner { flex-wrap: wrap; }
+    .search-box { order: 3; flex-basis: 100%; }
+    .result-count { margin-left: auto; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .post-thumb img,
+    .post-link,
+    .blog-layout :global(.blog-sidebar) {
+      transition: none;
+    }
   }
 </style>
