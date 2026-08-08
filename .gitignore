@@ -31,3 +31,9 @@ pnpm-debug.log*
 *.local
 .cache/
 coverage/
+
+# 由 npm run sync:projects 从 GitHub 生成，勿手改
+src/content/projects/**
+src/content/project-docs/**
+!src/content/projects/.gitkeep
+!src/content/project-docs/.gitkeep

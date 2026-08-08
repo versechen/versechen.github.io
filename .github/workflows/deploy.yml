@@ -30,8 +30,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # sync:projects 使用 Actions 自带的 GITHUB_TOKEN 拉取各仓库 README / docs
+      - name: Sync GitHub project README & docs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run sync:projects
+
       - name: Build with Astro
-        run: npm run verify
+        run: npm run check && npm run build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

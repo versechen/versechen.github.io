@@ -1,0 +1,71 @@
+[
+  {
+    "slug": "codeverse",
+    "repo": "versechen/versechen.github.io",
+    "name": "代码陈诗",
+    "description": "基于 Astro 构建的个人博客与数字花园，追求极致阅读体验与性能。",
+    "icon": "🌸",
+    "tags": ["Astro", "TypeScript", "CSS"],
+    "status": "active",
+    "link": "/",
+    "order": 1,
+    "docs": {
+      "path": "docs",
+      "summary": "docs/SUMMARY.md",
+      "optional": true
+    }
+  },
+  {
+    "slug": "openclaw",
+    "repo": "versechen/openclaw",
+    "name": "OpenClaw",
+    "description": "可自托管的个人 AI 助手，接入 WhatsApp、Telegram、Slack 等即时通讯渠道。",
+    "icon": "🦞",
+    "tags": ["TypeScript", "AI", "Gateway"],
+    "status": "active",
+    "link": "https://openclaw.ai",
+    "order": 2,
+    "docs": {
+      "path": "docs",
+      "summary": "docs/SUMMARY.md",
+      "maxFiles": 40,
+      "exclude": [".gitbook", ".i18n", "ja-JP", "ja-jp", "assets", "images"]
+    }
+  },
+  {
+    "slug": "ddia",
+    "repo": "versechen/ddia",
+    "name": "DDIA 中文译注",
+    "description": "《设计数据密集型应用》中文翻译与阅读笔记，按章节组织，适合对照原书精读。",
+    "icon": "📚",
+    "tags": ["分布式", "数据库", "翻译"],
+    "status": "active",
+    "order": 3,
+    "docs": {
+      "path": ".",
+      "summary": "SUMMARY.md",
+      "maxFiles": 30,
+      "exclude": ["img", "styles"]
+    }
+  },
+  {
+    "slug": "python-patterns",
+    "repo": "versechen/python-patterns",
+    "name": "Python Patterns",
+    "description": "Python 设计模式与惯用法合集，覆盖创建型、结构型与行为型模式。",
+    "icon": "🐍",
+    "tags": ["Python", "设计模式"],
+    "status": "active",
+    "order": 4
+  },
+  {
+    "slug": "raft-zh",
+    "repo": "versechen/raft-zh_cn",
+    "name": "Raft 中文译文",
+    "description": "Raft 一致性算法论文的中文翻译，适合理解分布式共识的经典路径。",
+    "icon": "🧭",
+    "tags": ["Raft", "分布式", "翻译"],
+    "status": "active",
+    "order": 5
+  }
+]

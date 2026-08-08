@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
+    "sync:projects": "node scripts/sync-github-projects.mjs",
     "check": "astro check",
     "build": "astro build",
-    "verify": "npm run check && npm run build",
+    "verify": "npm run sync:projects && npm run check && npm run build",
     "preview": "astro preview",
     "astro": "astro"
   },
