@@ -41,4 +41,38 @@ const books = defineCollection({
   }),
 });
 
-export const collections = { blog, books };
+const projects = defineCollection({
+  loader: glob({
+    pattern: '**/[^_]*.md',
+    base: './src/content/projects',
+  }),
+  schema: z.object({
+    name: z.string(),
+    description: z.string(),
+    icon: z.string().default('📦'),
+    tags: z.array(z.string()).default([]),
+    status: z.enum(['active', 'wip', 'archived']).default('active'),
+    github: z.string().optional(),
+    link: z.string().optional(),
+    order: z.number().int().nonnegative().default(99),
+    /** 是否有可浏览的 docs 文档站 */
+    hasDocs: z.boolean().default(false),
+  }),
+});
+
+/** 对应 GitHub 仓库 docs/ 目录，按 {projectSlug}/{docPath}.md 组织 */
+const projectDocs = defineCollection({
+  loader: glob({
+    pattern: '**/[^_]*.md',
+    base: './src/content/project-docs',
+  }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string().optional(),
+    order: z.number().int().nonnegative().default(99),
+    /** 侧栏分组标题，同组文档显示在同一区块 */
+    section: z.string().optional(),
+  }),
+});
+
+export const collections = { blog, books, projects, projectDocs };

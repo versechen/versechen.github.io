@@ -13,6 +13,8 @@ interface Props {
   type?: 'website' | 'article';
   math?: boolean;
   pageTitle?: string; // backward compat
+  /** 文档站等沉浸式页面可隐藏页脚 */
+  hideFooter?: boolean;
 }
 
 const {
@@ -22,6 +24,7 @@ const {
   image,
   type = 'website',
   math = false,
+  hideFooter = false,
 } = Astro.props;
 
 const resolvedTitle = title || pageTitle;
@@ -74,6 +77,6 @@ const socialImageURL = image ? new URL(image, Astro.site ?? SITE_URL) : undefine
     <main id="main-content" tabindex="-1">
       <slot />
     </main>
-    <Footer />
+    {!hideFooter && <Footer />}
   </body>
 </html>

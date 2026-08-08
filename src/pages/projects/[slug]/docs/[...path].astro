@@ -1,0 +1,561 @@
+---
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { getCollection, getEntry, render } from 'astro:content';
+import {
+  parseProjectDocId,
+  projectDocHref,
+  PROJECT_STATUS_LABEL,
+} from '../../../../utils/projects';
+import { hasMath } from '../../../../utils/math';
+
+export async function getStaticPaths() {
+  const docs = await getCollection('projectDocs');
+  return docs.map((doc) => {
+    const { project, path } = parseProjectDocId(doc.id);
+    return {
+      params: {
+        slug: project,
+        path: path === 'index' ? undefined : path,
+      },
+      props: { doc },
+    };
+  });
+}
+
+const { doc } = Astro.props;
+const { project: projectSlug } = parseProjectDocId(doc.id);
+const project = await getEntry('projects', projectSlug);
+
+if (!project) {
+  throw new Error(`找不到项目：${projectSlug}`);
+}
+
+const allDocs = (await getCollection('projectDocs'))
+  .filter((d) => parseProjectDocId(d.id).project === projectSlug)
+  .sort(
+    (a, b) =>
+      a.data.order - b.data.order ||
+      a.data.title.localeCompare(b.data.title, 'zh-CN')
+  );
+
+// 按 section 分组，保持首次出现顺序
+const sections: { name: string; items: typeof allDocs }[] = [];
+for (const item of allDocs) {
+  const name = item.data.section ?? '文档';
+  const existing = sections.find((s) => s.name === name);
+  if (existing) existing.items.push(item);
+  else sections.push({ name, items: [item] });
+}
+
+const idx = allDocs.findIndex((d) => d.id === doc.id);
+const prev = idx > 0 ? allDocs[idx - 1] : null;
+const next = idx >= 0 && idx < allDocs.length - 1 ? allDocs[idx + 1] : null;
+
+const { Content, headings } = await render(doc);
+const toc = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
+
+function docLink(id: string) {
+  const { project, path } = parseProjectDocId(id);
+  return projectDocHref(project, path);
+}
+---
+
+<BaseLayout
+  title={`${doc.data.title} · ${project.data.name}`}
+  description={doc.data.description ?? project.data.description}
+  math={hasMath(doc.body)}
+  hideFooter
+>
+  <div class="docs-shell">
+    <aside class="docs-sidebar" id="docs-sidebar" aria-label="文档目录">
+      <div class="docs-brand">
+        <a href={`/projects/?p=${project.id}`} class="docs-back">← 项目预览</a>
+        <div class="docs-project">
+          <span class="docs-project-icon" aria-hidden="true">{project.data.icon}</span>
+          <div>
+            <p class="docs-project-name">{project.data.name}</p>
+            <p class="docs-project-status">{PROJECT_STATUS_LABEL[project.data.status]}</p>
+          </div>
+        </div>
+      </div>
+
+      <nav class="docs-nav">
+        {sections.map((section) => (
+          <div class="docs-section">
+            <h2 class="docs-section-title">{section.name}</h2>
+            <ul class="docs-menu">
+              {section.items.map((item) => {
+                const { path } = parseProjectDocId(item.id);
+                const href = projectDocHref(projectSlug, path);
+                const active = item.id === doc.id;
+                return (
+                  <li>
+                    <a href={href} class:list={['docs-link', { 'is-active': active }]} aria-current={active ? 'page' : undefined}>
+                      {item.data.title}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
+
+      <div class="docs-sidebar-foot">
+        {project.data.github && (
+          <a href={project.data.github} class="docs-ext" target="_blank" rel="noopener noreferrer">
+            在 GitHub 查看 →
+          </a>
+        )}
+      </div>
+    </aside>
+
+    <div class="docs-main">
+      <header class="docs-topbar">
+        <button type="button" class="docs-menu-btn" id="docs-menu-btn" aria-expanded="false" aria-controls="docs-sidebar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+          目录
+        </button>
+        <nav class="docs-crumb" aria-label="面包屑">
+          <a href="/projects/">项目</a>
+          <span>/</span>
+          <a href={`/projects/?p=${project.id}`}>{project.data.name}</a>
+          <span>/</span>
+          <span>{doc.data.title}</span>
+        </nav>
+      </header>
+
+      <div class="docs-body-wrap">
+        <article class="docs-article prose">
+          <header class="docs-article-head">
+            <p class="docs-eyebrow">{project.data.name} · Docs</p>
+            <h1>{doc.data.title}</h1>
+            {doc.data.description && <p class="docs-lead">{doc.data.description}</p>}
+          </header>
+          <Content />
+
+          <nav class="docs-pager" aria-label="上下篇">
+            {prev ? (
+              <a href={docLink(prev.id)} class="pager-card prev">
+                <span class="pager-label">上一篇</span>
+                <span class="pager-title">{prev.data.title}</span>
+              </a>
+            ) : <span></span>}
+            {next ? (
+              <a href={docLink(next.id)} class="pager-card next">
+                <span class="pager-label">下一篇</span>
+                <span class="pager-title">{next.data.title}</span>
+              </a>
+            ) : <span></span>}
+          </nav>
+        </article>
+
+        {toc.length > 0 && (
+          <aside class="docs-toc" aria-label="本页目录">
+            <p class="docs-toc-title">本页</p>
+            <ul>
+              {toc.map((h) => (
+                <li class:list={[`depth-${h.depth}`]}>
+                  <a href={`#${h.slug}`}>{h.text}</a>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        )}
+      </div>
+    </div>
+
+    <div class="docs-scrim" id="docs-scrim" hidden></div>
+  </div>
+</BaseLayout>
+
+<script>
+  const sidebar = document.getElementById('docs-sidebar');
+  const menuBtn = document.getElementById('docs-menu-btn');
+  const scrim = document.getElementById('docs-scrim');
+
+  function openNav() {
+    sidebar?.classList.add('is-open');
+    if (scrim) scrim.hidden = false;
+    menuBtn?.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeNav() {
+    sidebar?.classList.remove('is-open');
+    if (scrim) scrim.hidden = true;
+    menuBtn?.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+  }
+
+  menuBtn?.addEventListener('click', () => {
+    sidebar?.classList.contains('is-open') ? closeNav() : openNav();
+  });
+  scrim?.addEventListener('click', closeNav);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeNav();
+  });
+</script>
+
+<style>
+  :root {
+    --docs-ease: cubic-bezier(0.32, 0.72, 0, 1);
+    --docs-side: 272px;
+  }
+
+  .docs-shell {
+    display: grid;
+    grid-template-columns: var(--docs-side) minmax(0, 1fr);
+    min-height: calc(100vh - var(--nav-height));
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(232, 121, 164, 0.08), transparent 55%),
+      radial-gradient(900px 500px at 90% 0%, rgba(147, 51, 234, 0.07), transparent 50%),
+      var(--bg);
+  }
+
+  .docs-sidebar {
+    position: sticky;
+    top: var(--nav-height);
+    height: calc(100vh - var(--nav-height));
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  }
+
+  :global(html.dark) .docs-sidebar {
+    background: rgba(14, 11, 30, 0.72);
+  }
+
+  .docs-brand {
+    padding: 1.15rem 1.15rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .docs-back {
+    display: inline-block;
+    margin-bottom: 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    text-decoration: none;
+  }
+
+  .docs-back:hover { color: var(--primary); }
+
+  .docs-project {
+    display: flex;
+    gap: 0.7rem;
+    align-items: center;
+  }
+
+  .docs-project-icon { font-size: 1.6rem; line-height: 1; }
+
+  .docs-project-name {
+    margin: 0;
+    font-weight: 720;
+    font-size: 0.95rem;
+    color: var(--text-1);
+  }
+
+  .docs-project-status {
+    margin: 0.1rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+  }
+
+  .docs-nav {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 1rem 0.75rem 1.5rem;
+    scrollbar-width: thin;
+  }
+
+  .docs-section + .docs-section { margin-top: 1.15rem; }
+
+  .docs-section-title {
+    margin: 0 0.5rem 0.45rem;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .docs-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .docs-link {
+    display: block;
+    padding: 0.42rem 0.7rem;
+    border-radius: 10px;
+    color: var(--text-2, var(--text-muted));
+    font-size: 0.86rem;
+    text-decoration: none;
+    transition: background 0.2s var(--docs-ease), color 0.2s var(--docs-ease);
+  }
+
+  .docs-link:hover {
+    background: var(--surface-hover);
+    color: var(--text-1);
+  }
+
+  .docs-link.is-active {
+    background: rgba(232, 121, 164, 0.14);
+    color: var(--primary);
+    font-weight: 650;
+  }
+
+  .docs-sidebar-foot {
+    padding: 0.85rem 1.15rem 1.15rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .docs-ext {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    text-decoration: none;
+  }
+
+  .docs-ext:hover { color: var(--primary); }
+
+  .docs-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .docs-topbar {
+    position: sticky;
+    top: var(--nav-height);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .docs-menu-btn {
+    display: none;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-1);
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .docs-menu-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .docs-crumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  .docs-crumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+
+  .docs-crumb a:hover { color: var(--primary); }
+
+  .docs-body-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 180px;
+    gap: 2.5rem;
+    width: 100%;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 2rem 1.75rem 4rem;
+  }
+
+  .docs-article-head {
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .docs-eyebrow {
+    margin: 0 0 0.45rem;
+    color: var(--primary);
+    font-size: 0.78rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+  }
+
+  .docs-article-head h1 {
+    margin: 0 0 0.5rem;
+    font-size: clamp(1.7rem, 3vw, 2.15rem);
+    font-weight: 820;
+    letter-spacing: -0.025em;
+    line-height: 1.25;
+    color: var(--text-1);
+  }
+
+  .docs-lead {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 1.02rem;
+    line-height: 1.6;
+  }
+
+  .docs-pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .pager-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+    text-decoration: none;
+    transition: border-color 0.2s, transform 0.25s var(--docs-ease), box-shadow 0.25s;
+  }
+
+  .pager-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+
+  .pager-card.next { text-align: right; }
+
+  .pager-label {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+  }
+
+  .pager-title {
+    color: var(--text-1);
+    font-size: 0.95rem;
+    font-weight: 650;
+  }
+
+  .docs-toc {
+    position: sticky;
+    top: calc(var(--nav-height) + 4rem);
+    align-self: start;
+    max-height: calc(100vh - var(--nav-height) - 5rem);
+    overflow-y: auto;
+  }
+
+  .docs-toc-title {
+    margin: 0 0 0.55rem;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .docs-toc ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .docs-toc a {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    text-decoration: none;
+    line-height: 1.4;
+  }
+
+  .docs-toc a:hover { color: var(--primary); }
+  .docs-toc .depth-3 { padding-left: 0.7rem; }
+
+  .docs-scrim {
+    display: none;
+  }
+
+  @media (max-width: 1100px) {
+    .docs-body-wrap {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .docs-toc { display: none; }
+  }
+
+  @media (max-width: 900px) {
+    .docs-shell {
+      grid-template-columns: 1fr;
+    }
+
+    .docs-menu-btn { display: inline-flex; }
+
+    .docs-sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 100;
+      width: min(300px, 86vw);
+      height: 100vh;
+      padding-top: var(--nav-height);
+      transform: translateX(-100%);
+      transition: transform 0.4s var(--docs-ease);
+      box-shadow: var(--shadow-xl);
+    }
+
+    .docs-sidebar.is-open { transform: translateX(0); }
+
+    .docs-scrim {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: block;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(2px);
+    }
+
+    .docs-scrim[hidden] { display: none; }
+
+    .docs-pager { grid-template-columns: 1fr; }
+    .pager-card.next { text-align: left; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .docs-sidebar,
+    .pager-card,
+    .docs-link {
+      transition: none;
+    }
+  }
+</style>

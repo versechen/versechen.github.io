@@ -1,177 +1,770 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection, render } from 'astro:content';
+import { PROJECT_STATUS_LABEL } from '../utils/projects';
+import { hasMath } from '../utils/math';
 
-const projects = [
-  {
-    icon: '🌸',
-    name: '代码陈诗',
-    desc: '基于 Astro 构建的个人博客，追求极致的阅读体验与性能。玻璃拟态设计风格，支持深色模式。',
-    tags: ['Astro', 'TypeScript', 'CSS'],
-    github: 'https://github.com/versechen/versechen.github.io',
-    link: '/',
-    status: 'active',
-  },
-  {
-    icon: '⚡',
-    name: '全栈脚手架',
-    desc: '整合 React + Node.js + PostgreSQL 的现代全栈项目模板，开箱即用的工程化配置。',
-    tags: ['React', 'Node.js', 'PostgreSQL', 'Docker'],
-    github: 'https://github.com/versechen',
-    status: 'active',
-  },
-  {
-    icon: '🤖',
-    name: 'AI 写作助手',
-    desc: '基于大语言模型的写作辅助工具，支持续写、润色、摘要等功能，提升写作效率。',
-    tags: ['Python', 'FastAPI', 'OpenAI'],
-    github: 'https://github.com/versechen',
-    status: 'wip',
-  },
-  {
-    icon: '📊',
-    name: '数据可视化面板',
-    desc: '使用 D3.js 和 React 构建的可交互数据可视化组件库，支持多种图表类型。',
-    tags: ['React', 'D3.js', 'TypeScript'],
-    github: 'https://github.com/versechen',
-    status: 'active',
-  },
-  {
-    icon: '🔧',
-    name: 'CLI 工具集',
-    desc: '一套提升日常开发效率的命令行工具，包含代码生成、项目初始化等常用功能。',
-    tags: ['Go', 'CLI', 'Shell'],
-    github: 'https://github.com/versechen',
-    status: 'active',
-  },
-  {
-    icon: '🎨',
-    name: '设计系统',
-    desc: '面向 React 生态的 UI 组件库，遵循 Radix UI 可访问性规范，支持主题定制。',
-    tags: ['React', 'Storybook', 'Radix UI'],
-    github: 'https://github.com/versechen',
-    status: 'wip',
-  },
-];
+const projects = (await getCollection('projects')).sort(
+  (a, b) => a.data.order - b.data.order || a.data.name.localeCompare(b.data.name, 'zh-CN')
+);
 
-const statusLabel: Record<string, string> = {
-  active: '已上线',
-  wip: '开发中',
-  archived: '已归档',
-};
+const rendered = await Promise.all(
+  projects.map(async (project) => {
+    const { Content } = await render(project);
+    return { project, Content, math: hasMath(project.body) };
+  })
+);
 
-const statusColor: Record<string, string> = {
-  active: 'status-active',
-  wip: 'status-wip',
-  archived: 'status-archived',
-};
+const needsMath = rendered.some((r) => r.math);
 ---
 
-<BaseLayout title="项目" description="陈诗的开源项目与个人作品">
-  <div class="page-hero container animate-fade-up">
-    <h1 class="page-hero-title"><span class="gradient-text">项目</span></h1>
-    <p class="page-hero-desc">开源项目、个人工具与有趣的实验作品</p>
-  </div>
+<BaseLayout title="项目" description="陈诗的开源项目与个人作品，支持 README 快速预览" math={needsMath}>
+  <div class="projects-page" id="projects-page">
+    <div class="projects-veil" id="projects-veil" aria-hidden="true"></div>
 
-  <section class="section" style="padding-top: 1rem">
-    <div class="container">
-      <div class="project-grid animate-fade-up animate-delay-1">
-        {projects.map((p) => (
-          <div class="card project-card">
-            <div class="project-card-top">
-              <div class="project-card-header">
-                <span class="project-icon">{p.icon}</span>
-                <div class="project-links">
-                  {p.github && (
-                    <a href={p.github} class="project-link" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/>
-                      </svg>
+    <header class="projects-hero" id="projects-hero">
+      <h1 class="projects-hero-title"><span class="gradient-text">项目</span></h1>
+      <p class="projects-hero-desc">开源项目与实验作品 · 点击卡片预览 README</p>
+    </header>
+
+    <div class="projects-stage" id="projects-stage" data-mode="grid">
+      <!-- 左侧：项目卡片轨道（预览模式下独立滚动） -->
+      <aside class="project-rail" id="project-rail" aria-label="项目列表">
+        <div class="project-rail-scroll" id="project-rail-scroll">
+          {projects.map((p) => (
+            <button
+              type="button"
+              class="project-card"
+              data-slug={p.id}
+              aria-pressed="false"
+              aria-controls="readme-pane"
+            >
+              <div class="project-card-top">
+                <span class="project-icon" aria-hidden="true">{p.data.icon}</span>
+                <span class:list={['status-pill', `status-${p.data.status}`]}>
+                  {PROJECT_STATUS_LABEL[p.data.status]}
+                </span>
+              </div>
+              <h2 class="project-name">{p.data.name}</h2>
+              <p class="project-desc">{p.data.description}</p>
+              <div class="project-tags">
+                {p.data.tags.map((t) => <span class="ptag">{t}</span>)}
+              </div>
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      <!-- 右侧：README 预览面板 -->
+      <section
+        class="readme-pane"
+        id="readme-pane"
+        aria-live="polite"
+        aria-hidden="true"
+        hidden
+      >
+        <div class="readme-chrome">
+          <div class="readme-traffic" aria-hidden="true">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+          </div>
+          <p class="readme-filename" id="readme-filename">README.md</p>
+          <button type="button" class="readme-close" id="readme-close" aria-label="关闭预览">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+
+        <div class="readme-scroll" id="readme-scroll">
+          {rendered.map(({ project, Content }) => (
+            <article
+              class="readme-article prose"
+              data-slug={project.id}
+              hidden
+            >
+              <header class="readme-meta">
+                <div class="readme-meta-row">
+                  <span class="readme-icon" aria-hidden="true">{project.data.icon}</span>
+                  <div>
+                    <h2 class="readme-title">{project.data.name}</h2>
+                    <p class="readme-sub">{project.data.description}</p>
+                  </div>
+                </div>
+                <div class="readme-actions">
+                  {project.data.github && (
+                    <a href={project.data.github} class="readme-btn ghost" target="_blank" rel="noopener noreferrer">
+                      GitHub
                     </a>
                   )}
-                  {p.link && (
-                    <a href={p.link} class="project-link" target="_blank" rel="noopener" aria-label="预览">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                      </svg>
+                  {project.data.link && (
+                    <a href={project.data.link} class="readme-btn ghost" target="_blank" rel="noopener noreferrer">
+                      演示
+                    </a>
+                  )}
+                  {project.data.hasDocs && (
+                    <a href={`/projects/${project.id}/docs/`} class="readme-btn primary">
+                      进入文档
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                     </a>
                   )}
                 </div>
+              </header>
+              <div class="readme-body">
+                <Content />
               </div>
-
-              <div class="project-name-row">
-                <h3 class="project-name">{p.name}</h3>
-                <span class:list={['status-badge', statusColor[p.status]]}>
-                  {statusLabel[p.status]}
-                </span>
-              </div>
-
-              <p class="project-desc">{p.desc}</p>
-            </div>
-
-            <div class="project-tags">
-              {p.tags.map(t => <span class="tag">{t}</span>)}
-            </div>
-          </div>
-        ))}
-      </div>
+            </article>
+          ))}
+        </div>
+      </section>
     </div>
-  </section>
+  </div>
 </BaseLayout>
 
+<script>
+  const page = document.getElementById('projects-page');
+  const stage = document.getElementById('projects-stage');
+  const railScroll = document.getElementById('project-rail-scroll');
+  const pane = document.getElementById('readme-pane');
+  const veil = document.getElementById('projects-veil');
+  const closeBtn = document.getElementById('readme-close');
+  const filename = document.getElementById('readme-filename');
+  const cards = Array.from(document.querySelectorAll<HTMLButtonElement>('.project-card'));
+  const articles = Array.from(document.querySelectorAll<HTMLElement>('.readme-article'));
+
+  let active: string | null = null;
+  let reduceMotion = false;
+  try {
+    reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {}
+
+  function setMode(preview: boolean) {
+    if (!stage || !pane || !page || !veil) return;
+    stage.dataset.mode = preview ? 'preview' : 'grid';
+    page.classList.toggle('is-preview', preview);
+    pane.hidden = !preview;
+    pane.setAttribute('aria-hidden', String(!preview));
+    veil.setAttribute('aria-hidden', String(!preview));
+    document.body.style.overflow = preview ? 'hidden' : '';
+  }
+
+  function select(slug: string, push = true) {
+    active = slug;
+    setMode(true);
+
+    for (const card of cards) {
+      const on = card.dataset.slug === slug;
+      card.classList.toggle('is-active', on);
+      card.setAttribute('aria-pressed', String(on));
+    }
+
+    for (const article of articles) {
+      article.hidden = article.dataset.slug !== slug;
+    }
+
+    if (filename) filename.textContent = `${slug} / README.md`;
+
+    // 左侧轨道把当前卡片滚入视野
+    const activeCard = cards.find((c) => c.dataset.slug === slug);
+    activeCard?.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+
+    if (push) {
+      const url = new URL(location.href);
+      url.searchParams.set('p', slug);
+      history.pushState({ p: slug }, '', url);
+    }
+  }
+
+  function close(push = true) {
+    active = null;
+    setMode(false);
+    for (const card of cards) {
+      card.classList.remove('is-active');
+      card.setAttribute('aria-pressed', 'false');
+    }
+    for (const article of articles) article.hidden = true;
+    if (push) {
+      const url = new URL(location.href);
+      url.searchParams.delete('p');
+      history.pushState({}, '', url.pathname + url.search);
+    }
+  }
+
+  for (const card of cards) {
+    card.addEventListener('click', () => {
+      const slug = card.dataset.slug;
+      if (!slug) return;
+      if (active === slug && stage?.dataset.mode === 'preview') return;
+      select(slug);
+    });
+  }
+
+  closeBtn?.addEventListener('click', () => close());
+  veil?.addEventListener('click', () => close());
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && active) close();
+  });
+
+  window.addEventListener('popstate', () => {
+    const slug = new URL(location.href).searchParams.get('p');
+    if (slug && cards.some((c) => c.dataset.slug === slug)) select(slug, false);
+    else close(false);
+  });
+
+  // 初始 URL ?p=slug
+  const initial = new URL(location.href).searchParams.get('p');
+  if (initial && cards.some((c) => c.dataset.slug === initial)) {
+    // 首帧先进入预览，避免闪一下网格
+    select(initial, false);
+  }
+
+  // 防止预览模式下左侧滚动冒泡到 body（部分浏览器）
+  railScroll?.addEventListener(
+    'wheel',
+    (e) => {
+      if (stage?.dataset.mode !== 'preview') return;
+      const el = railScroll;
+      const atTop = el.scrollTop <= 0 && e.deltaY < 0;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 && e.deltaY > 0;
+      if (atTop || atBottom) e.preventDefault();
+    },
+    { passive: false }
+  );
+</script>
+
 <style>
+  /* Apple-like spring */
+  :root {
+    --apple-ease: cubic-bezier(0.32, 0.72, 0, 1);
+    --apple-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .projects-page {
+    position: relative;
+    width: 100%;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 1.5rem 5rem;
+    min-height: calc(100vh - var(--nav-height));
+  }
+
+  .projects-veil {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(15, 10, 30, 0);
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+    pointer-events: none;
+    transition:
+      background 0.55s var(--apple-ease),
+      backdrop-filter 0.55s var(--apple-ease),
+      -webkit-backdrop-filter 0.55s var(--apple-ease);
+  }
+
+  .projects-page.is-preview .projects-veil {
+    background: rgba(15, 10, 30, 0.45);
+    backdrop-filter: blur(18px) saturate(1.2);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    pointer-events: auto;
+  }
+
+  :global(html.dark) .projects-page.is-preview .projects-veil {
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  .projects-hero {
+    padding: 3rem 0 1.75rem;
+    transition:
+      opacity 0.4s var(--apple-ease),
+      transform 0.4s var(--apple-ease),
+      max-height 0.4s var(--apple-ease),
+      padding 0.4s var(--apple-ease);
+  }
+
+  .projects-page.is-preview .projects-hero {
+    opacity: 0;
+    transform: translateY(-12px);
+    max-height: 0;
+    padding: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .projects-hero-title {
+    font-size: clamp(2rem, 4vw, 2.6rem);
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.35rem;
+  }
+
+  .projects-hero-desc {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  /* 舞台：网格 → 左窄右宽 */
+  .projects-stage {
+    position: relative;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    transition: grid-template-columns 0.65s var(--apple-spring);
+  }
+
+  .projects-stage[data-mode='preview'] {
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+    height: calc(100vh - var(--nav-height) - 1.5rem);
+    align-items: stretch;
+  }
+
+  /* 卡片轨道 */
+  .project-rail {
+    min-width: 0;
+  }
+
+  .project-rail-scroll {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.15rem;
+    transition: gap 0.5s var(--apple-ease);
+  }
+
+  .projects-stage[data-mode='preview'] .project-rail {
+    height: 100%;
+  }
+
+  .projects-stage[data-mode='preview'] .project-rail-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.15rem 0.35rem 0.15rem 0;
+    scrollbar-width: thin;
+  }
+
+  /* 卡片 — 苹果风格：大圆角、轻阴影、克制边框 */
   .project-card {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: 1.25rem;
+    gap: 0.7rem;
+    width: 100%;
+    padding: 1.35rem 1.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow:
+      0 1px 2px rgba(15, 10, 30, 0.04),
+      0 12px 32px rgba(147, 51, 234, 0.08);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    backdrop-filter: blur(20px) saturate(1.3);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3);
+    transition:
+      transform 0.55s var(--apple-spring),
+      box-shadow 0.45s var(--apple-ease),
+      border-color 0.35s var(--apple-ease),
+      background 0.35s var(--apple-ease),
+      padding 0.45s var(--apple-ease),
+      opacity 0.35s var(--apple-ease);
+  }
+
+  :global(html.dark) .project-card {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  }
+
+  .project-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow:
+      0 2px 4px rgba(15, 10, 30, 0.05),
+      0 20px 48px rgba(147, 51, 234, 0.14);
+  }
+
+  .project-card:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+  }
+
+  .projects-stage[data-mode='preview'] .project-card {
+    padding: 0.95rem 1rem;
+    border-radius: 18px;
+    transform: scale(0.98);
+    box-shadow: 0 6px 18px rgba(147, 51, 234, 0.08);
+  }
+
+  .projects-stage[data-mode='preview'] .project-card:hover {
+    transform: scale(1);
+  }
+
+  .projects-stage[data-mode='preview'] .project-card.is-active {
+    transform: scale(1);
+    border-color: rgba(232, 121, 164, 0.45);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(252, 231, 243, 0.75));
+    box-shadow:
+      0 0 0 1px rgba(232, 121, 164, 0.2),
+      0 14px 36px rgba(232, 121, 164, 0.22);
+  }
+
+  :global(html.dark) .projects-stage[data-mode='preview'] .project-card.is-active {
+    background: linear-gradient(160deg, rgba(40, 24, 56, 0.95), rgba(60, 30, 70, 0.8));
   }
 
   .project-card-top {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .project-name-row {
-    display: flex;
     align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem;
   }
 
-  .status-badge {
-    font-size: 0.72rem;
-    font-weight: 600;
-    padding: 0.15em 0.65em;
-    border-radius: var(--radius-full);
-    flex-shrink: 0;
+  .project-icon {
+    font-size: 1.85rem;
+    line-height: 1;
+    transition: font-size 0.45s var(--apple-ease);
+  }
+
+  .projects-stage[data-mode='preview'] .project-icon {
+    font-size: 1.35rem;
+  }
+
+  .status-pill {
+    font-size: 0.68rem;
+    font-weight: 650;
+    padding: 0.18em 0.65em;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
   }
 
   .status-active {
-    background: rgba(34, 197, 94, 0.12);
-    color: #16a34a;
-    border: 1px solid rgba(34, 197, 94, 0.2);
+    background: rgba(52, 199, 89, 0.14);
+    color: #1b8f3a;
   }
-
-  :global(html.dark) .status-active {
-    color: #4ade80;
-    background: rgba(74, 222, 128, 0.1);
-  }
+  :global(html.dark) .status-active { color: #4ade80; background: rgba(74, 222, 128, 0.12); }
 
   .status-wip {
-    background: rgba(234, 179, 8, 0.12);
-    color: #ca8a04;
-    border: 1px solid rgba(234, 179, 8, 0.2);
+    background: rgba(255, 204, 0, 0.16);
+    color: #a16207;
   }
-
-  :global(html.dark) .status-wip {
-    color: #facc15;
-    background: rgba(250, 204, 21, 0.1);
-  }
+  :global(html.dark) .status-wip { color: #facc15; background: rgba(250, 204, 21, 0.12); }
 
   .status-archived {
-    background: rgba(148, 163, 184, 0.12);
+    background: rgba(148, 163, 184, 0.14);
     color: var(--text-muted);
+  }
+
+  .project-name {
+    margin: 0;
+    font-size: 1.12rem;
+    font-weight: 720;
+    letter-spacing: -0.01em;
+    color: var(--text-1);
+    transition: font-size 0.45s var(--apple-ease);
+  }
+
+  .projects-stage[data-mode='preview'] .project-name {
+    font-size: 0.95rem;
+  }
+
+  .project-desc {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.86rem;
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    transition:
+      font-size 0.45s var(--apple-ease),
+      opacity 0.35s var(--apple-ease),
+      max-height 0.45s var(--apple-ease);
+  }
+
+  .projects-stage[data-mode='preview'] .project-desc {
+    font-size: 0.78rem;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .project-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: auto;
+  }
+
+  .ptag {
+    font-size: 0.7rem;
+    padding: 0.15em 0.55em;
+    border-radius: 999px;
+    background: rgba(147, 51, 234, 0.08);
+    color: var(--secondary);
+    border: 1px solid rgba(147, 51, 234, 0.12);
+  }
+
+  .projects-stage[data-mode='preview'] .project-tags {
+    display: none;
+  }
+
+  /* README 面板 */
+  .readme-pane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100%;
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow:
+      0 1px 2px rgba(15, 10, 30, 0.04),
+      0 28px 80px rgba(15, 10, 30, 0.18);
+    overflow: hidden;
+    backdrop-filter: blur(28px) saturate(1.4);
+    -webkit-backdrop-filter: blur(28px) saturate(1.4);
+    opacity: 0;
+    transform: translateX(28px) scale(0.94);
+    transform-origin: right center;
+    transition:
+      opacity 0.45s var(--apple-ease),
+      transform 0.65s var(--apple-spring);
+  }
+
+  :global(html.dark) .readme-pane {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(22, 16, 36, 0.92);
+  }
+
+  .readme-pane[hidden] {
+    display: none;
+  }
+
+  .projects-stage[data-mode='preview'] .readme-pane:not([hidden]) {
+    display: flex;
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+
+  .readme-chrome {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.45);
+  }
+
+  :global(html.dark) .readme-chrome {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .readme-traffic {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    box-shadow: inset 0 -1px 1px rgba(0, 0, 0, 0.15);
+  }
+  .dot.red { background: #ff5f57; }
+  .dot.yellow { background: #febc2e; }
+  .dot.green { background: #28c840; }
+
+  .readme-filename {
+    flex: 1;
+    margin: 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.74rem;
+  }
+
+  .readme-close {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.2s var(--apple-ease), color 0.2s var(--apple-ease);
+  }
+
+  .readme-close svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .readme-close:hover {
+    background: rgba(232, 121, 164, 0.18);
+    color: var(--primary);
+  }
+
+  .readme-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 1.5rem 1.75rem 2.5rem;
+  }
+
+  .readme-article[hidden] { display: none; }
+
+  .readme-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .readme-meta-row {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .readme-icon { font-size: 2rem; line-height: 1; }
+
+  .readme-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.35rem;
+    font-weight: 780;
+    letter-spacing: -0.02em;
+    color: var(--text-1);
+  }
+
+  .readme-sub {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .readme-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .readme-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.25s var(--apple-spring), background 0.2s, color 0.2s;
+  }
+
+  .readme-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .readme-btn.ghost {
     border: 1px solid var(--border);
+    color: var(--text-1);
+    background: var(--surface);
+  }
+
+  .readme-btn.ghost:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .readme-btn.primary {
+    border: none;
+    color: #fff;
+    background: var(--gradient);
+    box-shadow: 0 8px 22px rgba(232, 121, 164, 0.35);
+  }
+
+  .readme-btn.primary:hover {
+    transform: translateY(-1px) scale(1.02);
+  }
+
+  /* README 正文第一个 h1 与上方 meta 标题重复，直接隐藏 */
+  .readme-body :global(> h1:first-child) {
+    display: none;
+  }
+
+  @media (max-width: 900px) {
+    .projects-stage[data-mode='preview'] {
+      grid-template-columns: 1fr;
+      height: calc(100vh - var(--nav-height) - 0.5rem);
+      gap: 0.65rem;
+    }
+
+    .projects-stage[data-mode='preview'] .project-rail {
+      height: auto;
+      max-height: 38%;
+    }
+
+    .projects-stage[data-mode='preview'] .project-rail-scroll {
+      flex-direction: row;
+      overflow-x: auto;
+      overflow-y: hidden;
+      gap: 0.65rem;
+      padding-bottom: 0.35rem;
+      scroll-snap-type: x mandatory;
+    }
+
+    .projects-stage[data-mode='preview'] .project-card {
+      flex: 0 0 min(72vw, 260px);
+      scroll-snap-align: start;
+    }
+
+    .projects-stage[data-mode='preview'] .project-desc {
+      display: none;
+    }
+
+    .readme-pane {
+      min-height: 0;
+    }
+
+    .readme-scroll {
+      padding: 1.15rem 1.15rem 2rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .projects-veil,
+    .projects-hero,
+    .projects-stage,
+    .project-card,
+    .readme-pane,
+    .project-icon,
+    .project-name,
+    .project-desc {
+      transition: none !important;
+    }
   }
 </style>
