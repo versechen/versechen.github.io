@@ -69,48 +69,34 @@ function fmt(date: Date) {
       </p>
     </header>
 
-    <!-- 检索工具条 -->
-    <div class="toolbar">
-      <div class="toolbar-inner">
-        <button type="button" class="drawer-btn" id="drawer-open" aria-expanded="false" aria-controls="blog-sidebar">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
-          筛选
-          <span class="drawer-btn-dot" id="drawer-dot" hidden></span>
-        </button>
-
-        <div class="search-box">
-          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
-          <input
-            type="search"
-            id="search-input"
-            class="search-input"
-            placeholder="搜索文章…"
-            aria-label="搜索文章标题、摘要、分类、系列与标签"
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <kbd class="search-kbd" aria-hidden="true">/</kbd>
-        </div>
-
-        <p class="result-count" role="status" aria-live="polite">
-          <strong id="vis-count">{posts.length}</strong> 篇
-        </p>
-      </div>
-
-      <!-- 当前筛选条件 -->
-      <div class="active-bar" id="active-bar" hidden>
-        <span class="active-label">筛选：</span>
-        <div class="active-chips" id="active-chips"></div>
-        <button type="button" class="clear-all" id="clear-all">清除全部</button>
-      </div>
-    </div>
-
     <div class="blog-layout">
       <div class="drawer-scrim" id="drawer-scrim" hidden></div>
 
       <BlogSidebar years={years} series={seriesList} tags={tagList} total={posts.length} />
 
       <div class="blog-main" id="blog-main">
+        <!-- 结果状态：与文章列表对齐 -->
+        <div class="toolbar">
+          <div class="toolbar-inner">
+            <button type="button" class="drawer-btn" id="drawer-open" aria-expanded="false" aria-controls="blog-sidebar">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
+              筛选
+              <span class="drawer-btn-dot" id="drawer-dot" hidden></span>
+            </button>
+
+            <p class="result-count" role="status" aria-live="polite">
+              <strong id="vis-count">{posts.length}</strong> 篇
+            </p>
+          </div>
+
+          <!-- 当前筛选条件 -->
+          <div class="active-bar" id="active-bar" hidden>
+            <span class="active-label">筛选：</span>
+            <div class="active-chips" id="active-chips"></div>
+            <button type="button" class="clear-all" id="clear-all">清除全部</button>
+          </div>
+        </div>
+
         {grouped.map(({ year, items }) => (
           <section class="year-group" data-year={String(year)} aria-labelledby={`year-${year}`}>
             <h2 class="year-head" id={`year-${year}`}>
@@ -425,17 +411,10 @@ function fmt(date: Date) {
     font-size: 0.85rem;
   }
 
-  /* 工具条 */
+  /* 状态条：桌面随内容滚动，窄屏才吸顶以便随时打开筛选 */
   .toolbar {
-    position: sticky;
-    top: var(--nav-height);
-    z-index: 40;
-    margin-bottom: 1.5rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--border);
-    background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    margin-bottom: 0.75rem;
+    padding: 0.35rem 0;
   }
 
   .toolbar-inner {
@@ -443,62 +422,6 @@ function fmt(date: Date) {
     align-items: center;
     gap: 0.75rem;
   }
-
-  .search-box {
-    position: relative;
-    flex: 0 1 230px;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-  }
-
-  .search-icon {
-    position: absolute;
-    left: 0.65rem;
-    width: 13px;
-    height: 13px;
-    fill: none;
-    stroke: var(--text-muted);
-    stroke-width: 2;
-    stroke-linecap: round;
-    pointer-events: none;
-  }
-
-  .search-input {
-    width: 100%;
-    padding: 0.32rem 2rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-full);
-    background: var(--surface);
-    color: var(--text-1);
-    font-family: inherit;
-    font-size: 0.8rem;
-    transition: border-color var(--transition), box-shadow var(--transition);
-  }
-
-  .search-input::placeholder { color: var(--text-muted); }
-
-  .search-input:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(232, 121, 164, 0.15);
-  }
-
-  .search-input::-webkit-search-cancel-button { cursor: pointer; }
-
-  .search-kbd {
-    position: absolute;
-    right: 0.6rem;
-    padding: 0.02em 0.35em;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--text-muted);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    pointer-events: none;
-  }
-
-  .search-input:focus ~ .search-kbd { opacity: 0; }
 
   .result-count {
     flex-shrink: 0;
@@ -577,7 +500,9 @@ function fmt(date: Date) {
     grid-template-areas: 'side main';
     grid-template-columns: 216px minmax(0, 1fr);
     gap: 3rem;
-    align-items: start;
+    /* 侧栏需与主区等高，内部的 sticky 才有可粘附的范围；
+       若用 align-items:start，侧栏高度只等于自身内容，sticky 会直接跟着滚走 */
+    align-items: stretch;
   }
 
   .blog-main { grid-area: main; min-width: 0; }
@@ -799,7 +724,18 @@ function fmt(date: Date) {
     }
 
     .drawer-btn { display: inline-flex; }
-    .search-kbd { display: none; }
+
+    .toolbar {
+      position: sticky;
+      top: var(--nav-height);
+      z-index: 40;
+      margin-bottom: 1.25rem;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid var(--border);
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
 
     .drawer-scrim {
       position: fixed;
@@ -840,10 +776,6 @@ function fmt(date: Date) {
   @media (max-width: 560px) {
     .post-thumb { display: none; }
     .blog-head { padding: 2rem 0 1rem; }
-
-    /* 窄屏让搜索框独占一行，避免和筛选按钮、计数挤在一起 */
-    .toolbar-inner { flex-wrap: wrap; }
-    .search-box { order: 3; flex-basis: 100%; }
     .result-count { margin-left: auto; }
   }
 

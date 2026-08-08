@@ -24,6 +24,21 @@ const hiddenTagCount = Math.max(0, tags.length - tagLimit);
 
 <aside class="blog-sidebar" id="blog-sidebar" aria-label="文章导航">
   <div class="sidebar-inner">
+    <!-- 搜索 -->
+    <div class="side-search">
+      <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+      <input
+        type="search"
+        id="search-input"
+        class="search-input"
+        placeholder="搜索文章…"
+        aria-label="搜索文章标题、摘要、分类、系列与标签"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <kbd class="search-kbd" aria-hidden="true">/</kbd>
+    </div>
+
     <!-- 归档 -->
     <nav class="side-block" aria-labelledby="side-archive-title">
       <h2 class="side-title" id="side-archive-title">
@@ -131,6 +146,59 @@ const hiddenTagCount = Math.max(0, tags.length - tagLimit);
     background: var(--border-hover);
     border-radius: 999px;
   }
+
+  /* 搜索 */
+  .side-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 0.65rem;
+    width: 13px;
+    height: 13px;
+    fill: none;
+    stroke: var(--text-muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 0.38rem 2rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--text-1);
+    font-family: inherit;
+    font-size: 0.8rem;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+
+  .search-input::placeholder { color: var(--text-muted); }
+
+  .search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(232, 121, 164, 0.15);
+  }
+
+  .search-kbd {
+    position: absolute;
+    right: 0.6rem;
+    padding: 0.02em 0.35em;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    pointer-events: none;
+  }
+
+  .search-input:focus ~ .search-kbd { opacity: 0; }
 
   .side-title {
     display: flex;
@@ -325,6 +393,10 @@ const hiddenTagCount = Math.max(0, tags.length - tagLimit);
 
   .tag-toggle[aria-expanded='true'] .tag-toggle-icon {
     transform: rotate(180deg);
+  }
+
+  @media (max-width: 900px) {
+    .search-kbd { display: none; }
   }
 
   @media (prefers-reduced-motion: reduce) {
