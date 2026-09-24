@@ -300,6 +300,89 @@ export function noteToMarkdown(note: Note): string {
   return `${title ? `# ${title}\n\n` : ''}${note.body.trim()}${tags}\n`;
 }
 
+const BLOG_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const MAX_DESCRIPTION = 200;
+const MAX_SLUG = 80;
+const MAX_CATEGORY = 40;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export type BlogPublishInput = {
+  title: string;
+  description: string;
+  slug: string;
+  tags: string[];
+  category?: string;
+  draft: boolean;
+  body: string;
+  pubDate?: Date;
+};
+
+export function normalizeBlogSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, MAX_SLUG);
+}
+
+/** 标题里有英文就用它做文件名，否则用日期加记录编号，避免中文路径。 */
+export function suggestBlogSlug(title: string, noteId: string, now = new Date()): string {
+  const fromTitle = normalizeBlogSlug(title);
+  if (fromTitle.length >= 2) return fromTitle;
+  const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const tail = noteId.replace(/^note-/, '').replace(/[^a-z0-9]+/gi, '').slice(-6).toLowerCase();
+  return tail ? `${stamp}-${tail}` : stamp;
+}
+
+export function formatBlogPubDate(date: Date): string {
+  return `${MONTHS[date.getMonth()]} ${date.getDate()} ${date.getFullYear()}`;
+}
+
+function yamlQuote(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+export function validateBlogPublish(input: Partial<BlogPublishInput>): string | null {
+  const title = input.title?.trim() ?? '';
+  const description = input.description?.trim() ?? '';
+  const slug = normalizeBlogSlug(input.slug ?? '');
+  const category = input.category?.trim() ?? '';
+  const tags = (input.tags ?? []).map((tag) => tag.trim()).filter(Boolean);
+  const body = input.body?.trim() ?? '';
+  if (!title) return '请填写标题';
+  if (title.length > MAX_TITLE) return `标题不能超过 ${MAX_TITLE} 字`;
+  if (!description) return '请填写简介，发布后会显示在博客列表里';
+  if (description.length > MAX_DESCRIPTION) return `简介不能超过 ${MAX_DESCRIPTION} 字`;
+  if (!slug || !BLOG_SLUG.test(slug)) return '文件名只能用小写字母、数字和连字符，例如 weekend-plan';
+  if (category.length > MAX_CATEGORY) return `分类不能超过 ${MAX_CATEGORY} 字`;
+  if (tags.length > MAX_TAGS) return `每篇最多 ${MAX_TAGS} 个标签`;
+  if (tags.some((tag) => tag.length > MAX_TAG)) return `单个标签不能超过 ${MAX_TAG} 字`;
+  if (!body) return '正文是空的，写一点再发布';
+  if ((input.body ?? '').length > MAX_BODY) return `正文不能超过 ${MAX_BODY} 字`;
+  return null;
+}
+
+/** 生成带 frontmatter 的博客文章，标题走字段，不再重复写进正文。 */
+export function noteToBlogMarkdown(input: BlogPublishInput): string {
+  const title = input.title.trim();
+  const description = input.description.trim().replace(/\s+/g, ' ');
+  const tags = [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))];
+  const category = input.category?.trim() ?? '';
+  const date = input.pubDate ?? new Date();
+  const lines = [
+    '---',
+    `title: ${yamlQuote(title)}`,
+    `description: ${yamlQuote(description)}`,
+    `pubDate: ${yamlQuote(formatBlogPubDate(date))}`,
+    `tags: [${tags.map((tag) => yamlQuote(tag)).join(', ')}]`,
+  ];
+  if (category) lines.push(`category: ${yamlQuote(category)}`);
+  if (input.draft) lines.push('draft: true');
+  lines.push('---', '', input.body.replace(/\r\n/g, '\n').trim(), '');
+  return lines.join('\n');
+}
+
 /** 导入 .md / .txt：首行一级标题作为标题，其余作为正文。 */
 export function noteFromMarkdown(source: string, fileName: string, now = new Date()): Note {
   const text = source.replace(/\r\n/g, '\n');
@@ -310,4 +393,4 @@ export function noteFromMarkdown(source: string, fileName: string, now = new Dat
   return note;
 }
 
-export const NOTE_LIMITS = { MAX_NOTES, MAX_TITLE, MAX_BODY, MAX_TAGS, MAX_TAG };
+export const NOTE_LIMITS = { MAX_NOTES, MAX_TITLE, MAX_BODY, MAX_TAGS, MAX_TAG, MAX_DESCRIPTION, MAX_SLUG, MAX_CATEGORY };

@@ -342,6 +342,10 @@ const syntaxItems = [
         <span class="notes-menu__icon"><Fragment set:html={icon('pin', 18)} /></span>
         <span class="notes-menu__label" id="notes-pin-label">置顶这篇</span>
       </button>
+      <button type="button" class="notes-menu__item" data-action="publish">
+        <span class="notes-menu__icon"><Fragment set:html={icon('bookOpen', 18)} /></span>
+        <span class="notes-menu__label">发布到博客</span>
+      </button>
       <button type="button" class="notes-menu__item" data-action="download">
         <span class="notes-menu__icon"><Fragment set:html={icon('download', 18)} /></span>
         <span class="notes-menu__label">下载 Markdown</span>
@@ -446,6 +450,52 @@ const syntaxItems = [
             </button>
           </div>
         </div>
+      </div>
+    </dialog>
+
+    <dialog class="notes-dialog" id="notes-publish-dialog" aria-labelledby="notes-publish-title">
+      <div class="notes-dialog__card">
+        <header class="notes-dialog__head">
+          <span class="notes-dialog__badge"><Fragment set:html={icon('bookOpen', 20)} /></span>
+          <div>
+            <h2 class="notes-dialog__title" id="notes-publish-title">发布到博客</h2>
+            <p class="notes-dialog__sub">写入 src/content/blog/，提交部署后出现在博客列表</p>
+          </div>
+          <button type="button" class="notes-icon-btn" data-close aria-label="关闭"><Fragment set:html={icon('close')} /></button>
+        </header>
+        <form class="notes-dialog__body" id="notes-publish-form">
+          <label class="notes-field">
+            <span class="notes-field__label">标题</span>
+            <input id="notes-publish-title-input" type="text" maxlength="200" autocomplete="off" />
+          </label>
+          <label class="notes-field">
+            <span class="notes-field__label">简介</span>
+            <textarea id="notes-publish-description" rows="3" maxlength="200" placeholder="一两句话，出现在博客列表和分享卡片上"></textarea>
+          </label>
+          <label class="notes-field">
+            <span class="notes-field__label">文件名</span>
+            <input id="notes-publish-slug" type="text" maxlength="80" spellcheck="false" autocomplete="off" placeholder="weekend-plan" />
+            <span class="notes-field__hint">将写成 <code>src/content/blog/<span id="notes-publish-file">….md</span></code></span>
+          </label>
+          <label class="notes-field">
+            <span class="notes-field__label">标签</span>
+            <input id="notes-publish-tags" type="text" maxlength="200" autocomplete="off" placeholder="用逗号分隔，例如 生活, 随笔" />
+          </label>
+          <label class="notes-field">
+            <span class="notes-field__label">分类 <span class="notes-field__optional">选填</span></span>
+            <input id="notes-publish-category" type="text" maxlength="40" autocomplete="off" placeholder="例如 日常记录" />
+          </label>
+          <label class="notes-switch">
+            <span>先存为草稿，不出现在博客列表</span>
+            <input id="notes-publish-draft" type="checkbox" />
+          </label>
+          <p class="notes-dialog__error" id="notes-publish-error" role="alert" hidden></p>
+          <p class="notes-dialog__note" id="notes-publish-note"></p>
+          <div class="notes-dialog__actions">
+            <button type="button" class="notes-btn notes-btn--ghost" data-action="publish-download">下载文章文件</button>
+            <button type="submit" class="notes-btn notes-btn--primary" id="notes-publish-submit">写入仓库</button>
+          </div>
+        </form>
       </div>
     </dialog>
 

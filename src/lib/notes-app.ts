@@ -11,12 +11,17 @@ import {
   loadLocalStore,
   matchNote,
   mergeStores,
+  noteExcerpt,
   noteFromMarkdown,
+  noteToBlogMarkdown,
   noteToMarkdown,
   NOTE_LIMITS,
+  normalizeBlogSlug,
   parseStore,
   parseTags,
   plainText,
+  suggestBlogSlug,
+  validateBlogPublish,
   saveLocalStore,
   searchTerms,
   serializeStore,
@@ -147,6 +152,18 @@ function queryUi(root: HTMLElement) {
     syncWho: el('notes-sync-who'),
     syncTime: el('notes-sync-time'),
     syncConnect: el<HTMLButtonElement>('notes-sync-connect'),
+    publishDialog: el<HTMLDialogElement>('notes-publish-dialog'),
+    publishForm: el<HTMLFormElement>('notes-publish-form'),
+    publishTitle: el<HTMLInputElement>('notes-publish-title-input'),
+    publishDescription: el<HTMLTextAreaElement>('notes-publish-description'),
+    publishSlug: el<HTMLInputElement>('notes-publish-slug'),
+    publishFile: el('notes-publish-file'),
+    publishTags: el<HTMLInputElement>('notes-publish-tags'),
+    publishCategory: el<HTMLInputElement>('notes-publish-category'),
+    publishDraft: el<HTMLInputElement>('notes-publish-draft'),
+    publishError: el('notes-publish-error'),
+    publishNote: el('notes-publish-note'),
+    publishSubmit: el<HTMLButtonElement>('notes-publish-submit'),
     prefsDialog: el<HTMLDialogElement>('notes-prefs-dialog'),
     prefsForm: el<HTMLFormElement>('notes-prefs-form'),
     sizeOutput: el('notes-size-output'),
@@ -1562,6 +1579,114 @@ function downloadMarkdown(): void {
   download(`${safeFileName(note.title || '无标题')}.md`, noteToMarkdown(note), 'text/markdown;charset=utf-8');
 }
 
+function canWriteBlog(): boolean {
+  return import.meta.env.DEV;
+}
+
+function readPublishInput() {
+  return {
+    title: ui.publishTitle.value,
+    description: ui.publishDescription.value,
+    slug: normalizeBlogSlug(ui.publishSlug.value),
+    tags: parseTags(ui.publishTags.value),
+    category: ui.publishCategory.value,
+    draft: ui.publishDraft.checked,
+    body: ui.body.value,
+  };
+}
+
+function showPublishError(message: string | null): void {
+  ui.publishError.hidden = !message;
+  ui.publishError.textContent = message ?? '';
+}
+
+function updatePublishFileHint(): void {
+  const slug = normalizeBlogSlug(ui.publishSlug.value) || '….md';
+  ui.publishFile.textContent = slug.endsWith('.md') ? slug : `${slug}.md`;
+}
+
+function openPublishDialog(): void {
+  const note = activeNote();
+  if (!note || isBlankNote(note)) {
+    showToast('先写一点内容再发布');
+    return;
+  }
+  ui.publishTitle.value = note.title.trim() || '无标题';
+  ui.publishDescription.value = noteExcerpt(note, 120);
+  ui.publishSlug.value = suggestBlogSlug(note.title, note.id);
+  ui.publishTags.value = note.tags.join('，');
+  ui.publishCategory.value = '';
+  ui.publishDraft.checked = false;
+  ui.publishForm.dataset.overwrite = '';
+  ui.publishSubmit.textContent = canWriteBlog() ? '写入仓库' : '下载文章文件';
+  ui.publishNote.textContent = canWriteBlog()
+    ? '只会写到这台电脑上的仓库。线上访客看不到这个接口，也不能往博客里发文章。写入后还要 git commit 并部署，网站才会更新。'
+    : '当前不是本机开发环境，不能直接写入仓库。可以下载带 frontmatter 的 Markdown，再放到 src/content/blog/ 后提交。线上访客无法发布。';
+  showPublishError(null);
+  updatePublishFileHint();
+  ui.publishDialog.showModal();
+  ui.publishDescription.focus();
+  ui.publishDescription.select();
+}
+
+function downloadBlogPost(): boolean {
+  const input = readPublishInput();
+  const error = validateBlogPublish(input);
+  if (error) {
+    showPublishError(error);
+    return false;
+  }
+  download(`${input.slug}.md`, noteToBlogMarkdown(input), 'text/markdown;charset=utf-8');
+  showToast(`已下载 ${input.slug}.md，放到 src/content/blog/ 后提交即可`);
+  return true;
+}
+
+async function publishToBlog(event: SubmitEvent): Promise<void> {
+  event.preventDefault();
+  const input = readPublishInput();
+  const error = validateBlogPublish(input);
+  if (error) {
+    showPublishError(error);
+    return;
+  }
+  if (!canWriteBlog()) {
+    downloadBlogPost();
+    ui.publishDialog.close();
+    return;
+  }
+
+  ui.publishSubmit.disabled = true;
+  ui.publishSubmit.textContent = '写入中…';
+  showPublishError(null);
+  try {
+    const response = await fetch('/api/notes/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...input, overwrite: ui.publishForm.dataset.overwrite === '1' }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as { error?: string; path?: string; exists?: boolean };
+    if (response.status === 409 && payload.exists) {
+      ui.publishForm.dataset.overwrite = '1';
+      ui.publishSubmit.textContent = '覆盖并写入';
+      showPublishError(`${payload.error}。确认是同一篇再点覆盖。`);
+      return;
+    }
+    if (!response.ok) {
+      showPublishError(payload.error || '写入失败，请检查是否在本机运行开发服务器');
+      return;
+    }
+    ui.publishDialog.close();
+    showToast(input.draft ? `已写入 ${payload.path}，草稿不会出现在博客列表` : `已写入 ${payload.path}，提交部署后会出现在博客里`);
+  } catch {
+    showPublishError('网络不可用，无法写入本机仓库');
+  } finally {
+    ui.publishSubmit.disabled = false;
+    if (ui.publishDialog.open) {
+      ui.publishSubmit.textContent = ui.publishForm.dataset.overwrite === '1' ? '覆盖并写入' : '写入仓库';
+    }
+  }
+}
+
 function fillPrint(): void {
   const note = activeNote();
   if (!note) return;
@@ -1703,6 +1828,11 @@ function onRootClick(event: MouseEvent): void {
       return disconnectRemote();
     case 'pin':
       return togglePin();
+    case 'publish':
+      return openPublishDialog();
+    case 'publish-download':
+      downloadBlogPost();
+      return;
     case 'download':
       return downloadMarkdown();
     case 'print':
@@ -1948,6 +2078,17 @@ function bindEvents(): void {
   ui.token.addEventListener('input', () => {
     ui.syncError.hidden = true;
   });
+  ui.publishForm.addEventListener('submit', (event) => void publishToBlog(event));
+  ui.publishSlug.addEventListener('input', () => {
+    ui.publishForm.dataset.overwrite = '';
+    updatePublishFileHint();
+    if (!ui.publishError.hidden) showPublishError(null);
+  });
+  for (const field of [ui.publishTitle, ui.publishDescription, ui.publishTags, ui.publishCategory]) {
+    field.addEventListener('input', () => {
+      if (!ui.publishError.hidden) showPublishError(null);
+    });
+  }
   ui.prefsForm.addEventListener('input', readPrefsForm);
   ui.prefsForm.addEventListener('submit', (event) => event.preventDefault());
 
