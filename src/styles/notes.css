@@ -82,6 +82,40 @@ html.dark .notes-page {
   color: var(--notes-muted);
 }
 
+.notes-page[data-locked] .notes-shell { display: none; }
+.notes-page:not([data-locked]) .notes-gate { display: none; }
+
+.notes-gate {
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
+
+.notes-gate__card {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  width: min(440px, 100%);
+  padding: 28px 26px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--notes-card);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.notes-gate__title {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.notes-gate__text {
+  margin: 0;
+  color: var(--notes-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
 /* ---------- 骨架 ---------- */
 
 .notes-shell {

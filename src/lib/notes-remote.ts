@@ -12,6 +12,7 @@ const KEEPALIVE_LIMIT = 60_000;
 export const BLOG_REPO = 'versechen/versechen.github.io';
 export const BLOG_BRANCH = 'main';
 export const BLOG_DIR = 'src/content/blog';
+export const OWNER_LOGIN = BLOG_REPO.split('/')[0] ?? 'versechen';
 export const BLOG_ACTIONS_URL = `https://github.com/${BLOG_REPO}/actions`;
 export const TOKEN_CREATE_URL =
   'https://github.com/settings/tokens/new?scopes=gist,public_repo&description=codeverse-notes';
@@ -51,6 +52,16 @@ export function saveToken(token: string): void {
   localStorage.setItem(TOKEN_KEY, token.trim());
 }
 
+export function saveLogin(login: string): void {
+  const value = login.trim();
+  if (value) localStorage.setItem(LOGIN_KEY, value);
+  else localStorage.removeItem(LOGIN_KEY);
+}
+
+export function isSiteOwner(login: string): boolean {
+  return login.trim().toLowerCase() === OWNER_LOGIN.toLowerCase();
+}
+
 export function clearRemoteSession(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(GIST_KEY);
@@ -64,14 +75,8 @@ type Gist = {
   files?: Record<string, GistFile>;
 };
 
-function utf8ToBase64(text: string): string {
-  const bytes = new TextEncoder().encode(text);
-  let binary = '';
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
+async function readJson<T>(response: Response): Promise<T> {
+  return (await response.json()) as T;
 }
 
 async function github(token: string, path: string, init: RequestInit = {}, scope: 'gist' | 'repo' = 'gist'): Promise<Response> {
@@ -245,51 +250,99 @@ export async function fetchRepoWriteAccess(token: string): Promise<boolean> {
   }
 }
 
-/** 用 Contents API 提交文章，随后仓库里的 GitHub Actions 会自动构建上线。 */
+/** 用 Git 提交写入文章：创建 blob / tree / commit，不是上传文件。随后 Actions 构建上线。 */
 export async function publishBlogPost(
   token: string,
   input: { slug: string; title: string; markdown: string; overwrite?: boolean },
 ): Promise<{ updated: boolean }> {
   const relative = `${BLOG_DIR}/${input.slug}.md`;
-  const apiPath = `/repos/${BLOG_REPO}/contents/${relative.split('/').map(encodeURIComponent).join('/')}`;
-  const existing = await github(token, `${apiPath}?ref=${BLOG_BRANCH}`, {}, 'repo');
+  const encoded = relative.split('/').map(encodeURIComponent).join('/');
+  const existing = await github(token, `/repos/${BLOG_REPO}/contents/${encoded}?ref=${BLOG_BRANCH}`, {}, 'repo');
   if (classicWriteScope(existing) === false) {
     throw new NotesRemoteError(`当前令牌只有草稿同步权限，发不了博客。${TOKEN_SCOPES_HINT}`, 'auth');
   }
-  let sha = '';
-  if (existing.ok) {
-    const file = (await existing.json()) as { sha?: string };
-    sha = typeof file.sha === 'string' ? file.sha : '';
-    if (!input.overwrite) {
-      throw new NotesRemoteError(`${relative} 已存在`, 'exists');
-    }
-  } else if (existing.status !== 404) {
+  const updated = existing.ok;
+  if (updated && !input.overwrite) {
+    throw new NotesRemoteError(`${relative} 已存在`, 'exists');
+  }
+  if (!existing.ok && existing.status !== 404) {
     throwRepoWriteError(existing.status, await readGithubMessage(existing), '检查远端文章失败，请稍后重试');
   }
 
-  const title = input.title.replace(/\s+/g, ' ').trim().slice(0, 60) || '无标题';
-  const response = await github(
+  const refRes = await github(token, `/repos/${BLOG_REPO}/git/ref/heads/${BLOG_BRANCH}`, {}, 'repo');
+  if (!refRes.ok) {
+    throwRepoWriteError(refRes.status, await readGithubMessage(refRes), '读取仓库分支失败，请稍后重试');
+  }
+  const parent = (await readJson<{ object?: { sha?: string } }>(refRes)).object?.sha;
+  if (!parent) throw new NotesRemoteError('读取仓库分支失败，请稍后重试');
+
+  const commitRes = await github(token, `/repos/${BLOG_REPO}/git/commits/${parent}`, {}, 'repo');
+  if (!commitRes.ok) {
+    throwRepoWriteError(commitRes.status, await readGithubMessage(commitRes), '读取最新提交失败，请稍后重试');
+  }
+  const baseTree = (await readJson<{ tree?: { sha?: string } }>(commitRes)).tree?.sha;
+  if (!baseTree) throw new NotesRemoteError('读取最新提交失败，请稍后重试');
+
+  const blobRes = await github(
     token,
-    apiPath,
+    `/repos/${BLOG_REPO}/git/blobs`,
+    { method: 'POST', body: JSON.stringify({ content: input.markdown, encoding: 'utf-8' }) },
+    'repo',
+  );
+  if (!blobRes.ok) {
+    throwRepoWriteError(blobRes.status, await readGithubMessage(blobRes), '创建提交失败，请稍后重试');
+  }
+  const blobSha = (await readJson<{ sha?: string }>(blobRes)).sha;
+  if (!blobSha) throw new NotesRemoteError('创建提交失败，请稍后重试');
+
+  const treeRes = await github(
+    token,
+    `/repos/${BLOG_REPO}/git/trees`,
     {
-      method: 'PUT',
+      method: 'POST',
       body: JSON.stringify({
-        message: sha ? `feat(blog): 更新《${title}》` : `feat(blog): 发布《${title}》`,
-        content: utf8ToBase64(input.markdown),
-        branch: BLOG_BRANCH,
-        ...(sha ? { sha } : {}),
+        base_tree: baseTree,
+        tree: [{ path: relative, mode: '100644', type: 'blob', sha: blobSha }],
       }),
     },
     'repo',
   );
-  if (!response.ok) {
-    throwRepoWriteError(
-      response.status,
-      await readGithubMessage(response),
-      sha ? '更新远端文章失败，请稍后重试' : '发布到仓库失败，请稍后重试',
-    );
+  if (!treeRes.ok) {
+    throwRepoWriteError(treeRes.status, await readGithubMessage(treeRes), '创建提交失败，请稍后重试');
   }
-  return { updated: Boolean(sha) };
+  const treeSha = (await readJson<{ sha?: string }>(treeRes)).sha;
+  if (!treeSha) throw new NotesRemoteError('创建提交失败，请稍后重试');
+
+  const title = input.title.replace(/\s+/g, ' ').trim().slice(0, 60) || '无标题';
+  const commitNew = await github(
+    token,
+    `/repos/${BLOG_REPO}/git/commits`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        message: updated ? `feat(blog): 更新《${title}》` : `feat(blog): 发布《${title}》`,
+        tree: treeSha,
+        parents: [parent],
+      }),
+    },
+    'repo',
+  );
+  if (!commitNew.ok) {
+    throwRepoWriteError(commitNew.status, await readGithubMessage(commitNew), '创建提交失败，请稍后重试');
+  }
+  const commitSha = (await readJson<{ sha?: string }>(commitNew)).sha;
+  if (!commitSha) throw new NotesRemoteError('创建提交失败，请稍后重试');
+
+  const tip = await github(
+    token,
+    `/repos/${BLOG_REPO}/git/refs/heads/${BLOG_BRANCH}`,
+    { method: 'PATCH', body: JSON.stringify({ sha: commitSha }) },
+    'repo',
+  );
+  if (!tip.ok) {
+    throwRepoWriteError(tip.status, await readGithubMessage(tip), updated ? '更新远端文章失败，请稍后重试' : '发布到仓库失败，请稍后重试');
+  }
+  return { updated };
 }
 
 /** 连接时顺带读取用户名，失败不影响同步。 */
@@ -299,7 +352,6 @@ export async function fetchLogin(token: string): Promise<string> {
     if (!response.ok) return '';
     const user = (await response.json()) as { login?: string };
     const login = typeof user.login === 'string' ? user.login : '';
-    if (login) localStorage.setItem(LOGIN_KEY, login);
     return login;
   } catch (error) {
     if (error instanceof NotesRemoteError && error.code === 'auth') throw error;

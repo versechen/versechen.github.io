@@ -32,17 +32,20 @@ import {
 import {
   BLOG_ACTIONS_URL,
   BLOG_REPO,
+  OWNER_LOGIN,
   TOKEN_CREATE_URL,
   TOKEN_SCOPES_HINT,
   clearRemoteSession,
   fetchLogin,
   fetchRepoWriteAccess,
+  isSiteOwner,
   loadLogin,
   loadToken,
   NotesRemoteError,
   publishBlogPost,
   pullRemoteStore,
   pushRemoteStore,
+  saveLogin,
   saveToken,
 } from './notes-remote';
 import {
@@ -184,6 +187,7 @@ function queryUi(root: HTMLElement) {
     tip: el('notes-tip'),
     dropzone: el('notes-dropzone'),
     print: el('notes-print'),
+    gateError: el('notes-gate-error'),
   };
 }
 
@@ -691,6 +695,28 @@ function renderSyncDialog(): void {
   ui.syncTime.textContent = state.lastSyncAt ? `上次同步：${formatFullTime(new Date(state.lastSyncAt).toISOString())}` : '还没有完成过同步';
 }
 
+function ownerRequired(): boolean {
+  return !import.meta.env.DEV;
+}
+
+function notifyOwnerNav(): void {
+  window.dispatchEvent(new Event('codeverse:owner-nav'));
+}
+
+function lockWorkspace(message?: string): void {
+  ui.root.dataset.locked = '';
+  ui.gateError.hidden = !message;
+  ui.gateError.textContent = message ?? '';
+  notifyOwnerNav();
+}
+
+function unlockWorkspace(): void {
+  delete ui.root.dataset.locked;
+  ui.gateError.hidden = true;
+  ui.gateError.textContent = '';
+  notifyOwnerNav();
+}
+
 function openSyncDialog(): void {
   renderSyncDialog();
   ui.syncDialog.showModal();
@@ -711,15 +737,27 @@ async function connectRemote(event: SubmitEvent): Promise<void> {
   ui.syncError.hidden = true;
   try {
     const login = await fetchLogin(token);
+    if (ownerRequired() && !isSiteOwner(login)) {
+      ui.syncError.hidden = false;
+      ui.syncError.textContent = `记录页只给 @${OWNER_LOGIN} 使用，陌生人的账号进不来`;
+      return;
+    }
+    const wasLocked = 'locked' in ui.root.dataset;
     saveToken(token);
+    saveLogin(login);
     state.token = token;
     state.login = login;
     state.canPublish = await fetchRepoWriteAccess(token);
     state.syncBlocked = false;
-    await syncRemote();
+    unlockWorkspace();
+    if (wasLocked) await startWorkspace();
+    else await syncRemote();
     if (state.sync === 'error' && state.syncBlocked) {
       clearRemoteSession();
       state.token = '';
+      state.login = '';
+      notifyOwnerNav();
+      if (ownerRequired()) lockWorkspace();
       renderSyncDialog();
       return;
     }
@@ -749,6 +787,8 @@ function disconnectRemote(): void {
   state.syncError = '';
   state.syncBlocked = false;
   setSync(state.devSync ? 'dev' : 'local');
+  notifyOwnerNav();
+  if (ownerRequired()) lockWorkspace();
   renderSyncDialog();
   showToast('已断开同步，草稿仍保存在这台设备上');
 }
@@ -1634,10 +1674,14 @@ function refreshPublishNote(): void {
     ui.publishNote.textContent = `已连接${state.login ? ` @${state.login}` : ''}。发布失败时，多半是令牌缺少仓库写入权限。${TOKEN_SCOPES_HINT}。`;
     return;
   }
-  ui.publishNote.textContent = `将以${state.login ? ` @${state.login}` : '当前账号'} 提交到 ${BLOG_REPO}，GitHub Actions 会在后台构建并部署。访客没有仓库权限，不能发布。`;
+  ui.publishNote.textContent = `将以 @${OWNER_LOGIN} 向 ${BLOG_REPO} 创建一个 git 提交，不是上传文件。GitHub Actions 随后在后台构建部署。`;
 }
 
 function openPublishDialog(): void {
+  if (ownerRequired() && !isSiteOwner(state.login)) {
+    showToast(`只有 @${OWNER_LOGIN} 可以发布`);
+    return;
+  }
   const note = activeNote();
   if (!note || isBlankNote(note)) {
     showToast('先写一点内容再发布');
@@ -1665,6 +1709,10 @@ async function publishToBlog(event: SubmitEvent): Promise<void> {
   const error = validateBlogPublish(input);
   if (error) {
     showPublishError(error);
+    return;
+  }
+  if (ownerRequired() && !isSiteOwner(state.login)) {
+    showPublishError(`只有 @${OWNER_LOGIN} 可以发布`, true);
     return;
   }
   if (!state.token) {
@@ -2169,12 +2217,10 @@ function bindEvents(): void {
 
 /* ---------- 启动 ---------- */
 
-async function boot(): Promise<void> {
+async function startWorkspace(): Promise<void> {
   const local = loadLocalStore();
   state.notes = local.notes;
   state.deleted = local.deleted;
-  state.token = loadToken();
-  state.login = loadLogin();
 
   let stored = '';
   try {
@@ -2215,6 +2261,39 @@ async function boot(): Promise<void> {
   if (serializeStore(merged) !== serializeStore(currentStore())) applyStore(merged);
   if (serializeStore(merged) !== serializeStore(dev)) void pushDev();
   setSync('dev');
+}
+
+async function boot(): Promise<void> {
+  state.token = loadToken();
+  state.login = loadLogin();
+
+  if (!ownerRequired()) {
+    unlockWorkspace();
+    await startWorkspace();
+    return;
+  }
+
+  if (!state.token) {
+    lockWorkspace();
+    return;
+  }
+
+  try {
+    const login = await fetchLogin(state.token);
+    if (!isSiteOwner(login)) {
+      clearRemoteSession();
+      state.token = '';
+      state.login = '';
+      lockWorkspace(`这个 GitHub 账号不是站长，记录页只给 @${OWNER_LOGIN} 使用`);
+      return;
+    }
+    state.login = login;
+    saveLogin(login);
+    unlockWorkspace();
+    await startWorkspace();
+  } catch (error) {
+    lockWorkspace(error instanceof NotesRemoteError ? error.message : '无法验证身份，请重新连接');
+  }
 }
 
 export function initNotesApp(): void {

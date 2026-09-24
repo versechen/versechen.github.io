@@ -99,9 +99,19 @@ const syntaxItems = [
 ];
 ---
 
-<BaseLayout title="记录" description="在线写下日常记录，草稿自动保存，可同步到 GitHub 私密 Gist 换设备继续编辑" math hideFooter>
-  <div class="notes-page" id="notes-app" data-mode="split">
+<BaseLayout title="记录" description="站长工作台" math hideFooter noindex>
+  <div class="notes-page" id="notes-app" data-mode="split" data-locked>
     <noscript><p class="notes-noscript">在线记录需要启用 JavaScript。</p></noscript>
+
+    <section class="notes-gate" id="notes-gate" aria-labelledby="notes-gate-title">
+      <div class="notes-gate__card">
+        <span class="notes-dialog__badge"><Fragment set:html={icon('bookOpen', 20)} /></span>
+        <h1 class="notes-gate__title" id="notes-gate-title">记录只给站长用</h1>
+        <p class="notes-gate__text">请用 GitHub 账号 <strong>@versechen</strong> 连接。访客看不到导航里的入口，别人的账号也进不来。</p>
+        <p class="notes-dialog__error" id="notes-gate-error" role="alert" hidden></p>
+        <button type="button" class="notes-btn notes-btn--primary" id="notes-gate-connect" data-action="sync">连接 GitHub</button>
+      </div>
+    </section>
 
     <div class="notes-shell">
       <aside class="notes-sidebar" id="notes-sidebar" aria-label="记录列表">
@@ -475,7 +485,7 @@ const syntaxItems = [
           <label class="notes-field">
             <span class="notes-field__label">文件名</span>
             <input id="notes-publish-slug" type="text" maxlength="80" spellcheck="false" autocomplete="off" placeholder="weekend-plan" />
-            <span class="notes-field__hint">将写成 <code>src/content/blog/<span id="notes-publish-file">….md</span></code></span>
+            <span class="notes-field__hint">将作为一次 git 提交写入 <code>src/content/blog/<span id="notes-publish-file">….md</span></code>，不是上传文件</span>
           </label>
           <label class="notes-field">
             <span class="notes-field__label">标签</span>

@@ -7,7 +7,7 @@ const navLinks = [
   { href: '/reading',  label: '读书' },
   { href: '/projects', label: '项目' },
   { href: '/life',     label: '生活' },
-  { href: '/notes',    label: '记录' },
+  { href: '/notes',    label: '记录', ownerOnly: true },
   { href: '/friends',  label: '友链' },
   { href: '/about',    label: '关于' },
 ];
@@ -27,8 +27,8 @@ const isActive = (href: string) =>
 
     <!-- Desktop nav -->
     <ul class="nav-links" id="nav-links">
-      {navLinks.map(({ href, label }) => (
-        <li>
+      {navLinks.map(({ href, label, ownerOnly }) => (
+        <li hidden={ownerOnly} data-owner-nav={ownerOnly ? '' : undefined}>
           <a
             href={href}
             class:list={['nav-link', { active: isActive(href) }]}
@@ -313,6 +313,24 @@ const isActive = (href: string) =>
       closeMenu({ restoreFocus: true });
     }
   });
+
+  const OWNER_LOGIN = 'versechen';
+  const LOGIN_KEY = 'codeverse.notes.githubLogin';
+  const refreshOwnerNav = () => {
+    let login = '';
+    try {
+      login = localStorage.getItem(LOGIN_KEY)?.trim() ?? '';
+    } catch {
+      login = '';
+    }
+    const local = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const show = login.toLowerCase() === OWNER_LOGIN || local;
+    document.querySelectorAll<HTMLElement>('[data-owner-nav]').forEach((node) => {
+      node.hidden = !show;
+    });
+  };
+  window.addEventListener('codeverse:owner-nav', refreshOwnerNav);
+  refreshOwnerNav();
 
   // Scroll shadow
   const header = document.getElementById('site-header');

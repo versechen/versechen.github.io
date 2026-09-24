@@ -57,7 +57,7 @@ export default defineConfig({
       wrap: true,
     },
   },
-  integrations: [mdx(), sitemap()],
+  integrations: [mdx(), sitemap({ filter: (page) => !page.includes('/notes') })],
   vite: {
     plugins: [notesDevPlugin()],
   },

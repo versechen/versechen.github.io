@@ -15,6 +15,8 @@ interface Props {
   pageTitle?: string; // backward compat
   /** 文档站等沉浸式页面可隐藏页脚 */
   hideFooter?: boolean;
+  /** 工作台等不希望被搜索引擎收录的页面 */
+  noindex?: boolean;
 }
 
 const {
@@ -25,6 +27,7 @@ const {
   type = 'website',
   math = false,
   hideFooter = false,
+  noindex = false,
 } = Astro.props;
 
 const resolvedTitle = title || pageTitle;
@@ -44,6 +47,7 @@ const socialImageURL = image ? new URL(image, Astro.site ?? SITE_URL) : undefine
     <meta name="generator" content={Astro.generator} />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
     <link rel="canonical" href={canonicalURL} />
     <link rel="alternate" type="application/rss+xml" title={`${SITE_TITLE} RSS`} href="/rss.xml" />
     <meta name="theme-color" content="#e879a4" />
