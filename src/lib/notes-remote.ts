@@ -9,7 +9,12 @@ const DESCRIPTION = 'codeverse-notes';
 const FILE = 'notes.json';
 const KEEPALIVE_LIMIT = 60_000;
 
-export type RemoteErrorCode = 'network' | 'auth' | 'rate' | 'other';
+export const BLOG_REPO = 'versechen/versechen.github.io';
+export const BLOG_BRANCH = 'main';
+export const BLOG_DIR = 'src/content/blog';
+export const BLOG_ACTIONS_URL = `https://github.com/${BLOG_REPO}/actions`;
+
+export type RemoteErrorCode = 'network' | 'auth' | 'rate' | 'exists' | 'other';
 
 export class NotesRemoteError extends Error {
   readonly code: RemoteErrorCode;
@@ -54,7 +59,17 @@ type Gist = {
   files?: Record<string, GistFile>;
 };
 
-async function github(token: string, path: string, init: RequestInit = {}): Promise<Response> {
+function utf8ToBase64(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function github(token: string, path: string, init: RequestInit = {}, scope: 'gist' | 'repo' = 'gist'): Promise<Response> {
   let response: Response;
   try {
     response = await fetch(`${API}${path}`, {
@@ -68,17 +83,25 @@ async function github(token: string, path: string, init: RequestInit = {}): Prom
       },
     });
   } catch {
-    throw new NotesRemoteError('网络不可用，草稿先保存在这台设备上', 'network');
+    throw new NotesRemoteError(
+      scope === 'repo' ? '网络不可用，发布没有完成' : '网络不可用，草稿先保存在这台设备上',
+      'network',
+    );
   }
 
   if (response.status === 401) {
     throw new NotesRemoteError('令牌无效或已过期，请重新填写', 'auth');
   }
   if (response.status === 429 || (response.status === 403 && response.headers.get('x-ratelimit-remaining') === '0')) {
-    throw new NotesRemoteError('同步太频繁，GitHub 暂时限流，请过几分钟再试', 'rate');
+    throw new NotesRemoteError('请求太频繁，GitHub 暂时限流，请过几分钟再试', 'rate');
   }
   if (response.status === 403) {
-    throw new NotesRemoteError('GitHub 拒绝了这次同步，请确认令牌有 Gist 读写权限', 'auth');
+    throw new NotesRemoteError(
+      scope === 'repo'
+        ? '没有这个仓库的写入权限。请换一个勾选了 Contents 的令牌，陌生人的令牌无法发布'
+        : 'GitHub 拒绝了这次同步，请确认令牌有 Gist 读写权限',
+      'auth',
+    );
   }
   return response;
 }
@@ -162,6 +185,59 @@ export async function pushRemoteStore(token: string, store: NoteStore, options: 
   const gist = (await response.json()) as Gist;
   if (!gist.id) throw new NotesRemoteError('保存远端草稿失败，请稍后重试');
   writeGistId(gist.id);
+}
+
+/** 有没有往本站仓库推文章的权限；访客令牌一般没有。 */
+export async function fetchRepoWriteAccess(token: string): Promise<boolean> {
+  try {
+    const response = await github(token, `/repos/${BLOG_REPO}`, {}, 'repo');
+    if (!response.ok) return false;
+    const repo = (await response.json()) as { permissions?: { push?: boolean } };
+    return Boolean(repo.permissions?.push);
+  } catch (error) {
+    if (error instanceof NotesRemoteError && (error.code === 'auth' || error.code === 'network')) return false;
+    throw error;
+  }
+}
+
+/** 用 Contents API 提交文章，随后仓库里的 GitHub Actions 会自动构建上线。 */
+export async function publishBlogPost(
+  token: string,
+  input: { slug: string; title: string; markdown: string; overwrite?: boolean },
+): Promise<{ updated: boolean }> {
+  const relative = `${BLOG_DIR}/${input.slug}.md`;
+  const apiPath = `/repos/${BLOG_REPO}/contents/${relative.split('/').map(encodeURIComponent).join('/')}`;
+  const existing = await github(token, `${apiPath}?ref=${BLOG_BRANCH}`, {}, 'repo');
+  let sha = '';
+  if (existing.ok) {
+    const file = (await existing.json()) as { sha?: string };
+    sha = typeof file.sha === 'string' ? file.sha : '';
+    if (!input.overwrite) {
+      throw new NotesRemoteError(`${relative} 已存在`, 'exists');
+    }
+  } else if (existing.status !== 404) {
+    throw new NotesRemoteError('检查远端文章失败，请稍后重试');
+  }
+
+  const title = input.title.replace(/\s+/g, ' ').trim().slice(0, 60) || '无标题';
+  const response = await github(
+    token,
+    apiPath,
+    {
+      method: 'PUT',
+      body: JSON.stringify({
+        message: sha ? `feat(blog): 更新《${title}》` : `feat(blog): 发布《${title}》`,
+        content: utf8ToBase64(input.markdown),
+        branch: BLOG_BRANCH,
+        ...(sha ? { sha } : {}),
+      }),
+    },
+    'repo',
+  );
+  if (!response.ok) {
+    throw new NotesRemoteError(sha ? '更新远端文章失败，请稍后重试' : '发布到仓库失败，请稍后重试');
+  }
+  return { updated: Boolean(sha) };
 }
 
 /** 连接时顺带读取用户名，失败不影响同步。 */

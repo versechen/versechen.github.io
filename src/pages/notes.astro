@@ -417,8 +417,8 @@ const syntaxItems = [
         <form class="notes-dialog__body" id="notes-sync-form" data-when="disconnected">
           <ol class="notes-steps">
             <li>
-              <span>打开 GitHub，生成一个只勾选 <strong>gist</strong> 权限的令牌</span>
-              <a class="notes-steps__link" href="https://github.com/settings/tokens/new?scopes=gist&description=codeverse-notes" target="_blank" rel="noopener noreferrer">去生成令牌 ↗</a>
+              <span>打开 GitHub，生成令牌：同步草稿勾选 <strong>gist</strong>，发布博客再勾选 <strong>public_repo</strong>（私密仓库勾选 repo）</span>
+              <a class="notes-steps__link" href="https://github.com/settings/tokens/new?scopes=gist,public_repo&description=codeverse-notes" target="_blank" rel="noopener noreferrer">去生成令牌 ↗</a>
             </li>
             <li><span>把令牌粘贴到下面，点击连接</span></li>
             <li><span>在其他设备上填写同一个令牌，就能接着写</span></li>
@@ -459,7 +459,7 @@ const syntaxItems = [
           <span class="notes-dialog__badge"><Fragment set:html={icon('bookOpen', 20)} /></span>
           <div>
             <h2 class="notes-dialog__title" id="notes-publish-title">发布到博客</h2>
-            <p class="notes-dialog__sub">写入 src/content/blog/，提交部署后出现在博客列表</p>
+            <p class="notes-dialog__sub">提交到 GitHub，Actions 自动构建上线</p>
           </div>
           <button type="button" class="notes-icon-btn" data-close aria-label="关闭"><Fragment set:html={icon('close')} /></button>
         </header>
@@ -492,8 +492,8 @@ const syntaxItems = [
           <p class="notes-dialog__error" id="notes-publish-error" role="alert" hidden></p>
           <p class="notes-dialog__note" id="notes-publish-note"></p>
           <div class="notes-dialog__actions">
-            <button type="button" class="notes-btn notes-btn--ghost" data-action="publish-download">下载文章文件</button>
-            <button type="submit" class="notes-btn notes-btn--primary" id="notes-publish-submit">写入仓库</button>
+            <button type="button" class="notes-btn notes-btn--ghost" data-action="sync">连接 GitHub</button>
+            <button type="submit" class="notes-btn notes-btn--primary" id="notes-publish-submit">发布</button>
           </div>
         </form>
       </div>

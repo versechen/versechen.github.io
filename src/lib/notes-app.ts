@@ -30,11 +30,15 @@ import {
   type NoteStore,
 } from './notes';
 import {
+  BLOG_ACTIONS_URL,
+  BLOG_REPO,
   clearRemoteSession,
   fetchLogin,
+  fetchRepoWriteAccess,
   loadLogin,
   loadToken,
   NotesRemoteError,
+  publishBlogPost,
   pullRemoteStore,
   pushRemoteStore,
   saveToken,
@@ -188,6 +192,7 @@ const state = {
   prefs: { ...DEFAULT_PREFS },
   token: '',
   login: '',
+  canPublish: false,
   devSync: false,
   sync: 'local' as SyncState,
   syncError: '',
@@ -703,6 +708,7 @@ async function connectRemote(event: SubmitEvent): Promise<void> {
     saveToken(token);
     state.token = token;
     state.login = login;
+    state.canPublish = await fetchRepoWriteAccess(token);
     state.syncBlocked = false;
     await syncRemote();
     if (state.sync === 'error' && state.syncBlocked) {
@@ -733,6 +739,7 @@ function disconnectRemote(): void {
   remoteTimer = 0;
   state.token = '';
   state.login = '';
+  state.canPublish = false;
   state.syncError = '';
   state.syncBlocked = false;
   setSync(state.devSync ? 'dev' : 'local');
@@ -1579,10 +1586,6 @@ function downloadMarkdown(): void {
   download(`${safeFileName(note.title || '无标题')}.md`, noteToMarkdown(note), 'text/markdown;charset=utf-8');
 }
 
-function canWriteBlog(): boolean {
-  return import.meta.env.DEV;
-}
-
 function readPublishInput() {
   return {
     title: ui.publishTitle.value,
@@ -1605,6 +1608,22 @@ function updatePublishFileHint(): void {
   ui.publishFile.textContent = slug.endsWith('.md') ? slug : `${slug}.md`;
 }
 
+function publishSubmitLabel(): string {
+  return ui.publishForm.dataset.overwrite === '1' ? '覆盖并发布' : '发布';
+}
+
+function refreshPublishNote(): void {
+  if (!state.token) {
+    ui.publishNote.textContent = `发布会提交到 ${BLOG_REPO}，随后 GitHub Actions 自动构建上线。请先连接有仓库写入权限的令牌；只填 Gist 或陌生人的账号发不出去。`;
+    return;
+  }
+  if (!state.canPublish) {
+    ui.publishNote.textContent = `已连接${state.login ? ` @${state.login}` : ''}，但这个令牌写不了 ${BLOG_REPO}。请换一个勾选了 Contents 的令牌。`;
+    return;
+  }
+  ui.publishNote.textContent = `将以${state.login ? ` @${state.login}` : '当前账号'} 提交到 ${BLOG_REPO}，GitHub Actions 会在后台构建并部署。访客没有仓库权限，不能发布。`;
+}
+
 function openPublishDialog(): void {
   const note = activeNote();
   if (!note || isBlankNote(note)) {
@@ -1618,27 +1637,13 @@ function openPublishDialog(): void {
   ui.publishCategory.value = '';
   ui.publishDraft.checked = false;
   ui.publishForm.dataset.overwrite = '';
-  ui.publishSubmit.textContent = canWriteBlog() ? '写入仓库' : '下载文章文件';
-  ui.publishNote.textContent = canWriteBlog()
-    ? '只会写到这台电脑上的仓库。线上访客看不到这个接口，也不能往博客里发文章。写入后还要 git commit 并部署，网站才会更新。'
-    : '当前不是本机开发环境，不能直接写入仓库。可以下载带 frontmatter 的 Markdown，再放到 src/content/blog/ 后提交。线上访客无法发布。';
+  ui.publishSubmit.textContent = '发布';
+  refreshPublishNote();
   showPublishError(null);
   updatePublishFileHint();
   ui.publishDialog.showModal();
   ui.publishDescription.focus();
   ui.publishDescription.select();
-}
-
-function downloadBlogPost(): boolean {
-  const input = readPublishInput();
-  const error = validateBlogPublish(input);
-  if (error) {
-    showPublishError(error);
-    return false;
-  }
-  download(`${input.slug}.md`, noteToBlogMarkdown(input), 'text/markdown;charset=utf-8');
-  showToast(`已下载 ${input.slug}.md，放到 src/content/blog/ 后提交即可`);
-  return true;
 }
 
 async function publishToBlog(event: SubmitEvent): Promise<void> {
@@ -1649,41 +1654,45 @@ async function publishToBlog(event: SubmitEvent): Promise<void> {
     showPublishError(error);
     return;
   }
-  if (!canWriteBlog()) {
-    downloadBlogPost();
-    ui.publishDialog.close();
+  if (!state.token) {
+    showPublishError('请先连接 GitHub，并使用能写入本站仓库的令牌');
     return;
   }
 
   ui.publishSubmit.disabled = true;
-  ui.publishSubmit.textContent = '写入中…';
+  ui.publishSubmit.textContent = '发布中…';
   showPublishError(null);
   try {
-    const response = await fetch('/api/notes/publish', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...input, overwrite: ui.publishForm.dataset.overwrite === '1' }),
+    const result = await publishBlogPost(state.token, {
+      slug: input.slug,
+      title: input.title,
+      markdown: noteToBlogMarkdown(input),
+      overwrite: ui.publishForm.dataset.overwrite === '1',
     });
-    const payload = (await response.json().catch(() => ({}))) as { error?: string; path?: string; exists?: boolean };
-    if (response.status === 409 && payload.exists) {
-      ui.publishForm.dataset.overwrite = '1';
-      ui.publishSubmit.textContent = '覆盖并写入';
-      showPublishError(`${payload.error}。确认是同一篇再点覆盖。`);
-      return;
-    }
-    if (!response.ok) {
-      showPublishError(payload.error || '写入失败，请检查是否在本机运行开发服务器');
-      return;
-    }
+    state.canPublish = true;
     ui.publishDialog.close();
-    showToast(input.draft ? `已写入 ${payload.path}，草稿不会出现在博客列表` : `已写入 ${payload.path}，提交部署后会出现在博客里`);
-  } catch {
-    showPublishError('网络不可用，无法写入本机仓库');
+    const done = result.updated ? '已更新仓库里的文章' : '已提交到仓库';
+    const extra = input.draft ? '草稿不会出现在博客列表。' : 'GitHub Actions 正在后台构建，大约一两分钟后会出现在博客里。';
+    showToast(`${done}，${extra}`, { label: '查看进度', run: () => window.open(BLOG_ACTIONS_URL, '_blank', 'noopener,noreferrer') }, 8000);
+  } catch (caught) {
+    if (caught instanceof NotesRemoteError && caught.code === 'exists') {
+      ui.publishForm.dataset.overwrite = '1';
+      ui.publishSubmit.textContent = '覆盖并发布';
+      showPublishError(`${caught.message}。确认是同一篇再点覆盖。`);
+      return;
+    }
+    showPublishError(caught instanceof NotesRemoteError ? caught.message : '发布失败，请稍后重试');
+    if (caught instanceof NotesRemoteError && caught.code === 'auth') {
+      void fetchRepoWriteAccess(state.token)
+        .then((ok) => {
+          state.canPublish = ok;
+          refreshPublishNote();
+        })
+        .catch(() => undefined);
+    }
   } finally {
     ui.publishSubmit.disabled = false;
-    if (ui.publishDialog.open) {
-      ui.publishSubmit.textContent = ui.publishForm.dataset.overwrite === '1' ? '覆盖并写入' : '写入仓库';
-    }
+    if (ui.publishDialog.open) ui.publishSubmit.textContent = publishSubmitLabel();
   }
 }
 
@@ -1819,6 +1828,7 @@ function onRootClick(event: MouseEvent): void {
     case 'focus':
       return setFocusMode(!ui.root.classList.contains('is-focus'));
     case 'sync':
+      if (ui.publishDialog.open) ui.publishDialog.close();
       return openSyncDialog();
     case 'sync-now':
       state.syncBlocked = false;
@@ -1830,9 +1840,6 @@ function onRootClick(event: MouseEvent): void {
       return togglePin();
     case 'publish':
       return openPublishDialog();
-    case 'publish-download':
-      downloadBlogPost();
-      return;
     case 'download':
       return downloadMarkdown();
     case 'print':
@@ -2167,6 +2174,13 @@ async function boot(): Promise<void> {
   ui.root.dataset.ready = '';
 
   if (state.token) {
+    void fetchRepoWriteAccess(state.token)
+      .then((ok) => {
+        state.canPublish = ok;
+      })
+      .catch(() => {
+        state.canPublish = false;
+      });
     if (!navigator.onLine) {
       state.syncError = '网络已断开，恢复后会自动同步';
       setSync('offline');

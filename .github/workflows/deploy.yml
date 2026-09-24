@@ -1,3 +1,4 @@
+# 记录页点「发布」会把文章提交到 main，本工作流随后在后台构建并部署。
 name: Deploy to GitHub Pages
 
 on:
