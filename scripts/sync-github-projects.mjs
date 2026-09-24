@@ -43,24 +43,70 @@ function resolveToken() {
 }
 
 const TOKEN = resolveToken();
+const UA = 'codeverse-sync-github-projects';
+const RETRY_STATUSES = new Set([429, 502, 503]);
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryWaitMs(res, attempt) {
+  const retryAfter = res?.headers.get('retry-after');
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(30_000, Math.max(800, seconds * 1000));
+  }
+  const reset = res?.headers.get('x-ratelimit-reset');
+  if (reset) {
+    const wait = Number(reset) * 1000 - Date.now();
+    if (Number.isFinite(wait) && wait > 0) return Math.min(30_000, wait);
+  }
+  return Math.min(20_000, 800 * 2 ** attempt);
+}
+
+async function request(url, headers, { raw = false } = {}) {
+  let lastError = `GitHub 请求失败：${url}`;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    let res;
+    try {
+      res = await fetch(url, { headers });
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+      if (attempt === 4) throw new Error(lastError);
+      await sleep(retryWaitMs(null, attempt));
+      continue;
+    }
+    if (res.status === 404) return null;
+    if (RETRY_STATUSES.has(res.status)) {
+      const wait = retryWaitMs(res, attempt);
+      lastError = `GitHub ${res.status} ${url}`;
+      console.warn(`  ${lastError}，${Math.ceil(wait / 1000)}s 后重试`);
+      await sleep(wait);
+      continue;
+    }
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`GitHub ${res.status} ${url}\n${body.slice(0, 400)}`);
+    }
+    return raw ? await res.text() : await res.json();
+  }
+  throw new Error(`${lastError}（已重试）`);
+}
 
 async function gh(path, { raw = false } = {}) {
   const url = path.startsWith('http') ? path : `${API}${path}`;
   const headers = {
     Accept: raw ? 'application/vnd.github.raw' : 'application/vnd.github+json',
-    'User-Agent': 'codeverse-sync-github-projects',
+    'User-Agent': UA,
     'X-GitHub-Api-Version': '2022-11-28',
   };
   if (TOKEN) headers.Authorization = `Bearer ${TOKEN}`;
+  return request(url, headers, { raw });
+}
 
-  const res = await fetch(url, { headers });
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`GitHub ${res.status} ${url}\n${body.slice(0, 400)}`);
-  }
-  if (raw) return await res.text();
-  return await res.json();
+function rawFileUrl(repo, branch, filePath) {
+  const path = filePath.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+  return `https://raw.githubusercontent.com/${repo}/${encodeURIComponent(branch)}/${path}`;
 }
 
 /** 本站仓库优先读本地文件，避免「先推送才能同步自己」的鸡生蛋问题 */
@@ -71,22 +117,21 @@ function readLocalIfCurrent(repo, filePath) {
   return readFileSync(abs, 'utf8');
 }
 
-async function fetchFile(repo, filePath) {
+async function fetchFile(repo, filePath, branch) {
   const local = readLocalIfCurrent(repo, filePath);
   if (local != null) return local;
-  return gh(`/repos/${repo}/contents/${encodeURI(filePath)}`, { raw: true });
+  const headers = { Accept: 'text/plain', 'User-Agent': UA };
+  if (TOKEN) headers.Authorization = `Bearer ${TOKEN}`;
+  return request(rawFileUrl(repo, branch, filePath), headers, { raw: true });
 }
 
-async function fetchReadme(repo) {
+async function fetchReadme(repo, branch) {
   const localCandidates = ['README.md', 'readme.md', 'Readme.md'];
-  if (repo === CURRENT_REPO) {
-    for (const name of localCandidates) {
-      const abs = join(ROOT, name);
-      if (existsSync(abs)) return readFileSync(abs, 'utf8');
-    }
+  for (const name of localCandidates) {
+    const text = await fetchFile(repo, name, branch);
+    if (text) return text;
   }
-  const text = await gh(`/repos/${repo}/readme`, { raw: true });
-  return text;
+  return gh(`/repos/${repo}/readme`, { raw: true });
 }
 
 /** 脱敏：避免把误进仓库的 token 写进静态站 */
@@ -344,7 +389,7 @@ async function syncProject(project) {
   console.log(`\n→ ${slug} (${repo})`);
   const branch = await getDefaultBranch(repo);
 
-  let readme = await fetchReadme(repo);
+  let readme = await fetchReadme(repo, branch);
   if (!readme) throw new Error(`无法获取 README：${repo}`);
   readme = rewriteAssetUrls(
     redactSecrets(stripExistingFrontmatter(readme)),
@@ -360,12 +405,11 @@ async function syncProject(project) {
     const docsPath = docs.path ?? 'docs';
     const exclude = docs.exclude ?? ['.gitbook', '.i18n', 'assets', 'images', 'node_modules'];
     const maxFiles = docs.maxFiles ?? 50;
-    const optional = Boolean(docs.optional);
     let docEntries = [];
 
     try {
       if (docs.summary) {
-        const summaryText = await fetchFile(repo, docs.summary);
+        const summaryText = await fetchFile(repo, docs.summary, branch);
         if (summaryText) {
           docEntries = parseSummary(summaryText, docsPath === '.' ? '' : docsPath)
             .filter((d) => !shouldExclude(d.path, exclude))
@@ -382,7 +426,7 @@ async function syncProject(project) {
 
       const written = [];
       for (const entry of docEntries) {
-        let body = await fetchFile(repo, entry.path);
+        let body = await fetchFile(repo, entry.path, branch);
         if (body == null) {
           console.warn(`  skip missing ${entry.path}`);
           continue;
@@ -406,17 +450,14 @@ async function syncProject(project) {
         });
         writeFileSync(outFile, fm + body.trimEnd() + '\n');
         written.push(idPath);
+        await sleep(80);
       }
 
       hasDocs = written.length > 0;
       console.log(`  docs: ${written.length} 篇`);
     } catch (err) {
-      if (optional) {
-        console.warn(`  docs 可选，已跳过：${err.message}`);
-        hasDocs = false;
-      } else {
-        throw err;
-      }
+      console.warn(`  docs 拉取失败，先只用 README：${err.message}`);
+      hasDocs = false;
     }
   } else {
     console.log('  docs: （未配置）');
@@ -436,6 +477,22 @@ async function syncProject(project) {
   });
   writeFileSync(join(OUT_PROJECTS, `${slug}.md`), projectFm + readme.trimEnd() + '\n');
   console.log('  README: ok');
+}
+
+function writeFallbackProject(project) {
+  const fm = toFrontmatter({
+    name: project.name,
+    description: project.description,
+    icon: project.icon ?? '📦',
+    tags: project.tags ?? [],
+    status: project.status ?? 'active',
+    github: project.github || `https://github.com/${project.repo}`,
+    link: project.link,
+    order: project.order ?? 99,
+    hasDocs: false,
+  });
+  writeFileSync(join(OUT_PROJECTS, `${project.slug}.md`), `${fm}${project.description ?? ''}\n`);
+  console.warn(`  已写入占位项目页，避免整站部署中断`);
 }
 
 async function main() {
@@ -466,11 +523,22 @@ async function main() {
     }
   }
 
+  let ok = 0;
   for (const project of projects) {
-    await syncProject(project);
+    try {
+      await syncProject(project);
+      ok += 1;
+    } catch (error) {
+      console.warn(`\n⚠ ${project.slug} 同步失败，已跳过：${error.message || error}`);
+      writeFallbackProject(project);
+    }
   }
 
-  console.log(`\n完成：${projects.length} 个项目 → ${relative(ROOT, OUT_PROJECTS)} / ${relative(ROOT, OUT_DOCS)}`);
+  if (ok === 0) {
+    throw new Error('所有项目都同步失败');
+  }
+
+  console.log(`\n完成：${ok}/${projects.length} 个项目 → ${relative(ROOT, OUT_PROJECTS)} / ${relative(ROOT, OUT_DOCS)}`);
 }
 
 main().catch((err) => {
