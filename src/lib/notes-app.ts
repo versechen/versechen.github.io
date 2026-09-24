@@ -32,6 +32,8 @@ import {
 import {
   BLOG_ACTIONS_URL,
   BLOG_REPO,
+  TOKEN_CREATE_URL,
+  TOKEN_SCOPES_HINT,
   clearRemoteSession,
   fetchLogin,
   fetchRepoWriteAccess,
@@ -167,7 +169,9 @@ function queryUi(root: HTMLElement) {
     publishDraft: el<HTMLInputElement>('notes-publish-draft'),
     publishError: el('notes-publish-error'),
     publishNote: el('notes-publish-note'),
+    publishTokenHelp: el<HTMLParagraphElement>('notes-publish-token-help'),
     publishSubmit: el<HTMLButtonElement>('notes-publish-submit'),
+    publishConnect: el<HTMLButtonElement>('notes-publish-connect'),
     prefsDialog: el<HTMLDialogElement>('notes-prefs-dialog'),
     prefsForm: el<HTMLFormElement>('notes-prefs-form'),
     sizeOutput: el('notes-size-output'),
@@ -1613,12 +1617,15 @@ function publishSubmitLabel(): string {
 }
 
 function refreshPublishNote(): void {
+  const needToken = !state.token || !state.canPublish;
+  ui.publishTokenHelp.hidden = !needToken;
+  ui.publishConnect.textContent = state.token ? '更换令牌' : '连接 GitHub';
   if (!state.token) {
-    ui.publishNote.textContent = `发布会提交到 ${BLOG_REPO}，随后 GitHub Actions 自动构建上线。请先连接有仓库写入权限的令牌；只填 Gist 或陌生人的账号发不出去。`;
+    ui.publishNote.textContent = `发布会提交到 ${BLOG_REPO}，随后 GitHub Actions 自动构建上线。当前只连了 Gist 的令牌发不出去，需要同时勾选 public_repo。`;
     return;
   }
   if (!state.canPublish) {
-    ui.publishNote.textContent = `已连接${state.login ? ` @${state.login}` : ''}，但这个令牌写不了 ${BLOG_REPO}。请换一个勾选了 Contents 的令牌。`;
+    ui.publishNote.textContent = `已连接${state.login ? ` @${state.login}` : ''}，但这个令牌写不了 ${BLOG_REPO}。${TOKEN_SCOPES_HINT}。`;
     return;
   }
   ui.publishNote.textContent = `将以${state.login ? ` @${state.login}` : '当前账号'} 提交到 ${BLOG_REPO}，GitHub Actions 会在后台构建并部署。访客没有仓库权限，不能发布。`;
@@ -1656,6 +1663,7 @@ async function publishToBlog(event: SubmitEvent): Promise<void> {
   }
   if (!state.token) {
     showPublishError('请先连接 GitHub，并使用能写入本站仓库的令牌');
+    refreshPublishNote();
     return;
   }
 
@@ -1663,6 +1671,12 @@ async function publishToBlog(event: SubmitEvent): Promise<void> {
   ui.publishSubmit.textContent = '发布中…';
   showPublishError(null);
   try {
+    state.canPublish = await fetchRepoWriteAccess(state.token);
+    refreshPublishNote();
+    if (!state.canPublish) {
+      showPublishError(`当前令牌写不了仓库。${TOKEN_SCOPES_HINT}`);
+      return;
+    }
     const result = await publishBlogPost(state.token, {
       slug: input.slug,
       title: input.title,
@@ -2085,6 +2099,8 @@ function bindEvents(): void {
   ui.token.addEventListener('input', () => {
     ui.syncError.hidden = true;
   });
+  const tokenHelpLink = ui.publishTokenHelp.querySelector('a');
+  if (tokenHelpLink) tokenHelpLink.href = TOKEN_CREATE_URL;
   ui.publishForm.addEventListener('submit', (event) => void publishToBlog(event));
   ui.publishSlug.addEventListener('input', () => {
     ui.publishForm.dataset.overwrite = '';

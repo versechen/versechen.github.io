@@ -491,8 +491,11 @@ const syntaxItems = [
           </label>
           <p class="notes-dialog__error" id="notes-publish-error" role="alert" hidden></p>
           <p class="notes-dialog__note" id="notes-publish-note"></p>
+          <p class="notes-dialog__note" id="notes-publish-token-help" hidden>
+            <a class="notes-steps__link" href="https://github.com/settings/tokens/new?scopes=gist,public_repo&description=codeverse-notes" target="_blank" rel="noopener noreferrer">重新生成令牌（勾选 gist 和 public_repo）↗</a>
+          </p>
           <div class="notes-dialog__actions">
-            <button type="button" class="notes-btn notes-btn--ghost" data-action="sync">连接 GitHub</button>
+            <button type="button" class="notes-btn notes-btn--ghost" data-action="sync" id="notes-publish-connect">连接 GitHub</button>
             <button type="submit" class="notes-btn notes-btn--primary" id="notes-publish-submit">发布</button>
           </div>
         </form>

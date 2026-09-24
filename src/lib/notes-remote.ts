@@ -13,6 +13,11 @@ export const BLOG_REPO = 'versechen/versechen.github.io';
 export const BLOG_BRANCH = 'main';
 export const BLOG_DIR = 'src/content/blog';
 export const BLOG_ACTIONS_URL = `https://github.com/${BLOG_REPO}/actions`;
+export const TOKEN_CREATE_URL =
+  'https://github.com/settings/tokens/new?scopes=gist,public_repo&description=codeverse-notes';
+export const TOKEN_SCOPES_HINT = '请重新生成令牌并勾选 gist 和 public_repo，再到「连接 GitHub」里粘贴；细粒度令牌请打开本仓库的 Contents 读写';
+
+const CLASSIC_WRITE_SCOPES = new Set(['repo', 'public_repo']);
 
 export type RemoteErrorCode = 'network' | 'auth' | 'rate' | 'exists' | 'other';
 
@@ -106,6 +111,46 @@ async function github(token: string, path: string, init: RequestInit = {}, scope
   return response;
 }
 
+/** 经典令牌的权限看 scope；细粒度令牌没有这个头，返回 null。 */
+function classicWriteScope(response: Response): boolean | null {
+  const header = response.headers.get('x-oauth-scopes');
+  if (header === null) return null;
+  const scopes = header.split(',').map((item) => item.trim()).filter(Boolean);
+  if (scopes.length === 0) return null;
+  return scopes.some((scope) => CLASSIC_WRITE_SCOPES.has(scope));
+}
+
+async function readGithubMessage(response: Response): Promise<string> {
+  try {
+    const payload = (await response.json()) as { message?: string };
+    return typeof payload.message === 'string' ? payload.message.replace(/\s+/g, ' ').trim() : '';
+  } catch {
+    return '';
+  }
+}
+
+function throwRepoWriteError(status: number, githubMessage: string, fallback: string): never {
+  const text = githubMessage.toLowerCase();
+  if (status === 404 || /not found|resource not accessible/.test(text)) {
+    throw new NotesRemoteError(`没有这个仓库的写入权限。${TOKEN_SCOPES_HINT}`, 'auth');
+  }
+  if (status === 409) {
+    throw new NotesRemoteError('仓库有冲突，请稍后重试；如果这篇文章刚被改过，先覆盖再发布', 'other');
+  }
+  if (status === 422) {
+    if (text.includes('sha')) {
+      throw new NotesRemoteError('远端文章已变化，请再点一次覆盖并发布', 'exists');
+    }
+    if (/protect|not authorized to push|required status|ruleset/.test(text)) {
+      throw new NotesRemoteError('main 分支受保护，无法直接提交。请到仓库设置里允许推送到 main', 'other');
+    }
+    if (text.includes('email')) {
+      throw new NotesRemoteError('GitHub 要求先验证邮箱才能提交，请到 GitHub 设置里完成验证', 'other');
+    }
+  }
+  throw new NotesRemoteError(fallback, 'other');
+}
+
 function writeGistId(id: string): void {
   localStorage.setItem(GIST_KEY, id);
 }
@@ -192,6 +237,8 @@ export async function fetchRepoWriteAccess(token: string): Promise<boolean> {
   try {
     const response = await github(token, `/repos/${BLOG_REPO}`, {}, 'repo');
     if (!response.ok) return false;
+    // 仓库主人用仅 gist 的经典令牌时，permissions.push 仍可能是 true，必须再看 scope。
+    if (classicWriteScope(response) === false) return false;
     const repo = (await response.json()) as { permissions?: { push?: boolean } };
     return Boolean(repo.permissions?.push);
   } catch (error) {
@@ -208,6 +255,9 @@ export async function publishBlogPost(
   const relative = `${BLOG_DIR}/${input.slug}.md`;
   const apiPath = `/repos/${BLOG_REPO}/contents/${relative.split('/').map(encodeURIComponent).join('/')}`;
   const existing = await github(token, `${apiPath}?ref=${BLOG_BRANCH}`, {}, 'repo');
+  if (classicWriteScope(existing) === false) {
+    throw new NotesRemoteError(`当前令牌只有草稿同步权限，发不了博客。${TOKEN_SCOPES_HINT}`, 'auth');
+  }
   let sha = '';
   if (existing.ok) {
     const file = (await existing.json()) as { sha?: string };
@@ -216,7 +266,7 @@ export async function publishBlogPost(
       throw new NotesRemoteError(`${relative} 已存在`, 'exists');
     }
   } else if (existing.status !== 404) {
-    throw new NotesRemoteError('检查远端文章失败，请稍后重试');
+    throwRepoWriteError(existing.status, await readGithubMessage(existing), '检查远端文章失败，请稍后重试');
   }
 
   const title = input.title.replace(/\s+/g, ' ').trim().slice(0, 60) || '无标题';
@@ -235,7 +285,11 @@ export async function publishBlogPost(
     'repo',
   );
   if (!response.ok) {
-    throw new NotesRemoteError(sha ? '更新远端文章失败，请稍后重试' : '发布到仓库失败，请稍后重试');
+    throwRepoWriteError(
+      response.status,
+      await readGithubMessage(response),
+      sha ? '更新远端文章失败，请稍后重试' : '发布到仓库失败，请稍后重试',
+    );
   }
   return { updated: Boolean(sha) };
 }
