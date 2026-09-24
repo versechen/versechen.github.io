@@ -8,6 +8,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeSlug from 'rehype-slug';
 import remarkGithubBlockquoteAlert from 'remark-github-blockquote-alert';
 import remarkMath from 'remark-math';
+import { notesDevPlugin } from './scripts/notes-dev-plugin.mjs';
 
 // https://astro.build/config
 export default defineConfig({
@@ -57,4 +58,7 @@ export default defineConfig({
     },
   },
   integrations: [mdx(), sitemap()],
+  vite: {
+    plugins: [notesDevPlugin()],
+  },
 });

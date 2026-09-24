@@ -27,6 +27,9 @@ pnpm-debug.log*
 .idea/
 *.swp
 
+# 日常记录草稿，只留在本机
+data/local-notes.json
+
 # misc
 *.local
 .cache/

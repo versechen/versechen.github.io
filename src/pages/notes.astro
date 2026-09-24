@@ -1,0 +1,556 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { COMMANDS, EMOJI_GROUPS, SYMBOL_GROUPS, TEMPLATES } from '../lib/notes-editor';
+import { icon, type IconName } from '../lib/notes-icons';
+import '../styles/notes.css';
+
+type Tool = { cmd: string; icon: IconName; label: string; keys?: string };
+
+const toolGroups: Tool[][] = [
+  [
+    { cmd: 'bold', icon: 'bold', label: '粗体', keys: 'Mod+B' },
+    { cmd: 'italic', icon: 'italic', label: '斜体', keys: 'Mod+I' },
+    { cmd: 'strike', icon: 'strike', label: '删除线', keys: 'Mod+Shift+X' },
+    { cmd: 'highlight', icon: 'highlight', label: '高亮', keys: 'Mod+Shift+H' },
+    { cmd: 'inline-code', icon: 'code', label: '行内代码', keys: 'Mod+E' },
+  ],
+  [
+    { cmd: 'ul', icon: 'list', label: '无序列表', keys: 'Mod+Shift+8' },
+    { cmd: 'ol', icon: 'listOrdered', label: '有序列表', keys: 'Mod+Shift+7' },
+    { cmd: 'task', icon: 'todo', label: '待办', keys: 'Mod+Enter' },
+    { cmd: 'quote', icon: 'quote', label: '引用', keys: 'Mod+Shift+9' },
+  ],
+  [
+    { cmd: 'link', icon: 'link', label: '链接', keys: 'Mod+K' },
+    { cmd: 'image', icon: 'image', label: '图片' },
+    { cmd: 'table', icon: 'table', label: '表格' },
+    { cmd: 'code', icon: 'codeBlock', label: '代码块', keys: 'Mod+Alt+C' },
+    { cmd: 'math', icon: 'math', label: '公式块' },
+  ],
+];
+
+const headingItems = [
+  { cmd: 'paragraph', label: '正文', sample: '正文', keys: 'Mod+Alt+0' },
+  { cmd: 'h1', label: '一级标题', sample: '标题 1', keys: 'Mod+Alt+1' },
+  { cmd: 'h2', label: '二级标题', sample: '标题 2', keys: 'Mod+Alt+2' },
+  { cmd: 'h3', label: '三级标题', sample: '标题 3', keys: 'Mod+Alt+3' },
+];
+
+const insertGroups = ['块', '提示', '插入'].map((group) => ({
+  group,
+  commands: COMMANDS.filter((command) => command.group === group),
+}));
+
+const shortcutSource = [
+  {
+    title: '排版',
+    items: [
+      ['粗体 / 斜体', 'Mod+B', 'Mod+I'],
+      ['删除线 / 高亮', 'Mod+Shift+X', 'Mod+Shift+H'],
+      ['行内代码 / 链接', 'Mod+E', 'Mod+K'],
+      ['标题 1–3 / 正文', 'Mod+Alt+1', 'Mod+Alt+0'],
+      ['无序 / 有序列表', 'Mod+Shift+8', 'Mod+Shift+7'],
+      ['切换待办 / 引用', 'Mod+Enter', 'Mod+Shift+9'],
+      ['缩进 / 取消缩进', 'Tab', 'Shift+Tab'],
+    ],
+  },
+  {
+    title: '编辑',
+    items: [
+      ['插入菜单', '/'],
+      ['选中文字后输入 * _ ~ = ` 等', '包裹'],
+      ['选中文字后粘贴网址', '变成链接'],
+      ['立即保存并同步', 'Mod+S'],
+      ['离开编辑区（之后 Tab 可移动焦点）', 'Esc'],
+    ],
+  },
+  {
+    title: '视图',
+    items: [
+      ['编辑 / 分栏 / 预览', 'Alt+1', 'Alt+3'],
+      ['专注模式', 'Mod+Shift+F'],
+      ['搜索记录', '/'],
+      ['快捷键与语法', 'Mod+/'],
+    ],
+  },
+];
+
+// 中文说明（如「包裹」）显示成标签，其余按键交给脚本换成 ⌘ / Ctrl
+const shortcutGroups = shortcutSource.map((group) => ({
+  title: group.title,
+  items: group.items.map(([label, ...keys]) => ({
+    label,
+    keys: keys.map((text) => ({ text, isKey: !/[\u4e00-\u9fff]/.test(text) })),
+  })),
+}));
+
+const syntaxItems = [
+  ['回车 / 空一行', '回车换行，空一行另起一段'],
+  ['# 标题', '一到六级标题'],
+  ['**粗体** *斜体* ~~删除~~', '行内强调'],
+  ['==高亮==', '荧光笔标记'],
+  ['- [ ] 待办', '预览中可直接勾选'],
+  ['> [!TIP] 标题', '提示 / 技巧 / 重要 / 注意 / 警告'],
+  [':::details 标题 … :::', '可折叠的内容'],
+  ['$E=mc^2$ 与 $$…$$', '行内公式与公式块'],
+  ['正文[^1] 与 [^1]: 说明', '脚注'],
+  ['| 列 | 列 |', '表格，第二行写 | --- |'],
+  ['```js … ```', '代码块，可一键复制'],
+];
+---
+
+<BaseLayout title="记录" description="在线写下日常记录，草稿自动保存，可同步到 GitHub 私密 Gist 换设备继续编辑" math hideFooter>
+  <div class="notes-page" id="notes-app" data-mode="split">
+    <noscript><p class="notes-noscript">在线记录需要启用 JavaScript。</p></noscript>
+
+    <div class="notes-shell">
+      <aside class="notes-sidebar" id="notes-sidebar" aria-label="记录列表">
+        <div class="notes-sidebar__head">
+          <div class="notes-brand">
+            <h1 class="notes-brand__title">记录</h1>
+            <p class="notes-brand__meta" id="notes-total">加载中…</p>
+          </div>
+          <div class="notes-split">
+            <button type="button" class="notes-btn notes-btn--primary" data-action="new">
+              <Fragment set:html={icon('plus', 16)} />
+              <span>新建</span>
+            </button>
+            <button type="button" class="notes-btn notes-btn--primary notes-btn--caret" popovertarget="notes-template-menu" aria-label="从模板新建" data-tip="从模板新建">
+              <Fragment set:html={icon('chevronDown', 16)} />
+            </button>
+          </div>
+          <button type="button" class="notes-icon-btn notes-sidebar__close" data-action="drawer-close" aria-label="收起列表">
+            <Fragment set:html={icon('close')} />
+          </button>
+        </div>
+
+        <label class="notes-search">
+          <Fragment set:html={icon('search', 16)} />
+          <span class="sr-only">搜索记录</span>
+          <input id="notes-query" type="search" placeholder="搜索标题、正文或 #标签" autocomplete="off" enterkeyhint="search" />
+          <kbd class="notes-search__key" aria-hidden="true">/</kbd>
+        </label>
+
+        <div class="notes-filter" id="notes-filter" role="group" aria-label="按标签筛选" hidden></div>
+
+        <nav class="notes-list" id="notes-list" aria-label="全部记录"></nav>
+
+        <div class="notes-sidebar__foot">
+          <button type="button" class="notes-link-btn" popovertarget="notes-library-menu">
+            <Fragment set:html={icon('file', 16)} />
+            <span>导入与导出</span>
+          </button>
+        </div>
+      </aside>
+
+      <div class="notes-scrim" data-action="drawer-close" aria-hidden="true"></div>
+
+      <section class="notes-main" aria-label="编辑区">
+        <div class="notes-toolbar" role="toolbar" aria-label="排版工具" aria-controls="notes-body">
+          <button type="button" class="notes-tool notes-tool--drawer" data-action="drawer" aria-label="打开记录列表" data-tip="记录列表">
+            <Fragment set:html={icon('sidebar')} />
+          </button>
+
+          <div class="notes-toolbar__scroll">
+            <div class="notes-toolbar__group">
+              <button type="button" class="notes-tool notes-tool--wide" popovertarget="notes-heading-menu" aria-label="段落格式" data-tip="标题与正文">
+                <Fragment set:html={icon('heading')} />
+                <Fragment set:html={icon('chevronDown', 12)} />
+              </button>
+            </div>
+            {toolGroups.map((group) => (
+              <div class="notes-toolbar__group">
+                {group.map((tool) => (
+                  <button type="button" class="notes-tool" data-cmd={tool.cmd} aria-label={tool.label} data-tip={tool.label} data-keys={tool.keys}>
+                    <Fragment set:html={icon(tool.icon)} />
+                  </button>
+                ))}
+              </div>
+            ))}
+            <div class="notes-toolbar__group">
+              <button type="button" class="notes-tool notes-tool--wide" popovertarget="notes-insert-menu" aria-label="插入" data-tip="插入更多" data-keys="/">
+                <Fragment set:html={icon('sparkles')} />
+                <span class="notes-tool__text">插入</span>
+              </button>
+              <button type="button" class="notes-tool" popovertarget="notes-glyph-menu" aria-label="表情与符号" data-tip="表情与符号">
+                <Fragment set:html={icon('smile')} />
+              </button>
+            </div>
+          </div>
+
+          <div class="notes-toolbar__end">
+            <div class="notes-views" role="group" aria-label="视图">
+              <button type="button" class="notes-view" data-view="edit" aria-pressed="false" data-tip="只看编辑" data-keys="Alt+1">
+                <Fragment set:html={icon('edit', 16)} /><span>编辑</span>
+              </button>
+              <button type="button" class="notes-view notes-view--split" data-view="split" aria-pressed="true" data-tip="左右分栏" data-keys="Alt+2">
+                <Fragment set:html={icon('columns', 16)} /><span>分栏</span>
+              </button>
+              <button type="button" class="notes-view" data-view="preview" aria-pressed="false" data-tip="只看预览" data-keys="Alt+3">
+                <Fragment set:html={icon('eye', 16)} /><span>预览</span>
+              </button>
+            </div>
+            <button type="button" class="notes-tool" data-action="focus" aria-pressed="false" aria-label="专注模式" data-tip="专注模式" data-keys="Mod+Shift+F">
+              <span class="notes-focus-on"><Fragment set:html={icon('focus')} /></span>
+              <span class="notes-focus-off"><Fragment set:html={icon('unfocus')} /></span>
+            </button>
+            <button type="button" class="notes-sync" id="notes-sync" data-action="sync" data-state="local" aria-describedby="notes-sync-label">
+              <span class="notes-sync__icon" aria-hidden="true"></span>
+              <span class="notes-sync__label" id="notes-sync-label">仅本机</span>
+            </button>
+            <button type="button" class="notes-tool" popovertarget="notes-more-menu" aria-label="更多操作" data-tip="更多">
+              <Fragment set:html={icon('more')} />
+            </button>
+          </div>
+        </div>
+
+        <div class="notes-empty" id="notes-empty" hidden>
+          <div class="notes-empty__art" aria-hidden="true">
+            <Fragment set:html={icon('feather', 34)} />
+          </div>
+          <h2 class="notes-empty__title">把今天写下来</h2>
+          <p class="notes-empty__text">草稿随写随存。支持标题、列表、待办、表格、公式、提示块和折叠块，连接 GitHub 后可在其他设备继续编辑。</p>
+          <div class="notes-empty__actions">
+            <button type="button" class="notes-btn notes-btn--primary notes-btn--lg" data-action="new">
+              <Fragment set:html={icon('plus', 16)} /><span>新建空白记录</span>
+            </button>
+            <button type="button" class="notes-btn notes-btn--ghost notes-btn--lg" data-action="sync">
+              <Fragment set:html={icon('cloud', 16)} /><span>从其他设备同步</span>
+            </button>
+          </div>
+          <p class="notes-empty__label">或者从模板开始</p>
+          <div class="notes-templates">
+            {TEMPLATES.map((template) => (
+              <button type="button" class="notes-template" data-template={template.id}>
+                <span class="notes-template__icon"><Fragment set:html={icon(template.icon, 20)} /></span>
+                <span class="notes-template__label">{template.label}</span>
+                <span class="notes-template__hint">{template.hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div class="notes-doc" id="notes-doc">
+          <div class="notes-stage" id="notes-stage">
+            <div class="notes-pane notes-pane--edit" id="notes-edit-pane">
+              <div class="notes-sheet">
+                <input id="notes-title" class="notes-title" type="text" maxlength="200" placeholder="无标题" aria-label="标题" autocomplete="off" />
+                <div class="notes-tags" id="notes-tags">
+                  <Fragment set:html={icon('tag', 15)} />
+                  <ul class="notes-tags__list" id="notes-tag-list" aria-label="标签"></ul>
+                  <input id="notes-tag-input" class="notes-tags__input" type="text" list="notes-tag-options" placeholder="添加标签" aria-label="添加标签，回车确认" autocomplete="off" enterkeyhint="done" />
+                  <datalist id="notes-tag-options"></datalist>
+                </div>
+                <textarea id="notes-body" class="notes-body" aria-label="正文" placeholder="开始书写…  输入 / 可插入标题、待办、表格、提示块等" spellcheck="false"></textarea>
+                <div class="notes-starter" id="notes-starter" hidden>
+                  <span class="notes-starter__label">快速开始</span>
+                  {TEMPLATES.map((template) => (
+                    <button type="button" class="notes-chip" data-template={template.id} data-apply="true">
+                      <Fragment set:html={icon(template.icon, 14)} />{template.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div class="notes-pane notes-pane--preview" id="notes-preview-pane" tabindex="-1" aria-label="预览">
+              <div class="notes-sheet">
+                <h1 class="notes-preview__title" id="notes-preview-title"></h1>
+                <article class="prose notes-preview" id="notes-preview" aria-live="off"></article>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="notes-status">
+          <span id="notes-words">0 字</span>
+          <span id="notes-reading" class="notes-status__muted"></span>
+          <span id="notes-selection" class="notes-status__accent"></span>
+          <span class="notes-status__spacer"></span>
+          <span id="notes-saved" class="notes-status__saved" role="status">已保存</span>
+        </footer>
+      </section>
+    </div>
+
+    <div popover id="notes-heading-menu" class="notes-menu">
+      {headingItems.map((item) => (
+        <button type="button" class={`notes-menu__item notes-menu__item--${item.cmd}`} data-cmd={item.cmd}>
+          <span class="notes-menu__sample">{item.sample}</span>
+          <kbd data-keys={item.keys}></kbd>
+        </button>
+      ))}
+    </div>
+
+    <div popover id="notes-insert-menu" class="notes-menu notes-menu--grid">
+      {insertGroups.map((section) => (
+        <section class="notes-menu__section">
+          <h3 class="notes-menu__heading">{section.group}</h3>
+          <div class="notes-menu__cells">
+            {section.commands.map((command) => (
+              <button type="button" class="notes-menu__cell" data-cmd={command.id}>
+                <span class="notes-menu__icon"><Fragment set:html={icon(command.icon, 18)} /></span>
+                <span class="notes-menu__label">{command.label}</span>
+                <span class="notes-menu__hint">{command.hint}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+
+    <div popover id="notes-glyph-menu" class="notes-menu notes-glyphs">
+      <div class="notes-glyphs__tabs" role="tablist" aria-label="字符类型">
+        <button type="button" role="tab" id="notes-glyph-tab-emoji" aria-selected="true" aria-controls="notes-glyph-emoji" data-glyph-tab="emoji">表情</button>
+        <button type="button" role="tab" id="notes-glyph-tab-symbol" aria-selected="false" aria-controls="notes-glyph-symbol" data-glyph-tab="symbol">符号</button>
+      </div>
+      <div class="notes-glyphs__panel" id="notes-glyph-emoji" role="tabpanel" aria-labelledby="notes-glyph-tab-emoji">
+        {EMOJI_GROUPS.map((group) => (
+          <section>
+            <h3 class="notes-menu__heading">{group.label}</h3>
+            <div class="notes-glyphs__grid">
+              {group.items.map((glyph) => <button type="button" class="notes-glyph" data-glyph={glyph} aria-label={glyph}>{glyph}</button>)}
+            </div>
+          </section>
+        ))}
+      </div>
+      <div class="notes-glyphs__panel" id="notes-glyph-symbol" role="tabpanel" aria-labelledby="notes-glyph-tab-symbol" hidden>
+        {SYMBOL_GROUPS.map((group) => (
+          <section>
+            <h3 class="notes-menu__heading">{group.label}</h3>
+            <div class="notes-glyphs__grid notes-glyphs__grid--symbols">
+              {group.items.map((glyph) => <button type="button" class="notes-glyph" data-glyph={glyph} aria-label={glyph}>{glyph}</button>)}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+
+    <div popover id="notes-template-menu" class="notes-menu">
+      <h3 class="notes-menu__heading">从模板新建</h3>
+      {TEMPLATES.map((template) => (
+        <button type="button" class="notes-menu__item" data-template={template.id}>
+          <span class="notes-menu__icon"><Fragment set:html={icon(template.icon, 18)} /></span>
+          <span class="notes-menu__text">
+            <span class="notes-menu__label">{template.label}</span>
+            <span class="notes-menu__hint">{template.hint}</span>
+          </span>
+        </button>
+      ))}
+    </div>
+
+    <div popover id="notes-more-menu" class="notes-menu">
+      <button type="button" class="notes-menu__item" data-action="pin">
+        <span class="notes-menu__icon"><Fragment set:html={icon('pin', 18)} /></span>
+        <span class="notes-menu__label" id="notes-pin-label">置顶这篇</span>
+      </button>
+      <button type="button" class="notes-menu__item" data-action="download">
+        <span class="notes-menu__icon"><Fragment set:html={icon('download', 18)} /></span>
+        <span class="notes-menu__label">下载 Markdown</span>
+      </button>
+      <button type="button" class="notes-menu__item" data-action="print">
+        <span class="notes-menu__icon"><Fragment set:html={icon('printer', 18)} /></span>
+        <span class="notes-menu__label">打印 / 存为 PDF</span>
+      </button>
+      <hr class="notes-menu__rule" />
+      <button type="button" class="notes-menu__item" data-action="prefs">
+        <span class="notes-menu__icon"><Fragment set:html={icon('sliders', 18)} /></span>
+        <span class="notes-menu__label">写作偏好</span>
+      </button>
+      <button type="button" class="notes-menu__item" data-action="help">
+        <span class="notes-menu__icon"><Fragment set:html={icon('keyboard', 18)} /></span>
+        <span class="notes-menu__label">快捷键与语法</span>
+        <kbd data-keys="Mod+/"></kbd>
+      </button>
+      <hr class="notes-menu__rule" />
+      <button type="button" class="notes-menu__item notes-menu__item--danger" data-action="delete">
+        <span class="notes-menu__icon"><Fragment set:html={icon('trash', 18)} /></span>
+        <span class="notes-menu__label">删除这篇</span>
+      </button>
+    </div>
+
+    <div popover id="notes-library-menu" class="notes-menu">
+      <button type="button" class="notes-menu__item" data-action="export">
+        <span class="notes-menu__icon"><Fragment set:html={icon('download', 18)} /></span>
+        <span class="notes-menu__text">
+          <span class="notes-menu__label">导出全部</span>
+          <span class="notes-menu__hint">JSON 备份，可再次导入</span>
+        </span>
+      </button>
+      <button type="button" class="notes-menu__item" data-action="import">
+        <span class="notes-menu__icon"><Fragment set:html={icon('upload', 18)} /></span>
+        <span class="notes-menu__text">
+          <span class="notes-menu__label">导入文件</span>
+          <span class="notes-menu__hint">JSON 备份或 Markdown，也可拖到页面上</span>
+        </span>
+      </button>
+      <hr class="notes-menu__rule" />
+      <button type="button" class="notes-menu__item" data-action="sync">
+        <span class="notes-menu__icon"><Fragment set:html={icon('cloud', 18)} /></span>
+        <span class="notes-menu__text">
+          <span class="notes-menu__label">多设备同步</span>
+          <span class="notes-menu__hint">保存到你的 GitHub 私密 Gist</span>
+        </span>
+      </button>
+    </div>
+
+    <div popover="manual" id="notes-slash-menu" class="notes-menu notes-slash">
+      <ul class="notes-slash__list" id="notes-slash-list" role="listbox" aria-label="插入内容"></ul>
+      <p class="notes-slash__hint"><kbd>↑</kbd><kbd>↓</kbd> 选择 · <kbd>回车</kbd> 插入 · <kbd>Esc</kbd> 关闭</p>
+    </div>
+
+    <input type="file" id="notes-import-input" accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain" multiple hidden />
+
+    <dialog class="notes-dialog" id="notes-sync-dialog" aria-labelledby="notes-sync-title">
+      <div class="notes-dialog__card">
+        <header class="notes-dialog__head">
+          <span class="notes-dialog__badge"><Fragment set:html={icon('cloud', 20)} /></span>
+          <div>
+            <h2 class="notes-dialog__title" id="notes-sync-title">多设备同步</h2>
+            <p class="notes-dialog__sub">记录存到你自己的 GitHub 私密 Gist</p>
+          </div>
+          <button type="button" class="notes-icon-btn" data-close aria-label="关闭"><Fragment set:html={icon('close')} /></button>
+        </header>
+
+        <form class="notes-dialog__body" id="notes-sync-form" data-when="disconnected">
+          <ol class="notes-steps">
+            <li>
+              <span>打开 GitHub，生成一个只勾选 <strong>gist</strong> 权限的令牌</span>
+              <a class="notes-steps__link" href="https://github.com/settings/tokens/new?scopes=gist&description=codeverse-notes" target="_blank" rel="noopener noreferrer">去生成令牌 ↗</a>
+            </li>
+            <li><span>把令牌粘贴到下面，点击连接</span></li>
+            <li><span>在其他设备上填写同一个令牌，就能接着写</span></li>
+          </ol>
+          <label class="notes-field">
+            <span class="notes-field__label">GitHub 令牌</span>
+            <input id="notes-token" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_… 或 github_pat_…" aria-describedby="notes-sync-error" />
+          </label>
+          <p class="notes-dialog__error" id="notes-sync-error" role="alert" hidden></p>
+          <p class="notes-dialog__note">令牌只保存在这台浏览器里，不会发送到本站。本机已有的草稿会与远端合并，不会丢失。</p>
+          <div class="notes-dialog__actions">
+            <button type="button" class="notes-btn notes-btn--ghost" data-close>稍后再说</button>
+            <button type="submit" class="notes-btn notes-btn--primary" id="notes-sync-connect">连接并同步</button>
+          </div>
+        </form>
+
+        <div class="notes-dialog__body" data-when="connected" hidden>
+          <div class="notes-sync-card">
+            <span class="notes-sync-card__state" id="notes-sync-state"></span>
+            <p class="notes-sync-card__who" id="notes-sync-who"></p>
+            <p class="notes-sync-card__time" id="notes-sync-time"></p>
+          </div>
+          <p class="notes-dialog__error" id="notes-sync-error-connected" role="alert" hidden></p>
+          <p class="notes-dialog__note">每次停笔几秒后自动同步，切回这个页面时会拉取其他设备的修改。断开后本机草稿保留，远端 Gist 也不会被删除。</p>
+          <div class="notes-dialog__actions">
+            <button type="button" class="notes-btn notes-btn--danger-ghost" data-action="sync-disconnect">断开连接</button>
+            <button type="button" class="notes-btn notes-btn--primary" data-action="sync-now">
+              <Fragment set:html={icon('refresh', 16)} /><span>立即同步</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="notes-dialog" id="notes-prefs-dialog" aria-labelledby="notes-prefs-title">
+      <div class="notes-dialog__card">
+        <header class="notes-dialog__head">
+          <span class="notes-dialog__badge"><Fragment set:html={icon('sliders', 20)} /></span>
+          <div>
+            <h2 class="notes-dialog__title" id="notes-prefs-title">写作偏好</h2>
+            <p class="notes-dialog__sub">只影响这台设备上的显示</p>
+          </div>
+          <button type="button" class="notes-icon-btn" data-close aria-label="关闭"><Fragment set:html={icon('close')} /></button>
+        </header>
+        <form class="notes-dialog__body notes-prefs" id="notes-prefs-form">
+          <fieldset class="notes-pref">
+            <legend>字体</legend>
+            <div class="notes-segment">
+              <label><input type="radio" name="font" value="sans" /><span>无衬线</span></label>
+              <label><input type="radio" name="font" value="serif" /><span class="notes-serif">衬线</span></label>
+              <label><input type="radio" name="font" value="mono" /><span class="notes-mono">等宽</span></label>
+            </div>
+          </fieldset>
+          <label class="notes-pref">
+            <span class="notes-pref__label">字号 <output id="notes-size-output">16</output></span>
+            <input type="range" name="size" min="14" max="22" step="1" />
+          </label>
+          <fieldset class="notes-pref">
+            <legend>行距</legend>
+            <div class="notes-segment">
+              <label><input type="radio" name="leading" value="compact" /><span>紧凑</span></label>
+              <label><input type="radio" name="leading" value="comfort" /><span>舒适</span></label>
+              <label><input type="radio" name="leading" value="loose" /><span>宽松</span></label>
+            </div>
+          </fieldset>
+          <fieldset class="notes-pref">
+            <legend>版心宽度</legend>
+            <div class="notes-segment">
+              <label><input type="radio" name="measure" value="narrow" /><span>窄</span></label>
+              <label><input type="radio" name="measure" value="normal" /><span>标准</span></label>
+              <label><input type="radio" name="measure" value="wide" /><span>宽</span></label>
+            </div>
+          </fieldset>
+          <div class="notes-pref notes-pref--switches">
+            <label class="notes-switch"><input type="checkbox" name="spellcheck" /><span>拼写检查</span></label>
+            <label class="notes-switch"><input type="checkbox" name="scrollSync" /><span>分栏时预览跟随滚动</span></label>
+            <label class="notes-switch"><input type="checkbox" name="slash" /><span>输入 / 弹出插入菜单</span></label>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog class="notes-dialog notes-dialog--wide" id="notes-help-dialog" aria-labelledby="notes-help-title">
+      <div class="notes-dialog__card">
+        <header class="notes-dialog__head">
+          <span class="notes-dialog__badge"><Fragment set:html={icon('keyboard', 20)} /></span>
+          <div>
+            <h2 class="notes-dialog__title" id="notes-help-title">快捷键与语法</h2>
+            <p class="notes-dialog__sub">Markdown 写法与博客文章一致</p>
+          </div>
+          <button type="button" class="notes-icon-btn" data-close aria-label="关闭"><Fragment set:html={icon('close')} /></button>
+        </header>
+        <div class="notes-dialog__body notes-help">
+          {shortcutGroups.map((group) => (
+            <section class="notes-help__section">
+              <h3 class="notes-help__title">{group.title}</h3>
+              <dl class="notes-help__list">
+                {group.items.map((row) => (
+                  <div class="notes-help__row">
+                    <dt>{row.label}</dt>
+                    <dd>{row.keys.map((key) => (key.isKey ? <kbd data-keys={key.text}>{key.text}</kbd> : <span class="notes-help__tag">{key.text}</span>))}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ))}
+          <section class="notes-help__section notes-help__section--syntax">
+            <h3 class="notes-help__title">排版语法</h3>
+            <dl class="notes-help__list">
+              {syntaxItems.map(([code, label]) => (
+                <div class="notes-help__row">
+                  <dt><code>{code}</code></dt>
+                  <dd>{label}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        </div>
+      </div>
+    </dialog>
+
+    <div class="notes-toast" id="notes-toast" role="status" aria-live="polite" hidden>
+      <span id="notes-toast-text"></span>
+      <button type="button" class="notes-toast__action" id="notes-toast-action" hidden></button>
+    </div>
+    <div class="notes-tip" id="notes-tip" aria-hidden="true" hidden></div>
+    <div class="notes-dropzone" id="notes-dropzone" aria-hidden="true" hidden>
+      <Fragment set:html={icon('upload', 30)} />
+      <p>松开即可导入 JSON 备份或 Markdown 文件</p>
+    </div>
+  </div>
+  <div class="notes-print" id="notes-print" aria-hidden="true"></div>
+</BaseLayout>
+
+<script>
+  import { initNotesApp } from '../lib/notes-app';
+
+  initNotesApp();
+</script>
