@@ -41,6 +41,7 @@ import {
   TOKEN_SCOPES_HINT,
   clearRemoteSession,
   fetchLogin,
+  fetchPublishedBlogFile,
   fetchPublishedBlogFiles,
   fetchRepoWriteAccess,
   isSiteOwner,
@@ -646,6 +647,19 @@ async function loadDev(): Promise<NoteStore | null> {
   }
 }
 
+async function loadDevBlogFile(slug: string): Promise<{ slug: string; markdown: string } | null> {
+  if (!import.meta.env.DEV) return null;
+  try {
+    const response = await fetch(`/api/notes/blog/${encodeURIComponent(slug)}`);
+    if (!response.ok) return null;
+    const data = (await response.json()) as { slug?: string; markdown?: string };
+    if (typeof data.markdown !== 'string') return null;
+    return { slug: data.slug ?? slug, markdown: data.markdown };
+  } catch {
+    return null;
+  }
+}
+
 async function pushDev(keepalive = false): Promise<void> {
   devTimer = 0;
   try {
@@ -758,7 +772,10 @@ async function connectRemote(event: SubmitEvent): Promise<void> {
     state.syncBlocked = false;
     unlockWorkspace();
     if (wasLocked) await startWorkspace();
-    else await syncRemote();
+    else {
+      await syncRemote();
+      await openRequestedEdit();
+    }
     if (state.sync === 'error' && state.syncBlocked) {
       clearRemoteSession();
       state.token = '';
@@ -2335,20 +2352,63 @@ async function startWorkspace(): Promise<void> {
     if (!navigator.onLine) {
       state.syncError = '网络已断开，恢复后会自动同步';
       setSync('offline');
+      await openRequestedEdit();
       return;
     }
     await syncRemote();
+    await openRequestedEdit();
     return;
   }
 
   setSync('local');
   const dev = await loadDev();
-  if (!dev) return;
-  state.devSync = true;
-  const merged = mergeStores(currentStore(), dev);
-  if (serializeStore(merged) !== serializeStore(currentStore())) applyStore(merged);
-  if (serializeStore(merged) !== serializeStore(dev)) void pushDev();
-  setSync('dev');
+  if (dev) {
+    state.devSync = true;
+    const merged = mergeStores(currentStore(), dev);
+    if (serializeStore(merged) !== serializeStore(currentStore())) applyStore(merged);
+    if (serializeStore(merged) !== serializeStore(dev)) void pushDev();
+    setSync('dev');
+  }
+  await openRequestedEdit();
+}
+
+function requestedEditSlug(): string {
+  try {
+    return normalizeBlogSlug(new URL(location.href).searchParams.get('edit') ?? '');
+  } catch {
+    return '';
+  }
+}
+
+function findNoteByPublishedSlug(slug: string): Note | undefined {
+  return state.notes.find((note) => note.publishedSlug === slug);
+}
+
+/** 文章页「编辑」会带 ?edit=slug 过来，打开已有记录或从仓库取回。 */
+async function openRequestedEdit(): Promise<void> {
+  const slug = requestedEditSlug();
+  if (!slug) return;
+  const existing = findNoteByPublishedSlug(slug);
+  if (existing) {
+    selectNote(existing.id);
+    return;
+  }
+  try {
+    const file = state.token
+      ? await fetchPublishedBlogFile(state.token, slug)
+      : await loadDevBlogFile(slug);
+    if (!file) {
+      showToast(state.token ? '仓库里没找到这篇文章' : '本地没有这篇，连接 GitHub 后可以从仓库打开');
+      return;
+    }
+    const note = noteFromBlogMarkdown(file.markdown, file.slug);
+    state.notes = [note, ...state.notes];
+    persist();
+    selectNote(note.id);
+    showToast('已打开已发布文章，可继续编辑');
+  } catch (error) {
+    showToast(error instanceof NotesRemoteError ? error.message : '打开这篇文章失败，请稍后重试');
+  }
 }
 
 async function boot(): Promise<void> {

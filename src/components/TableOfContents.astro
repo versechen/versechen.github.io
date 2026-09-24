@@ -91,18 +91,29 @@ const headings = Astro.props.headings.filter(
 
     const desktop = () => window.matchMedia('(min-width: 769px)').matches;
 
+    const contentLeft = () => {
+      const prose = main?.querySelector('.prose') ?? main;
+      return Math.round((prose ?? document.body).getBoundingClientRect().left);
+    };
+
     const place = () => {
-      if (!desktop() || !main) return;
-      const left = Math.max(24, Math.round(main.getBoundingClientRect().left));
-      toc.style.setProperty('--toc-left', `${left}px`);
-      toc.style.setProperty('--toc-zone', `${Math.max(140, left + 88)}px`);
+      if (!desktop()) return;
+      const edge = contentLeft();
+      const width = 236;
+      const gap = 20;
+      const left = edge - width - gap;
+      const hasGutter = left >= 16;
+      toc.style.setProperty('--toc-left', `${hasGutter ? left : 16}px`);
+      toc.style.setProperty('--toc-width', `${width}px`);
+      toc.style.setProperty('--toc-zone', `${hasGutter ? edge : Math.max(120, edge)}px`);
+      toc.classList.toggle('has-gutter', hasGutter);
     };
 
     const render = () => {
-      const open = !desktop() || pinned || atIntro || hovering;
-      toc.classList.toggle('is-open', open);
+      const canFloat = !desktop() || pinned || hovering || (atIntro && toc.classList.contains('has-gutter'));
+      toc.classList.toggle('is-open', canFloat);
       toc.classList.toggle('is-pinned', pinned);
-      panel.setAttribute('aria-hidden', String(!open));
+      panel.setAttribute('aria-hidden', String(!canFloat));
       pin.setAttribute('aria-pressed', String(pinned));
       pin.setAttribute('aria-label', pinned ? '取消固定目录' : '固定目录');
       pin.title = pinned ? '取消固定' : '固定';
@@ -164,10 +175,11 @@ const headings = Astro.props.headings.filter(
 </script>
 
 <style>
-  /* 浮在正文左侧，不占栏宽。热区覆盖左缘到正文边，移动更灵敏。 */
+  /* 贴在正文左侧空白里，不盖住阅读区。热区是整条左空白。 */
   .toc {
-    --toc-left: 24px;
-    --toc-zone: 140px;
+    --toc-left: 16px;
+    --toc-width: 236px;
+    --toc-zone: 120px;
     position: fixed;
     top: var(--nav-height);
     left: 0;
@@ -181,7 +193,7 @@ const headings = Astro.props.headings.filter(
     position: absolute;
     top: 1.5rem;
     left: var(--toc-left);
-    width: min(252px, calc(100vw - 3rem));
+    width: var(--toc-width);
     max-height: calc(100vh - var(--nav-height) - 3rem);
     overflow: auto;
     padding: 1.05rem 1.1rem 1.15rem;

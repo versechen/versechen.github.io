@@ -351,6 +351,32 @@ function base64ToUtf8(content: string): string {
   return new TextDecoder().decode(bytes);
 }
 
+function decodeContentsFile(payload: { content?: string; encoding?: string }): string | null {
+  if (typeof payload.content !== 'string') return null;
+  return payload.encoding === 'base64' ? base64ToUtf8(payload.content) : payload.content;
+}
+
+/** 按文件名取回一篇已发布文章，编辑按钮会走这里。 */
+export async function fetchPublishedBlogFile(
+  token: string,
+  slug: string,
+): Promise<{ slug: string; markdown: string } | null> {
+  const safe = slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '').slice(0, 80);
+  if (!safe) return null;
+  for (const ext of ['.md', '.mdx'] as const) {
+    const path = `${BLOG_DIR}/${safe}${ext}`.split('/').map(encodeURIComponent).join('/');
+    const response = await github(token, `/repos/${BLOG_REPO}/contents/${path}?ref=${BLOG_BRANCH}`, {}, 'repo');
+    if (response.status === 404) continue;
+    if (!response.ok) {
+      throwRepoWriteError(response.status, await readGithubMessage(response), '读取这篇文章失败，请稍后重试');
+    }
+    const markdown = decodeContentsFile(await readJson<{ content?: string; encoding?: string }>(response));
+    if (!markdown) continue;
+    return { slug: safe, markdown };
+  }
+  return null;
+}
+
 /** 读取仓库里已发布的博客 Markdown，方便取回再编辑。 */
 export async function fetchPublishedBlogFiles(token: string): Promise<{ slug: string; markdown: string }[]> {
   const dir = BLOG_DIR.split('/').map(encodeURIComponent).join('/');
@@ -368,11 +394,11 @@ export async function fetchPublishedBlogFiles(token: string): Promise<{ slug: st
     const path = (file.path ?? `${BLOG_DIR}/${file.name}`).split('/').map(encodeURIComponent).join('/');
     const response = await github(token, `/repos/${BLOG_REPO}/contents/${path}?ref=${BLOG_BRANCH}`, {}, 'repo');
     if (!response.ok) continue;
-    const payload = await readJson<{ content?: string; encoding?: string }>(response);
-    if (typeof payload.content !== 'string') continue;
+    const markdown = decodeContentsFile(await readJson<{ content?: string; encoding?: string }>(response));
+    if (!markdown) continue;
     posts.push({
       slug: file.name.replace(/\.md$/, ''),
-      markdown: payload.encoding === 'base64' ? base64ToUtf8(payload.content) : payload.content,
+      markdown,
     });
   }
   return posts;

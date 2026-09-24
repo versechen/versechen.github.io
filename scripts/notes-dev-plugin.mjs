@@ -139,6 +139,23 @@ export function notesDevPlugin() {
         }
 
         if (req.method === 'GET') {
+          const blog = url.match(/^\/(?:api\/notes\/)?blog\/([a-z0-9]+(?:-[a-z0-9]+)*)$/);
+          if (blog) {
+            const slug = blog[1];
+            const dir = path.resolve(server.config.root, BLOG_DIR);
+            for (const ext of ['.md', '.mdx']) {
+              const target = path.resolve(dir, `${slug}${ext}`);
+              if (path.dirname(target) !== dir) {
+                sendJson(res, 400, { error: '文件名不合法' });
+                return;
+              }
+              if (!fs.existsSync(target)) continue;
+              sendJson(res, 200, { slug, markdown: fs.readFileSync(target, 'utf8') });
+              return;
+            }
+            sendJson(res, 404, { error: '本机没有这篇文章' });
+            return;
+          }
           try {
             const raw = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '{"notes":[],"deleted":[]}';
             const store = JSON.parse(raw);
