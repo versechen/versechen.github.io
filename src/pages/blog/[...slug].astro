@@ -199,14 +199,11 @@ function formatDate(date: Date) {
   }
 
   .article-layout {
-    display: flex;
-    align-items: flex-start;
-    gap: 2.5rem;
+    display: block;
   }
 
   .article-main {
     min-width: 0;
-    flex: 1;
   }
 
   .post-nav {
@@ -278,12 +275,6 @@ function formatDate(date: Date) {
 
   :global(.copy-code-button:hover) {
     background: rgba(232, 121, 164, 0.9);
-  }
-
-  @media (max-width: 768px) {
-    .article-layout {
-      display: block;
-    }
   }
 
   @media (max-width: 640px) {

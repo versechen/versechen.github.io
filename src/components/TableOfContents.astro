@@ -18,18 +18,7 @@ const headings = Astro.props.headings.filter(
 
 {headings.length > 1 && (
   <aside class="toc" id="article-toc" aria-label="文章目录">
-    <script is:inline>
-      (function () {
-        try {
-          if (localStorage.getItem('codeverse.articleToc.pinned') === '1') {
-            document.currentScript.parentElement.classList.add('is-pinned');
-          }
-        } catch (e) {}
-      })();
-    </script>
-    <button type="button" class="toc-rail" id="article-toc-rail" aria-expanded="false" aria-controls="article-toc-panel">
-      目录
-    </button>
+    <div class="toc-hotzone" id="article-toc-hotzone" aria-hidden="true"></div>
     <div class="toc-panel" id="article-toc-panel">
       <div class="toc-head">
         <p class="toc-title">本文目录</p>
@@ -54,8 +43,10 @@ const headings = Astro.props.headings.filter(
 
 <script>
   const toc = document.getElementById('article-toc');
-  const rail = document.getElementById('article-toc-rail');
+  const panel = document.getElementById('article-toc-panel');
+  const hotzone = document.getElementById('article-toc-hotzone');
   const pin = document.getElementById('article-toc-pin');
+  const intro = document.querySelector('.post-header');
   const PIN_KEY = 'codeverse.articleToc.pinned';
 
   const tocLinks = [...document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]')];
@@ -80,83 +71,105 @@ const headings = Astro.props.headings.filter(
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
         if (visible[0]?.target.id) activate(visible[0].target.id);
       },
-      { rootMargin: '-20% 0px -70% 0px' }
+      { rootMargin: '-20% 0px -70% 0px' },
     );
 
     headings.forEach((heading) => observer.observe(heading));
   }
 
-  if (toc && rail && pin) {
-    const sync = () => {
-      const pinned = toc.classList.contains('is-pinned');
+  if (toc && panel && hotzone && pin) {
+    let atIntro = true;
+    let hovering = false;
+    let pinned = false;
+    try {
+      pinned = localStorage.getItem(PIN_KEY) === '1';
+    } catch {
+      pinned = false;
+    }
+
+    const desktop = () => window.matchMedia('(min-width: 769px)').matches;
+
+    const render = () => {
+      const open = !desktop() || pinned || atIntro || hovering;
+      toc.classList.toggle('is-open', open);
+      toc.classList.toggle('is-pinned', pinned);
+      panel.setAttribute('aria-hidden', String(!open));
       pin.setAttribute('aria-pressed', String(pinned));
       pin.textContent = pinned ? '取消固定' : '固定';
       pin.setAttribute('aria-label', pinned ? '取消固定目录' : '固定目录');
-      rail.setAttribute('aria-expanded', String(pinned || toc.matches(':hover, :focus-within')));
     };
 
-    const setPinned = (pinned: boolean) => {
-      toc.classList.toggle('is-pinned', pinned);
+    const setPinned = (next: boolean) => {
+      pinned = next;
       try {
-        localStorage.setItem(PIN_KEY, pinned ? '1' : '0');
+        localStorage.setItem(PIN_KEY, next ? '1' : '0');
       } catch {
         // 存不住也只影响这一次
       }
-      sync();
+      render();
     };
 
-    rail.addEventListener('click', () => setPinned(!toc.classList.contains('is-pinned')));
-    pin.addEventListener('click', () => setPinned(!toc.classList.contains('is-pinned')));
-    toc.addEventListener('mouseenter', sync);
-    toc.addEventListener('mouseleave', sync);
-    toc.addEventListener('focusin', sync);
-    toc.addEventListener('focusout', sync);
-    sync();
+    pin.addEventListener('click', () => setPinned(!pinned));
+    toc.addEventListener('mouseenter', () => {
+      hovering = true;
+      render();
+    });
+    toc.addEventListener('mouseleave', () => {
+      hovering = false;
+      render();
+    });
+    toc.addEventListener('focusin', () => {
+      hovering = true;
+      render();
+    });
+    toc.addEventListener('focusout', (event) => {
+      if (!toc.contains(event.relatedTarget as Node | null)) {
+        hovering = false;
+        render();
+      }
+    });
+
+    if (intro) {
+      const introObserver = new IntersectionObserver(
+        (entries) => {
+          atIntro = Boolean(entries[0]?.isIntersecting);
+          render();
+        },
+        { threshold: 0, rootMargin: '-64px 0px 0px 0px' },
+      );
+      introObserver.observe(intro);
+    }
+
+    window.addEventListener('resize', render);
+    render();
   }
 </script>
 
 <style>
+  /* 浮在页面左边，不占正文栏宽，伸缩不会推动文章。 */
   .toc {
-    position: sticky;
-    top: calc(var(--nav-height) + 1.5rem);
-    z-index: 4;
-    width: 22px;
-    flex: 0 0 22px;
-    align-self: flex-start;
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    bottom: 0;
+    z-index: 20;
+    width: 28px;
+    pointer-events: none;
   }
 
-  .toc-rail {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    min-height: 108px;
-    padding: 12px 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    color: var(--text-muted);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    writing-mode: vertical-rl;
-    cursor: pointer;
-    transition: color var(--transition), border-color var(--transition), background var(--transition);
-  }
-
-  .toc-rail:hover,
-  .toc:focus-within .toc-rail,
-  .toc.is-pinned .toc-rail {
-    color: var(--primary);
-    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  .toc-hotzone {
+    position: absolute;
+    inset: 0;
+    pointer-events: auto;
   }
 
   .toc-panel {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 240px;
+    top: 1.25rem;
+    left: 1rem;
+    width: min(260px, calc(100vw - 2rem));
+    max-height: calc(100vh - var(--nav-height) - 2.5rem);
+    overflow: auto;
     padding: 1rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -165,31 +178,14 @@ const headings = Astro.props.headings.filter(
     box-shadow: var(--shadow-lg);
     opacity: 0;
     pointer-events: none;
-    transform: translateX(-10px);
-    transition: opacity 0.18s ease, transform 0.18s ease;
+    transform: translateX(-12px);
+    transition: opacity 0.28s ease, transform 0.28s ease;
   }
 
-  .toc:hover .toc-panel,
-  .toc:focus-within .toc-panel,
-  .toc.is-pinned .toc-panel {
+  .toc.is-open .toc-panel {
     opacity: 1;
     pointer-events: auto;
     transform: none;
-  }
-
-  .toc.is-pinned {
-    width: 240px;
-    flex-basis: 240px;
-  }
-
-  .toc.is-pinned .toc-rail {
-    display: none;
-  }
-
-  .toc.is-pinned .toc-panel {
-    position: static;
-    width: auto;
-    box-shadow: none;
   }
 
   .toc-head {
@@ -268,19 +264,20 @@ const headings = Astro.props.headings.filter(
 
   @media (max-width: 768px) {
     .toc {
-      width: 100%;
-      flex-basis: auto;
-      margin-bottom: 1.5rem;
       position: static;
+      width: auto;
+      margin-bottom: 1.5rem;
+      pointer-events: auto;
     }
 
-    .toc-rail {
+    .toc-hotzone {
       display: none;
     }
 
     .toc-panel {
       position: static;
       width: auto;
+      max-height: none;
       opacity: 1;
       pointer-events: auto;
       transform: none;
