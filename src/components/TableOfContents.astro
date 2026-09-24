@@ -18,12 +18,13 @@ const headings = Astro.props.headings.filter(
 
 {headings.length > 1 && (
   <aside class="toc" id="article-toc" aria-label="文章目录">
-    <div class="toc-hotzone" id="article-toc-hotzone" aria-hidden="true"></div>
     <div class="toc-panel" id="article-toc-panel">
       <div class="toc-head">
         <p class="toc-title">本文目录</p>
-        <button type="button" class="toc-pin" id="article-toc-pin" aria-pressed="false" aria-label="固定目录">
-          固定
+        <button type="button" class="toc-pin" id="article-toc-pin" aria-pressed="false" aria-label="固定目录" title="固定目录">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 17v5M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2V17h14v-1.8a2 2 0 0 0-1.1-1.8l-1.8-.9a2 2 0 0 1-1.1-1.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>
+          </svg>
         </button>
       </div>
       <nav>
@@ -44,9 +45,9 @@ const headings = Astro.props.headings.filter(
 <script>
   const toc = document.getElementById('article-toc');
   const panel = document.getElementById('article-toc-panel');
-  const hotzone = document.getElementById('article-toc-hotzone');
   const pin = document.getElementById('article-toc-pin');
   const intro = document.querySelector('.post-header');
+  const main = document.querySelector('.article-main');
   const PIN_KEY = 'codeverse.articleToc.pinned';
 
   const tocLinks = [...document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]')];
@@ -77,9 +78,10 @@ const headings = Astro.props.headings.filter(
     headings.forEach((heading) => observer.observe(heading));
   }
 
-  if (toc && panel && hotzone && pin) {
+  if (toc && panel && pin) {
     let atIntro = true;
     let hovering = false;
+    let hideTimer = 0;
     let pinned = false;
     try {
       pinned = localStorage.getItem(PIN_KEY) === '1';
@@ -89,14 +91,34 @@ const headings = Astro.props.headings.filter(
 
     const desktop = () => window.matchMedia('(min-width: 769px)').matches;
 
+    const place = () => {
+      if (!desktop() || !main) return;
+      const left = Math.max(24, Math.round(main.getBoundingClientRect().left));
+      toc.style.setProperty('--toc-left', `${left}px`);
+      toc.style.setProperty('--toc-zone', `${Math.max(140, left + 88)}px`);
+    };
+
     const render = () => {
       const open = !desktop() || pinned || atIntro || hovering;
       toc.classList.toggle('is-open', open);
       toc.classList.toggle('is-pinned', pinned);
       panel.setAttribute('aria-hidden', String(!open));
       pin.setAttribute('aria-pressed', String(pinned));
-      pin.textContent = pinned ? '取消固定' : '固定';
       pin.setAttribute('aria-label', pinned ? '取消固定目录' : '固定目录');
+      pin.title = pinned ? '取消固定' : '固定';
+    };
+
+    const setHover = (next: boolean) => {
+      window.clearTimeout(hideTimer);
+      if (next) {
+        hovering = true;
+        render();
+        return;
+      }
+      hideTimer = window.setTimeout(() => {
+        hovering = false;
+        render();
+      }, 160);
     };
 
     const setPinned = (next: boolean) => {
@@ -109,24 +131,16 @@ const headings = Astro.props.headings.filter(
       render();
     };
 
+    const inZone = (event: MouseEvent) => {
+      const zone = Number.parseFloat(getComputedStyle(toc).getPropertyValue('--toc-zone')) || 140;
+      return event.clientX <= zone || toc.contains(event.target as Node);
+    };
+
     pin.addEventListener('click', () => setPinned(!pinned));
-    toc.addEventListener('mouseenter', () => {
-      hovering = true;
-      render();
-    });
-    toc.addEventListener('mouseleave', () => {
-      hovering = false;
-      render();
-    });
-    toc.addEventListener('focusin', () => {
-      hovering = true;
-      render();
-    });
+    document.addEventListener('mousemove', (event) => setHover(inZone(event)), { passive: true });
+    toc.addEventListener('focusin', () => setHover(true));
     toc.addEventListener('focusout', (event) => {
-      if (!toc.contains(event.relatedTarget as Node | null)) {
-        hovering = false;
-        render();
-      }
+      if (!toc.contains(event.relatedTarget as Node | null)) setHover(false);
     });
 
     if (intro) {
@@ -140,46 +154,46 @@ const headings = Astro.props.headings.filter(
       introObserver.observe(intro);
     }
 
-    window.addEventListener('resize', render);
+    window.addEventListener('resize', () => {
+      place();
+      render();
+    });
+    place();
     render();
   }
 </script>
 
 <style>
-  /* 浮在页面左边，不占正文栏宽，伸缩不会推动文章。 */
+  /* 浮在正文左侧，不占栏宽。热区覆盖左缘到正文边，移动更灵敏。 */
   .toc {
+    --toc-left: 24px;
+    --toc-zone: 140px;
     position: fixed;
     top: var(--nav-height);
     left: 0;
     bottom: 0;
     z-index: 20;
-    width: 28px;
+    width: var(--toc-zone);
     pointer-events: none;
-  }
-
-  .toc-hotzone {
-    position: absolute;
-    inset: 0;
-    pointer-events: auto;
   }
 
   .toc-panel {
     position: absolute;
-    top: 1.25rem;
-    left: 1rem;
-    width: min(260px, calc(100vw - 2rem));
-    max-height: calc(100vh - var(--nav-height) - 2.5rem);
+    top: 1.5rem;
+    left: var(--toc-left);
+    width: min(252px, calc(100vw - 3rem));
+    max-height: calc(100vh - var(--nav-height) - 3rem);
     overflow: auto;
-    padding: 1rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--glass-bg);
-    backdrop-filter: blur(16px);
+    padding: 1.05rem 1.1rem 1.15rem;
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--glass-bg) 88%, var(--bg));
+    backdrop-filter: blur(20px) saturate(1.2);
     box-shadow: var(--shadow-lg);
     opacity: 0;
     pointer-events: none;
-    transform: translateX(-12px);
-    transition: opacity 0.28s ease, transform 0.28s ease;
+    transform: translateX(-8px);
+    transition: opacity 0.24s ease, transform 0.24s ease;
   }
 
   .toc.is-open .toc-panel {
@@ -192,43 +206,51 @@ const headings = Astro.props.headings.filter(
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   .toc-title {
     margin: 0;
     color: var(--text-1);
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     font-weight: 700;
+    letter-spacing: 0.04em;
   }
 
   .toc-pin {
-    flex: none;
-    padding: 0.15rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 50%;
     background: transparent;
     color: var(--text-muted);
-    font-size: 0.72rem;
-    font-weight: 600;
     cursor: pointer;
-    transition: color var(--transition), border-color var(--transition), background var(--transition);
+    transition: color var(--transition), background var(--transition);
   }
 
-  .toc-pin:hover,
+  .toc-pin:hover {
+    color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+  }
+
   .toc-pin[aria-pressed='true'] {
     color: var(--primary);
-    border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
-    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+  }
+
+  .toc-pin[aria-pressed='true'] svg {
+    fill: currentColor;
   }
 
   nav {
-    margin-top: 0.8rem;
+    margin-top: 0.75rem;
   }
 
   ol {
     display: grid;
-    gap: 0.5rem;
+    gap: 0.42rem;
     list-style: none;
   }
 
@@ -246,11 +268,11 @@ const headings = Astro.props.headings.filter(
 
   a {
     display: block;
-    padding-left: 0.65rem;
+    padding: 0.12rem 0 0.12rem 0.7rem;
     border-left: 2px solid transparent;
     color: var(--text-muted);
-    font-size: 0.78rem;
-    line-height: 1.5;
+    font-size: 0.8rem;
+    line-height: 1.55;
     text-decoration: none;
     overflow-wrap: anywhere;
     transition: color var(--transition), border-color var(--transition);
@@ -268,10 +290,6 @@ const headings = Astro.props.headings.filter(
       width: auto;
       margin-bottom: 1.5rem;
       pointer-events: auto;
-    }
-
-    .toc-hotzone {
-      display: none;
     }
 
     .toc-panel {
