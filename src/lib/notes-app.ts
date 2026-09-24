@@ -1169,9 +1169,9 @@ function onBodyInput(): void {
   updateSlash();
 }
 
-function deleteActive(): void {
+function deleteActive(options: { silent?: boolean } = {}): Note | null {
   const note = activeNote();
-  if (!note) return;
+  if (!note) return null;
   const order = state.notes.filter((item) => matchNote(item, searchTerms(state.query), state.tag));
   const index = order.findIndex((item) => item.id === note.id);
   state.notes = state.notes.filter((item) => item.id !== note.id);
@@ -1182,9 +1182,10 @@ function deleteActive(): void {
   fillEditor();
   renderList();
   persist();
-  if (!isBlankNote(note)) {
+  if (!options.silent && !isBlankNote(note)) {
     showToast(`已删除「${note.title.trim() || '无标题'}」`, { label: '撤销', run: () => restoreNote(note) }, 7000);
   }
+  return note;
 }
 
 function restoreNote(note: Note): void {
@@ -1738,9 +1739,10 @@ async function publishToBlog(event: SubmitEvent): Promise<void> {
     });
     state.canPublish = true;
     ui.publishDialog.close();
+    deleteActive({ silent: true });
     const done = result.updated ? '已更新仓库里的文章' : '已提交到仓库';
-    const extra = input.draft ? '草稿不会出现在博客列表。' : 'GitHub Actions 正在后台构建，大约一两分钟后会出现在博客里。';
-    showToast(`${done}，${extra}`, { label: '查看进度', run: () => window.open(BLOG_ACTIONS_URL, '_blank', 'noopener,noreferrer') }, 8000);
+    const extra = input.draft ? '博客草稿不会出现在列表里。' : 'GitHub Actions 正在后台构建，大约一两分钟后会出现在博客里。';
+    showToast(`${done}，记录里的草稿已删除。${extra}`, { label: '查看进度', run: () => window.open(BLOG_ACTIONS_URL, '_blank', 'noopener,noreferrer') }, 8000);
   } catch (caught) {
     if (caught instanceof NotesRemoteError && caught.code === 'exists') {
       ui.publishForm.dataset.overwrite = '1';
@@ -1915,7 +1917,8 @@ function onRootClick(event: MouseEvent): void {
       ui.helpDialog.showModal();
       return;
     case 'delete':
-      return deleteActive();
+      deleteActive();
+      return;
     case 'export':
       return exportAll();
     case 'import':
