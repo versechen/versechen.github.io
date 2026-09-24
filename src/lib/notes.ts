@@ -6,6 +6,9 @@ export type Note = {
   pinned: boolean;
   createdAt: string;
   updatedAt: string;
+  /** 已发布到博客时记下文件名，方便再编辑或更新。 */
+  publishedSlug?: string;
+  publishedAt?: string;
 };
 
 export type Deletion = {
@@ -72,6 +75,7 @@ export function normalizeNotes(input: unknown): Note[] {
       ? [...new Set(raw.tags.map((tag) => normalizeTag(String(tag))).filter(Boolean))].slice(0, MAX_TAGS)
       : [];
 
+    const publishedSlug = normalizeBlogSlug(String(raw.publishedSlug ?? ''));
     notes.push({
       id,
       title: String(raw.title ?? '').slice(0, MAX_TITLE),
@@ -80,6 +84,7 @@ export function normalizeNotes(input: unknown): Note[] {
       pinned: raw.pinned === true,
       createdAt: asIso(raw.createdAt, now),
       updatedAt: asIso(raw.updatedAt, now),
+      ...(publishedSlug ? { publishedSlug, publishedAt: asIso(raw.publishedAt, now) } : {}),
     });
   }
 
@@ -171,6 +176,22 @@ export function isBlankNote(note: Note): boolean {
   return !note.title.trim() && !note.body.trim() && note.tags.length === 0;
 }
 
+export function isPublishedNote(note: Note): boolean {
+  return Boolean(note.publishedSlug);
+}
+
+export function markNotePublished(note: Note, slug: string, at = new Date()): Note {
+  note.publishedSlug = normalizeBlogSlug(slug);
+  note.publishedAt = at.toISOString();
+  return note;
+}
+
+export function markNoteDraft(note: Note): Note {
+  delete note.publishedSlug;
+  delete note.publishedAt;
+  return note;
+}
+
 /** 去掉 Markdown 标记，用于摘要、搜索和字数。 */
 export function plainText(markdown: string): string {
   return markdown
@@ -250,7 +271,8 @@ export function groupNotes(notes: Note[], now = new Date()): NoteGroup[] {
   const sorted = [...notes].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 
   for (const note of sorted.filter((item) => item.pinned)) push('置顶', note);
-  for (const note of sorted.filter((item) => !item.pinned)) {
+  for (const note of sorted.filter((item) => !item.pinned && isPublishedNote(item))) push('已发布', note);
+  for (const note of sorted.filter((item) => !item.pinned && !isPublishedNote(item))) {
     const date = new Date(note.updatedAt);
     const days = Math.round((today - startOfDay(date)) / DAY);
     if (days <= 0) push('今天', note);
@@ -381,6 +403,29 @@ export function noteToBlogMarkdown(input: BlogPublishInput): string {
   if (input.draft) lines.push('draft: true');
   lines.push('---', '', input.body.replace(/\r\n/g, '\n').trim(), '');
   return lines.join('\n');
+}
+
+function yamlScalar(block: string, key: string): string {
+  const line = block.match(new RegExp(`^${key}:\\s*(.*)$`, 'm'));
+  if (!line) return '';
+  let value = line[1].trim();
+  if ((value.startsWith("'") && value.endsWith("'")) || (value.startsWith('"') && value.endsWith('"'))) {
+    value = value.slice(1, -1).replace(/''/g, "'");
+  }
+  return value.trim();
+}
+
+/** 从博客文章还原成记录，去掉 frontmatter，保留正文。 */
+export function noteFromBlogMarkdown(source: string, slug: string, now = new Date()): Note {
+  const text = source.replace(/\r\n/g, '\n');
+  const matter = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  const note = createNote(now);
+  const front = matter?.[1] ?? '';
+  note.title = (yamlScalar(front, 'title') || slug).slice(0, MAX_TITLE);
+  note.body = (matter?.[2] ?? text).replace(/^\n+/, '').slice(0, MAX_BODY);
+  note.tags = parseTags(yamlScalar(front, 'tags').replace(/^\[|\]$/g, ''));
+  markNotePublished(note, slug, now);
+  return note;
 }
 
 /** 导入 .md / .txt：首行一级标题作为标题，其余作为正文。 */

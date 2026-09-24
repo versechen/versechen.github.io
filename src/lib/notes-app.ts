@@ -8,7 +8,11 @@ import {
   formatNoteTime,
   groupNotes,
   isBlankNote,
+  isPublishedNote,
   loadLocalStore,
+  markNoteDraft,
+  markNotePublished,
+  noteFromBlogMarkdown,
   matchNote,
   mergeStores,
   noteExcerpt,
@@ -37,6 +41,7 @@ import {
   TOKEN_SCOPES_HINT,
   clearRemoteSession,
   fetchLogin,
+  fetchPublishedBlogFiles,
   fetchRepoWriteAccess,
   isSiteOwner,
   loadLogin,
@@ -177,6 +182,8 @@ function queryUi(root: HTMLElement) {
     publishTokenHelp: el<HTMLParagraphElement>('notes-publish-token-help'),
     publishSubmit: el<HTMLButtonElement>('notes-publish-submit'),
     publishConnect: el<HTMLButtonElement>('notes-publish-connect'),
+    publishMenuLabel: el('notes-publish-menu-label'),
+    unpublishItem: el<HTMLButtonElement>('notes-unpublish'),
     prefsDialog: el<HTMLDialogElement>('notes-prefs-dialog'),
     prefsForm: el<HTMLFormElement>('notes-prefs-form'),
     sizeOutput: el('notes-size-output'),
@@ -903,6 +910,12 @@ function renderList(): void {
       const title = document.createElement('span');
       title.className = 'notes-item__title';
       if (note.pinned) title.insertAdjacentHTML('afterbegin', icon('pin', 13));
+      if (isPublishedNote(note)) {
+        const mark = document.createElement('span');
+        mark.className = 'notes-item__status';
+        mark.textContent = '已发布';
+        title.append(mark);
+      }
       const titleText = document.createElement('span');
       titleText.append(highlight(note.title.trim() || '无标题', terms));
       if (!note.title.trim()) titleText.className = 'is-placeholder';
@@ -1054,6 +1067,7 @@ function fillEditor(options: { keepSelection?: boolean } = {}): void {
     ui.words.textContent = '';
     ui.reading.textContent = '';
     ui.saved.textContent = '';
+    refreshPublishedActions();
     return;
   }
 
@@ -1069,6 +1083,7 @@ function fillEditor(options: { keepSelection?: boolean } = {}): void {
     ui.previewPane.scrollTop = 0;
   }
   ui.pinLabel.textContent = note.pinned ? '取消置顶' : '置顶这篇';
+  refreshPublishedActions();
   renderTags();
   renderStats();
   renderStarter();
@@ -1661,6 +1676,62 @@ function publishSubmitLabel(): string {
   return ui.publishForm.dataset.overwrite === '1' ? '覆盖并发布' : '发布';
 }
 
+function refreshPublishedActions(): void {
+  const note = activeNote();
+  const published = Boolean(note && isPublishedNote(note));
+  ui.unpublishItem.hidden = !published;
+  ui.publishMenuLabel.textContent = published ? '更新到博客' : '发布到博客';
+}
+
+function saveActiveAsDraft(): void {
+  const note = activeNote();
+  if (!note || !isPublishedNote(note)) {
+    showToast('这篇还不是已发布的文章');
+    return;
+  }
+  markNoteDraft(note);
+  touch(note);
+  persist();
+  refreshPublishedActions();
+  renderList();
+  showToast('已存回草稿。博客上的文章还在，改完后可以再更新发布');
+}
+
+async function pullPublishedPosts(): Promise<void> {
+  if (ownerRequired() && !isSiteOwner(state.login)) {
+    showToast(`只有 @${OWNER_LOGIN} 可以取回已发布文章`);
+    return;
+  }
+  if (!state.token) {
+    openSyncDialog();
+    return;
+  }
+  try {
+    const files = await fetchPublishedBlogFiles(state.token);
+    const known = new Set(state.notes.map((note) => note.publishedSlug).filter(Boolean));
+    const added: Note[] = [];
+    const now = new Date();
+    for (const file of files) {
+      if (known.has(file.slug)) continue;
+      added.push(noteFromBlogMarkdown(file.markdown, file.slug, now));
+    }
+    if (!added.length) {
+      showToast('没有需要取回的文章，本地已有对应记录');
+      return;
+    }
+    state.notes = [...added, ...state.notes];
+    state.activeId = added[0].id;
+    rememberActive();
+    persist();
+    fillEditor();
+    renderList();
+    revealActiveItem();
+    showToast(`已取回 ${added.length} 篇已发布文章，可继续编辑或存入草稿`);
+  } catch (error) {
+    showToast(error instanceof NotesRemoteError ? error.message : '取回已发布文章失败，请稍后重试');
+  }
+}
+
 function refreshPublishNote(): void {
   const failed = ui.publishForm.dataset.tokenHelp === '1';
   const needToken = !state.token || !state.canPublish || failed;
@@ -1690,12 +1761,12 @@ function openPublishDialog(): void {
   }
   ui.publishTitle.value = note.title.trim() || '无标题';
   ui.publishDescription.value = noteExcerpt(note, 120);
-  ui.publishSlug.value = suggestBlogSlug(note.title, note.id);
+  ui.publishSlug.value = note.publishedSlug || suggestBlogSlug(note.title, note.id);
   ui.publishTags.value = note.tags.join('，');
   ui.publishCategory.value = '';
   ui.publishDraft.checked = false;
-  ui.publishForm.dataset.overwrite = '';
-  ui.publishSubmit.textContent = '发布';
+  ui.publishForm.dataset.overwrite = note.publishedSlug ? '1' : '';
+  ui.publishSubmit.textContent = note.publishedSlug ? '更新并发布' : '发布';
   refreshPublishNote();
   showPublishError(null);
   updatePublishFileHint();
@@ -1738,11 +1809,20 @@ async function publishToBlog(event: SubmitEvent): Promise<void> {
       overwrite: ui.publishForm.dataset.overwrite === '1',
     });
     state.canPublish = true;
+    const note = activeNote();
+    if (note) {
+      note.title = input.title.trim();
+      ui.title.value = note.title;
+      markNotePublished(note, input.slug);
+      touch(note);
+      persist();
+      refreshPublishedActions();
+      renderList();
+    }
     ui.publishDialog.close();
-    deleteActive({ silent: true });
     const done = result.updated ? '已更新仓库里的文章' : '已提交到仓库';
     const extra = input.draft ? '博客草稿不会出现在列表里。' : 'GitHub Actions 正在后台构建，大约一两分钟后会出现在博客里。';
-    showToast(`${done}，记录里的草稿已删除。${extra}`, { label: '查看进度', run: () => window.open(BLOG_ACTIONS_URL, '_blank', 'noopener,noreferrer') }, 8000);
+    showToast(`${done}，记录里仍可继续改，也可以存回草稿。${extra}`, { label: '查看进度', run: () => window.open(BLOG_ACTIONS_URL, '_blank', 'noopener,noreferrer') }, 8000);
   } catch (caught) {
     if (caught instanceof NotesRemoteError && caught.code === 'exists') {
       ui.publishForm.dataset.overwrite = '1';
@@ -1904,6 +1984,11 @@ function onRootClick(event: MouseEvent): void {
       return togglePin();
     case 'publish':
       return openPublishDialog();
+    case 'unpublish':
+      return saveActiveAsDraft();
+    case 'pull-published':
+      void pullPublishedPosts();
+      return;
     case 'download':
       return downloadMarkdown();
     case 'print':

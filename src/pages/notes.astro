@@ -354,7 +354,14 @@ const syntaxItems = [
       </button>
       <button type="button" class="notes-menu__item" data-action="publish">
         <span class="notes-menu__icon"><Fragment set:html={icon('bookOpen', 18)} /></span>
-        <span class="notes-menu__label">发布到博客</span>
+        <span class="notes-menu__label" id="notes-publish-menu-label">发布到博客</span>
+      </button>
+      <button type="button" class="notes-menu__item" data-action="unpublish" id="notes-unpublish" hidden>
+        <span class="notes-menu__icon"><Fragment set:html={icon('file', 18)} /></span>
+        <span class="notes-menu__text">
+          <span class="notes-menu__label">存入草稿</span>
+          <span class="notes-menu__hint">继续改这篇，博客上的文章先留着</span>
+        </span>
       </button>
       <button type="button" class="notes-menu__item" data-action="download">
         <span class="notes-menu__icon"><Fragment set:html={icon('download', 18)} /></span>
@@ -394,6 +401,13 @@ const syntaxItems = [
         <span class="notes-menu__text">
           <span class="notes-menu__label">导入文件</span>
           <span class="notes-menu__hint">JSON 备份或 Markdown，也可拖到页面上</span>
+        </span>
+      </button>
+      <button type="button" class="notes-menu__item" data-action="pull-published">
+        <span class="notes-menu__icon"><Fragment set:html={icon('bookOpen', 18)} /></span>
+        <span class="notes-menu__text">
+          <span class="notes-menu__label">取回已发布</span>
+          <span class="notes-menu__hint">从博客仓库拉回，可再编辑或存入草稿</span>
         </span>
       </button>
       <hr class="notes-menu__rule" />

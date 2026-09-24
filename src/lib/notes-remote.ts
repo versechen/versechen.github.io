@@ -345,6 +345,39 @@ export async function publishBlogPost(
   return { updated };
 }
 
+function base64ToUtf8(content: string): string {
+  const binary = atob(content.replace(/\s+/g, ''));
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+/** 读取仓库里已发布的博客 Markdown，方便取回再编辑。 */
+export async function fetchPublishedBlogFiles(token: string): Promise<{ slug: string; markdown: string }[]> {
+  const dir = BLOG_DIR.split('/').map(encodeURIComponent).join('/');
+  const listed = await github(token, `/repos/${BLOG_REPO}/contents/${dir}?ref=${BLOG_BRANCH}`, {}, 'repo');
+  if (!listed.ok) {
+    throwRepoWriteError(listed.status, await readGithubMessage(listed), '读取已发布文章失败，请稍后重试');
+  }
+  const items = await readJson<Array<{ name?: string; path?: string; type?: string }>>(listed);
+  const files = items.filter(
+    (item): item is { name: string; path?: string; type: string } =>
+      item.type === 'file' && typeof item.name === 'string' && item.name.endsWith('.md'),
+  );
+  const posts: { slug: string; markdown: string }[] = [];
+  for (const file of files) {
+    const path = (file.path ?? `${BLOG_DIR}/${file.name}`).split('/').map(encodeURIComponent).join('/');
+    const response = await github(token, `/repos/${BLOG_REPO}/contents/${path}?ref=${BLOG_BRANCH}`, {}, 'repo');
+    if (!response.ok) continue;
+    const payload = await readJson<{ content?: string; encoding?: string }>(response);
+    if (typeof payload.content !== 'string') continue;
+    posts.push({
+      slug: file.name.replace(/\.md$/, ''),
+      markdown: payload.encoding === 'base64' ? base64ToUtf8(payload.content) : payload.content,
+    });
+  }
+  return posts;
+}
+
 /** 连接时顺带读取用户名，失败不影响同步。 */
 export async function fetchLogin(token: string): Promise<string> {
   try {
