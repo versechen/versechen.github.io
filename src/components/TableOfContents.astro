@@ -46,7 +46,6 @@ const headings = Astro.props.headings.filter(
   const toc = document.getElementById('article-toc');
   const panel = document.getElementById('article-toc-panel');
   const pin = document.getElementById('article-toc-pin');
-  const intro = document.querySelector('.post-header');
   const main = document.querySelector('.article-main');
   const PIN_KEY = 'codeverse.articleToc.pinned';
 
@@ -79,7 +78,7 @@ const headings = Astro.props.headings.filter(
   }
 
   if (toc && panel && pin) {
-    let atIntro = true;
+    let inBody = false;
     let hovering = false;
     let hideTimer = 0;
     let pinned = false;
@@ -90,19 +89,22 @@ const headings = Astro.props.headings.filter(
     }
 
     const desktop = () => window.matchMedia('(min-width: 769px)').matches;
-
-    const contentLeft = () => {
-      const prose = main?.querySelector('.prose') ?? main;
-      return Math.round((prose ?? document.body).getBoundingClientRect().left);
-    };
+    const body = () => (main?.querySelector('.prose') ?? main) as HTMLElement | null;
 
     const place = () => {
       if (!desktop()) return;
-      const edge = contentLeft();
+      const prose = body();
+      const box = (prose ?? document.body).getBoundingClientRect();
+      const nav = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height')) || 64;
+      const minTop = nav + 24;
+      const top = Math.round(Math.max(minTop, box.top));
+      const edge = Math.round(box.left);
       const width = 236;
       const gap = 20;
       const left = edge - width - gap;
       const hasGutter = left >= 16;
+      inBody = box.bottom > minTop && box.top < window.innerHeight - 48;
+      toc.style.setProperty('--toc-top', `${top}px`);
       toc.style.setProperty('--toc-left', `${hasGutter ? left : 16}px`);
       toc.style.setProperty('--toc-width', `${width}px`);
       toc.style.setProperty('--toc-zone', `${hasGutter ? edge : Math.max(120, edge)}px`);
@@ -110,7 +112,7 @@ const headings = Astro.props.headings.filter(
     };
 
     const render = () => {
-      const canFloat = !desktop() || pinned || hovering || (atIntro && toc.classList.contains('has-gutter'));
+      const canFloat = !desktop() || pinned || (inBody && (hovering || toc.classList.contains('has-gutter')));
       toc.classList.toggle('is-open', canFloat);
       toc.classList.toggle('is-pinned', pinned);
       panel.setAttribute('aria-hidden', String(!canFloat));
@@ -143,6 +145,7 @@ const headings = Astro.props.headings.filter(
     };
 
     const inZone = (event: MouseEvent) => {
+      if (!inBody && !pinned) return toc.contains(event.target as Node);
       const zone = Number.parseFloat(getComputedStyle(toc).getPropertyValue('--toc-zone')) || 140;
       return event.clientX <= zone || toc.contains(event.target as Node);
     };
@@ -154,36 +157,33 @@ const headings = Astro.props.headings.filter(
       if (!toc.contains(event.relatedTarget as Node | null)) setHover(false);
     });
 
-    if (intro) {
-      const introObserver = new IntersectionObserver(
-        (entries) => {
-          atIntro = Boolean(entries[0]?.isIntersecting);
-          render();
-        },
-        { threshold: 0, rootMargin: '-64px 0px 0px 0px' },
-      );
-      introObserver.observe(intro);
-    }
+    let ticking = false;
+    const onScrollOrResize = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        place();
+        render();
+        ticking = false;
+      });
+    };
 
-    window.addEventListener('resize', () => {
-      place();
-      render();
-    });
+    window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    window.addEventListener('resize', onScrollOrResize);
     place();
     render();
   }
 </script>
 
 <style>
-  /* 贴在正文左侧空白里，不盖住阅读区。热区是整条左空白。 */
+  /* 跟着正文走，标题区不出现。热区只在正文左侧空白。 */
   .toc {
+    --toc-top: 80vh;
     --toc-left: 16px;
     --toc-width: 236px;
     --toc-zone: 120px;
     position: fixed;
-    top: var(--nav-height);
-    left: 0;
-    bottom: 0;
+    inset: 0 auto 0 0;
     z-index: 20;
     width: var(--toc-zone);
     pointer-events: none;
@@ -191,10 +191,10 @@ const headings = Astro.props.headings.filter(
 
   .toc-panel {
     position: absolute;
-    top: 1.5rem;
+    top: var(--toc-top);
     left: var(--toc-left);
     width: var(--toc-width);
-    max-height: calc(100vh - var(--nav-height) - 3rem);
+    max-height: calc(100vh - var(--toc-top) - 1.5rem);
     overflow: auto;
     padding: 1.05rem 1.1rem 1.15rem;
     border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
