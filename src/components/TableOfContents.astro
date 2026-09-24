@@ -17,9 +17,26 @@ const headings = Astro.props.headings.filter(
 ---
 
 {headings.length > 1 && (
-  <aside class="toc" aria-label="文章目录">
-    <details open>
-      <summary>本文目录</summary>
+  <aside class="toc" id="article-toc" aria-label="文章目录">
+    <script is:inline>
+      (function () {
+        try {
+          if (localStorage.getItem('codeverse.articleToc.pinned') === '1') {
+            document.currentScript.parentElement.classList.add('is-pinned');
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <button type="button" class="toc-rail" id="article-toc-rail" aria-expanded="false" aria-controls="article-toc-panel">
+      目录
+    </button>
+    <div class="toc-panel" id="article-toc-panel">
+      <div class="toc-head">
+        <p class="toc-title">本文目录</p>
+        <button type="button" class="toc-pin" id="article-toc-pin" aria-pressed="false" aria-label="固定目录">
+          固定
+        </button>
+      </div>
       <nav>
         <ol>
           {headings.map((heading) => (
@@ -31,11 +48,16 @@ const headings = Astro.props.headings.filter(
           ))}
         </ol>
       </nav>
-    </details>
+    </div>
   </aside>
 )}
 
 <script>
+  const toc = document.getElementById('article-toc');
+  const rail = document.getElementById('article-toc-rail');
+  const pin = document.getElementById('article-toc-pin');
+  const PIN_KEY = 'codeverse.articleToc.pinned';
+
   const tocLinks = [...document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]')];
   const headings = tocLinks
     .map((link) => document.getElementById(link.dataset.tocLink ?? ''))
@@ -63,29 +85,145 @@ const headings = Astro.props.headings.filter(
 
     headings.forEach((heading) => observer.observe(heading));
   }
+
+  if (toc && rail && pin) {
+    const sync = () => {
+      const pinned = toc.classList.contains('is-pinned');
+      pin.setAttribute('aria-pressed', String(pinned));
+      pin.textContent = pinned ? '取消固定' : '固定';
+      pin.setAttribute('aria-label', pinned ? '取消固定目录' : '固定目录');
+      rail.setAttribute('aria-expanded', String(pinned || toc.matches(':hover, :focus-within')));
+    };
+
+    const setPinned = (pinned: boolean) => {
+      toc.classList.toggle('is-pinned', pinned);
+      try {
+        localStorage.setItem(PIN_KEY, pinned ? '1' : '0');
+      } catch {
+        // 存不住也只影响这一次
+      }
+      sync();
+    };
+
+    rail.addEventListener('click', () => setPinned(!toc.classList.contains('is-pinned')));
+    pin.addEventListener('click', () => setPinned(!toc.classList.contains('is-pinned')));
+    toc.addEventListener('mouseenter', sync);
+    toc.addEventListener('mouseleave', sync);
+    toc.addEventListener('focusin', sync);
+    toc.addEventListener('focusout', sync);
+    sync();
+  }
 </script>
 
 <style>
   .toc {
-    width: 220px;
-    flex: 0 0 220px;
-  }
-
-  details {
     position: sticky;
     top: calc(var(--nav-height) + 1.5rem);
+    z-index: 4;
+    width: 22px;
+    flex: 0 0 22px;
+    align-self: flex-start;
+  }
+
+  .toc-rail {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    min-height: 108px;
+    padding: 12px 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    writing-mode: vertical-rl;
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition), background var(--transition);
+  }
+
+  .toc-rail:hover,
+  .toc:focus-within .toc-rail,
+  .toc.is-pinned .toc-rail {
+    color: var(--primary);
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  }
+
+  .toc-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 240px;
     padding: 1rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--glass-bg);
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px);
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-10px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
   }
 
-  summary {
-    cursor: pointer;
+  .toc:hover .toc-panel,
+  .toc:focus-within .toc-panel,
+  .toc.is-pinned .toc-panel {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  .toc.is-pinned {
+    width: 240px;
+    flex-basis: 240px;
+  }
+
+  .toc.is-pinned .toc-rail {
+    display: none;
+  }
+
+  .toc.is-pinned .toc-panel {
+    position: static;
+    width: auto;
+    box-shadow: none;
+  }
+
+  .toc-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .toc-title {
+    margin: 0;
     color: var(--text-1);
     font-size: 0.9rem;
     font-weight: 700;
+  }
+
+  .toc-pin {
+    flex: none;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition), background var(--transition);
+  }
+
+  .toc-pin:hover,
+  .toc-pin[aria-pressed='true'] {
+    color: var(--primary);
+    border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
   }
 
   nav {
@@ -128,15 +266,29 @@ const headings = Astro.props.headings.filter(
     color: var(--primary);
   }
 
-  @media (max-width: 980px) {
+  @media (max-width: 768px) {
     .toc {
       width: 100%;
       flex-basis: auto;
       margin-bottom: 1.5rem;
+      position: static;
     }
 
-    details {
+    .toc-rail {
+      display: none;
+    }
+
+    .toc-panel {
       position: static;
+      width: auto;
+      opacity: 1;
+      pointer-events: auto;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .toc-pin {
+      display: none;
     }
   }
 </style>
