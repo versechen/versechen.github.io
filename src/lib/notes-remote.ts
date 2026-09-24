@@ -102,9 +102,7 @@ async function github(token: string, path: string, init: RequestInit = {}, scope
   }
   if (response.status === 403) {
     throw new NotesRemoteError(
-      scope === 'repo'
-        ? '没有这个仓库的写入权限。请换一个勾选了 Contents 的令牌，陌生人的令牌无法发布'
-        : 'GitHub 拒绝了这次同步，请确认令牌有 Gist 读写权限',
+      scope === 'repo' ? `没有这个仓库的写入权限。${TOKEN_SCOPES_HINT}` : 'GitHub 拒绝了这次同步，请确认令牌有 Gist 读写权限',
       'auth',
     );
   }
@@ -148,7 +146,7 @@ function throwRepoWriteError(status: number, githubMessage: string, fallback: st
       throw new NotesRemoteError('GitHub 要求先验证邮箱才能提交，请到 GitHub 设置里完成验证', 'other');
     }
   }
-  throw new NotesRemoteError(fallback, 'other');
+  throw new NotesRemoteError(`${fallback}。${TOKEN_SCOPES_HINT}`, 'auth');
 }
 
 function writeGistId(id: string): void {

@@ -489,7 +489,10 @@ const syntaxItems = [
             <span>先存为草稿，不出现在博客列表</span>
             <input id="notes-publish-draft" type="checkbox" />
           </label>
-          <p class="notes-dialog__error" id="notes-publish-error" role="alert" hidden></p>
+          <p class="notes-dialog__error" id="notes-publish-error" role="alert" hidden>
+            <span id="notes-publish-error-text"></span>
+            <a class="notes-steps__link" id="notes-publish-error-token" href="https://github.com/settings/tokens/new?scopes=gist,public_repo&description=codeverse-notes" target="_blank" rel="noopener noreferrer" hidden>重新生成令牌（勾选 gist 和 public_repo）↗</a>
+          </p>
           <p class="notes-dialog__note" id="notes-publish-note"></p>
           <p class="notes-dialog__note" id="notes-publish-token-help" hidden>
             <a class="notes-steps__link" href="https://github.com/settings/tokens/new?scopes=gist,public_repo&description=codeverse-notes" target="_blank" rel="noopener noreferrer">重新生成令牌（勾选 gist 和 public_repo）↗</a>

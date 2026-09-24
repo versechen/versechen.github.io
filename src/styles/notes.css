@@ -1524,6 +1524,8 @@ p.notes-slash__hint {
 }
 
 .notes-dialog__error {
+  display: grid;
+  gap: 6px;
   margin-top: 12px;
   padding: 9px 12px;
   border-radius: 10px;
@@ -1531,6 +1533,11 @@ p.notes-slash__hint {
   color: var(--notes-danger);
   font-size: 13px;
   line-height: 1.6;
+}
+
+.notes-dialog__error .notes-steps__link {
+  color: inherit;
+  text-decoration: underline;
 }
 
 .notes-dialog__actions {
