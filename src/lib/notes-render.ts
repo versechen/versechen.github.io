@@ -244,8 +244,8 @@ export function renderNote(source: string): string {
     markTaskOffsets(tree);
     highlightMarks(tree);
     wrapDetails(tree);
-    rewriteDiagramCode(tree);
     softBreaks(tree);
+    rewriteDiagramCode(tree);
     const hast = toHast.runSync(mdast);
     decorateHast(hast as unknown as TreeNode);
     return toHtml.stringify(hast);

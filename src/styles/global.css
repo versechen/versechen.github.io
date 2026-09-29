@@ -773,6 +773,30 @@ html.dark .prose pre.astro-code span {
   height: auto;
 }
 
+.prose pre.mermaid[data-error] {
+  display: block;
+  padding: 1rem 1.25rem;
+  border: 1px dashed color-mix(in srgb, #ef4444 55%, var(--border));
+  border-radius: var(--radius);
+  background: var(--shiki-light-bg, #f6f8fa);
+  white-space: pre-wrap;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.85em;
+}
+
+html.dark .prose pre.mermaid[data-error] {
+  background: var(--shiki-dark-bg, #0d1117);
+}
+
+.prose pre.mermaid[data-error]::before {
+  content: attr(data-error);
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #ef4444;
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+
 .prose .diagram-plantuml {
   margin: 1.5rem 0;
   padding: 1rem;

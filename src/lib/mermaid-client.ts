@@ -1,11 +1,12 @@
 let theme = '';
 let watching = false;
+let renderCount = 0;
 
 const MERMAID_ESM = 'https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.esm.min.mjs';
 
 type MermaidApi = {
   initialize(config: Record<string, unknown>): void;
-  run(options: { nodes: HTMLElement[] }): Promise<void>;
+  render(id: string, source: string): Promise<{ svg: string }>;
 };
 
 function currentTheme(): 'dark' | 'neutral' {
@@ -36,23 +37,33 @@ export async function renderMermaid(root: ParentNode = document): Promise<void> 
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: 'strict',
+      suppressErrorRendering: true,
       theme: next,
     });
     theme = next;
   }
 
-  try {
-    await mermaid.run({ nodes });
-  } catch (error) {
-    console.warn('Mermaid 渲染失败', error);
+  for (const node of nodes) {
+    const source = node.dataset.source || sourceOf(node);
+    if (!source) continue;
+    const id = `mmd-${++renderCount}`;
+    try {
+      const { svg } = await mermaid.render(id, source);
+      node.removeAttribute('data-error');
+      node.innerHTML = svg;
+    } catch (error) {
+      node.dataset.error = 'Mermaid 语法有误，暂时显示源码';
+      node.replaceChildren(document.createTextNode(source));
+      console.warn('Mermaid 渲染失败', error);
+    }
   }
 }
 
 function resetMermaid(node: HTMLElement): void {
-  const source = sourceOf(node);
+  const source = node.dataset.source || sourceOf(node);
   if (!source) return;
   node.dataset.source = source;
-  node.removeAttribute('data-processed');
+  node.removeAttribute('data-error');
   node.replaceChildren(document.createTextNode(source));
 }
 
