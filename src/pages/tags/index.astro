@@ -1,7 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
-const allPosts = (await getCollection('blog')).filter((post) => !post.data.draft);
+import { isListedPost } from '../../utils/posts';
+const allPosts = (await getCollection('blog')).filter(isListedPost);
 const tagCounts = new Map<string, number>();
 
 allPosts.forEach((post) => {

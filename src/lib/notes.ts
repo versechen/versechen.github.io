@@ -9,6 +9,8 @@ export type Note = {
   /** 已发布到博客时记下文件名，方便再编辑或更新。 */
   publishedSlug?: string;
   publishedAt?: string;
+  /** 博客已归档：链接还在，列表里不再出现。 */
+  archived?: boolean;
 };
 
 export type Deletion = {
@@ -85,6 +87,7 @@ export function normalizeNotes(input: unknown): Note[] {
       createdAt: asIso(raw.createdAt, now),
       updatedAt: asIso(raw.updatedAt, now),
       ...(publishedSlug ? { publishedSlug, publishedAt: asIso(raw.publishedAt, now) } : {}),
+      ...(raw.archived === true ? { archived: true } : {}),
     });
   }
 
@@ -189,6 +192,17 @@ export function markNotePublished(note: Note, slug: string, at = new Date()): No
 export function markNoteDraft(note: Note): Note {
   delete note.publishedSlug;
   delete note.publishedAt;
+  delete note.archived;
+  return note;
+}
+
+export function isArchivedNote(note: Note): boolean {
+  return Boolean(note.archived && note.publishedSlug);
+}
+
+export function markNoteArchived(note: Note, archived: boolean): Note {
+  if (archived) note.archived = true;
+  else delete note.archived;
   return note;
 }
 
@@ -271,7 +285,8 @@ export function groupNotes(notes: Note[], now = new Date()): NoteGroup[] {
   const sorted = [...notes].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 
   for (const note of sorted.filter((item) => item.pinned)) push('置顶', note);
-  for (const note of sorted.filter((item) => !item.pinned && isPublishedNote(item))) push('已发布', note);
+  for (const note of sorted.filter((item) => !item.pinned && isArchivedNote(item))) push('已归档', note);
+  for (const note of sorted.filter((item) => !item.pinned && isPublishedNote(item) && !item.archived)) push('已发布', note);
   for (const note of sorted.filter((item) => !item.pinned && !isPublishedNote(item))) {
     const date = new Date(note.updatedAt);
     const days = Math.round((today - startOfDay(date)) / DAY);
@@ -335,6 +350,7 @@ export type BlogPublishInput = {
   tags: string[];
   category?: string;
   draft: boolean;
+  archived?: boolean;
   body: string;
   pubDate?: Date;
 };
@@ -401,6 +417,7 @@ export function noteToBlogMarkdown(input: BlogPublishInput): string {
   ];
   if (category) lines.push(`category: ${yamlQuote(category)}`);
   if (input.draft) lines.push('draft: true');
+  if (input.archived) lines.push('archived: true');
   lines.push('---', '', input.body.replace(/\r\n/g, '\n').trim(), '');
   return lines.join('\n');
 }
@@ -425,7 +442,26 @@ export function noteFromBlogMarkdown(source: string, slug: string, now = new Dat
   note.body = (matter?.[2] ?? text).replace(/^\n+/, '').slice(0, MAX_BODY);
   note.tags = parseTags(yamlScalar(front, 'tags').replace(/^\[|\]$/g, ''));
   markNotePublished(note, slug, now);
+  if (/^(true|yes)$/i.test(yamlScalar(front, 'archived'))) note.archived = true;
   return note;
+}
+
+/** 给已有 frontmatter 开关布尔字段；没有 frontmatter 时会补一组。 */
+export function setYamlBoolean(source: string, key: string, value: boolean): string {
+  const text = source.replace(/\r\n/g, '\n');
+  const matter = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!matter) {
+    if (!value) return text;
+    return `---\n${key}: true\n---\n\n${text}`;
+  }
+  let front = matter[1];
+  const line = new RegExp(`^${key}:\\s*.*$`, 'm');
+  if (value) {
+    front = line.test(front) ? front.replace(line, `${key}: true`) : `${front.trimEnd()}\n${key}: true`;
+  } else {
+    front = front.replace(new RegExp(`^${key}:\\s*.*\\n?`, 'm'), '').trim();
+  }
+  return `---\n${front}\n---\n${matter[2]}`;
 }
 
 /** 导入 .md / .txt：首行一级标题作为标题，其余作为正文。 */

@@ -7,6 +7,7 @@ import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
+import { rewriteDiagramCode } from './diagrams';
 
 type TreeNode = {
   type: string;
@@ -243,6 +244,7 @@ export function renderNote(source: string): string {
     markTaskOffsets(tree);
     highlightMarks(tree);
     wrapDetails(tree);
+    rewriteDiagramCode(tree);
     softBreaks(tree);
     const hast = toHast.runSync(mdast);
     decorateHast(hast as unknown as TreeNode);

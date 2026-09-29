@@ -3,6 +3,8 @@ import { getCollection, render, type CollectionEntry } from 'astro:content';
 import TableOfContents from '../../components/TableOfContents.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { hasMath } from '../../utils/math';
+import { hasMermaid } from '../../lib/diagrams';
+import { isListedPost } from '../../utils/posts';
 
 export async function getStaticPaths() {
   const posts = (await getCollection('blog')).filter((post) => !post.data.draft);
@@ -17,7 +19,7 @@ type Props = CollectionEntry<'blog'>;
 const post = Astro.props;
 const { Content, headings } = await render(post);
 const allPosts = (await getCollection('blog'))
-  .filter((entry) => !entry.data.draft)
+  .filter(isListedPost)
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 const postIndex = allPosts.findIndex((entry) => entry.id === post.id);
 const newerPost = postIndex > 0 ? allPosts[postIndex - 1] : undefined;
@@ -38,6 +40,8 @@ function formatDate(date: Date) {
   image={post.data.heroImage?.src}
   type="article"
   math={hasMath(post.body)}
+  mermaid={hasMermaid(post.body)}
+  noindex={post.data.archived}
 >
   <article class="post-page">
     <!-- Post Header -->
@@ -45,20 +49,26 @@ function formatDate(date: Date) {
       <div class="post-header-inner">
       <div class="post-toolbar">
         <a href="/blog">← 返回博客</a>
-        <a
-          class="post-edit"
-          id="article-edit"
-          hidden
-          data-owner-nav
-          href={`/notes?edit=${encodeURIComponent(post.id)}`}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 20h9"></path>
-            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
-          </svg>
-          编辑
-        </a>
+        <div class="post-owner-actions" hidden data-owner-nav>
+          <a class="post-edit" href={`/notes?edit=${encodeURIComponent(post.id)}`}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+            </svg>
+            编辑
+          </a>
+          <button type="button" class="post-edit" data-blog-action={post.data.archived ? 'unarchive' : 'archive'} data-slug={post.id}>
+            {post.data.archived ? '取消归档' : '归档'}
+          </button>
+          <button type="button" class="post-edit post-edit--danger" data-blog-action="delete" data-slug={post.id}>
+            删除
+          </button>
+        </div>
       </div>
+
+      {post.data.archived && (
+        <p class="post-archived">这篇文章已归档，不会出现在博客列表里。</p>
+      )}
 
       <div class="post-meta">
         <time datetime={post.data.pubDate.toISOString()}>
@@ -164,22 +174,49 @@ function formatDate(date: Date) {
     color: var(--primary);
   }
 
-  .post-edit {
+  .post-owner-actions {
     display: none;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .post-owner-actions:not([hidden]) {
+    display: flex;
+  }
+
+  .post-edit {
+    display: inline-flex;
     align-items: center;
     gap: 0.35rem;
     padding: 0.28rem 0.7rem;
     border: 1px solid var(--border);
     border-radius: 999px;
     background: var(--glass-bg);
-  }
-
-  .post-edit:not([hidden]) {
-    display: inline-flex;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 0.88rem;
+    cursor: pointer;
   }
 
   .post-edit:hover {
     border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .post-edit--danger:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+  }
+
+  .post-archived {
+    margin: 0 0 1.25rem;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border));
+    border-radius: 12px;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
   }
 
   .post-meta {
@@ -341,6 +378,7 @@ function formatDate(date: Date) {
 
 <script>
   document.querySelectorAll<HTMLElement>('.prose pre').forEach((pre) => {
+    if (pre.classList.contains('mermaid')) return;
     const code = pre.querySelector<HTMLElement>('code');
     if (!code || pre.querySelector('.copy-code-button')) return;
 
@@ -364,5 +402,39 @@ function formatDate(date: Date) {
     });
 
     pre.append(button);
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('[data-blog-action]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const action = button.dataset.blogAction;
+      const slug = button.dataset.slug ?? '';
+      if (!action || !slug || button.disabled) return;
+      const archive = action === 'archive';
+      const unarchive = action === 'unarchive';
+      const removing = action === 'delete';
+      if (archive && !window.confirm('归档后文章不会出现在博客列表，但链接仍然可以打开。确定归档？')) return;
+      if (unarchive && !window.confirm('取消归档后，文章会重新出现在博客列表。确定继续？')) return;
+      if (removing && !window.confirm('将从仓库删除这篇文章，博客上再也打不开。本地记录会变成草稿。确定删除？')) return;
+
+      button.disabled = true;
+      try {
+        const remote = await import('../../lib/notes-remote');
+        const token = remote.loadToken();
+        if (!token) {
+          window.alert('请先到记录页连接 GitHub 令牌');
+          window.location.href = `/notes?edit=${encodeURIComponent(slug)}`;
+          return;
+        }
+        if (removing) await remote.deleteBlogPost(token, slug);
+        else await remote.archiveBlogPost(token, slug, archive);
+        window.alert(removing ? '已提交删除，稍后刷新博客即可' : archive ? '已提交归档，稍后列表里会看不到' : '已提交取消归档');
+        if (removing) window.location.href = '/blog';
+        else window.location.reload();
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : '操作失败，请稍后重试');
+      } finally {
+        button.disabled = false;
+      }
+    });
   });
 </script>

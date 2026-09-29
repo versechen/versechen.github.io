@@ -21,6 +21,7 @@ const blog = defineCollection({
       series: z.string().optional(),
       seriesOrder: z.number().int().positive().optional(),
       draft: z.boolean().default(false),
+      archived: z.boolean().default(false),
     }),
 });
 

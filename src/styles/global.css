@@ -758,6 +758,39 @@ html.dark .prose pre.astro-code span {
   text-decoration: var(--shiki-dark-text-decoration);
 }
 
+.prose pre.mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.35rem 0;
+  overflow-x: auto;
+}
+
+.prose pre.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.prose .diagram-plantuml {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  overflow-x: auto;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.prose .diagram-plantuml img {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+  margin: 0;
+}
+
 .prose ul, .prose ol {
   padding-left: 1.5rem;
   margin-bottom: 1.25rem;

@@ -1,11 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
+import { isListedPost } from '../utils/posts';
 import coverGarden from '../assets/images/cover-garden.svg';
 import coverMountain from '../assets/images/cover-mountain.svg';
 import coverMusic from '../assets/images/cover-music.svg';
 
-const allPosts = (await getCollection('blog')).filter((post) => !post.data.draft);
+const allPosts = (await getCollection('blog')).filter(isListedPost);
 const recentPosts = allPosts.sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );

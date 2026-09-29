@@ -1,6 +1,6 @@
 ---
 title: 'Markdown 写作能力指南'
-description: '集中演示本站支持的目录、提示块、任务列表、表格、代码高亮、数学公式、脚注与原生 HTML 扩展。'
+description: '集中演示本站支持的目录、提示块、任务列表、表格、代码高亮、数学公式、Mermaid、PlantUML、脚注与原生 HTML 扩展。'
 pubDate: '2026-07-15'
 updatedDate: '2026-07-15'
 heroImage: '../../assets/images/cover-markdown.svg'
@@ -31,6 +31,8 @@ category: '使用指南'
 | --- | --- | --- | --- |
 | 代码高亮 | 围栏代码块 | Shiki 双主题 | 已支持 |
 | 数学公式 | `$...$` / `$$...$$` | KaTeX | 已支持 |
+| Mermaid | mermaid 围栏代码块 | 浏览器里渲染 | 已支持 |
+| PlantUML | plantuml / startuml 围栏 | plantuml.com SVG | 已支持 |
 | 提示块 | `> [!NOTE]` | GitHub Alert | 已支持 |
 | 文章目录 | 二至四级标题 | 构建时生成 | 已支持 |
 
@@ -76,6 +78,26 @@ $$
 \operatorname{softmax}(x_i) =
 \frac{\exp(x_i)}{\sum_{j=1}^{n}\exp(x_j)}
 $$
+
+## 图表
+
+`mermaid` 代码块会在页面里画成图，切换深色模式时会跟着换主题：
+
+```mermaid
+flowchart LR
+  草稿 --> 预览
+  预览 --> 发布
+  发布 --> 归档
+```
+
+PlantUML 可用 `plantuml`、`puml`、`uml` 或 `startuml` 作为围栏语言，也可以直接写 `@startuml`。图由 [PlantUML 公共服务](https://www.plantuml.com/) 生成：
+
+```plantuml
+@startuml
+Alice -> Bob: 你好
+Bob --> Alice: 收到
+@enduml
+```
 
 ## 引用与脚注
 

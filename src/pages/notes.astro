@@ -96,6 +96,8 @@ const syntaxItems = [
   ['正文[^1] 与 [^1]: 说明', '脚注'],
   ['| 列 | 列 |', '表格，第二行写 | --- |'],
   ['```js … ```', '代码块，可一键复制'],
+  ['```mermaid … ```', '流程图、时序图等，预览即时渲染'],
+  ['```plantuml … ```', 'PlantUML / @startuml 图'],
 ];
 ---
 
@@ -361,6 +363,27 @@ const syntaxItems = [
         <span class="notes-menu__text">
           <span class="notes-menu__label">存入草稿</span>
           <span class="notes-menu__hint">继续改这篇，博客上的文章先留着</span>
+        </span>
+      </button>
+      <button type="button" class="notes-menu__item" data-action="archive" id="notes-archive" hidden>
+        <span class="notes-menu__icon"><Fragment set:html={icon('archive', 18)} /></span>
+        <span class="notes-menu__text">
+          <span class="notes-menu__label">归档文章</span>
+          <span class="notes-menu__hint">列表里不再出现，链接还能打开</span>
+        </span>
+      </button>
+      <button type="button" class="notes-menu__item" data-action="unarchive" id="notes-unarchive" hidden>
+        <span class="notes-menu__icon"><Fragment set:html={icon('bookOpen', 18)} /></span>
+        <span class="notes-menu__text">
+          <span class="notes-menu__label">取消归档</span>
+          <span class="notes-menu__hint">重新出现在博客列表</span>
+        </span>
+      </button>
+      <button type="button" class="notes-menu__item notes-menu__item--danger" data-action="delete-blog" id="notes-delete-blog" hidden>
+        <span class="notes-menu__icon"><Fragment set:html={icon('trash', 18)} /></span>
+        <span class="notes-menu__text">
+          <span class="notes-menu__label">从博客删除</span>
+          <span class="notes-menu__hint">仓库里的文章会删掉，本地变成草稿</span>
         </span>
       </button>
       <button type="button" class="notes-menu__item" data-action="download">

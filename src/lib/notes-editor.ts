@@ -419,6 +419,14 @@ export const COMMANDS: Command[] = [
     run: (area) => insertBlock(area, `$$\n${CARET}${selectedOr(area, 'E = mc^2')}${CARET}\n$$`),
   },
   {
+    id: 'mermaid', label: 'Mermaid 图', hint: '```mermaid', icon: 'chart', group: '块', keywords: 'mermaid diagram flowchart tuhua th 流程图 时序图',
+    run: (area) => insertBlock(area, `\`\`\`mermaid\n${CARET}flowchart LR\n  A[开始] --> B[完成]${CARET}\n\`\`\``),
+  },
+  {
+    id: 'plantuml', label: 'PlantUML 图', hint: '```plantuml', icon: 'columns', group: '块', keywords: 'plantuml startuml uml sequence class tuhua th 类图 时序',
+    run: (area) => insertBlock(area, `\`\`\`plantuml\n@startuml\n${CARET}Alice -> Bob: hello${CARET}\n@enduml\n\`\`\``),
+  },
+  {
     id: 'details', label: '折叠块', hint: ':::details 标题', icon: 'details', group: '块', keywords: 'details collapse fold zhedie zd 折叠 展开',
     run: (area) => insertBlock(area, `:::details ${CARET}点击展开${CARET}\n${selectedOr(area, '折叠起来的内容')}\n:::`),
   },

@@ -1,9 +1,10 @@
 ---
 import { getCollection, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { isListedPost } from '../../utils/posts';
 
 export async function getStaticPaths() {
-  const posts = (await getCollection('blog')).filter((post) => !post.data.draft);
+  const posts = (await getCollection('blog')).filter(isListedPost);
   const allTags = [...new Set(posts.flatMap(p => p.data.tags ?? []))];
 
   return allTags.map(tag => ({

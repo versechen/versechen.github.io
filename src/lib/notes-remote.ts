@@ -1,4 +1,4 @@
-import { parseStore, serializeStore, type NoteStore } from './notes';
+import { parseStore, serializeStore, setYamlBoolean, type NoteStore } from './notes';
 
 export const TOKEN_KEY = 'codeverse.notes.githubToken';
 export const GIST_KEY = 'codeverse.notes.gistId';
@@ -250,6 +250,86 @@ export async function fetchRepoWriteAccess(token: string): Promise<boolean> {
   }
 }
 
+/** 用 Git 提交写入或删除仓库文件：创建 blob / tree / commit，不是上传文件。 */
+async function commitBlogTree(
+  token: string,
+  message: string,
+  entries: Array<{ path: string; content?: string; remove?: boolean }>,
+): Promise<void> {
+  const probe = await github(token, `/repos/${BLOG_REPO}`, {}, 'repo');
+  if (classicWriteScope(probe) === false) {
+    throw new NotesRemoteError(`当前令牌只有草稿同步权限，改不了博客。${TOKEN_SCOPES_HINT}`, 'auth');
+  }
+
+  const refRes = await github(token, `/repos/${BLOG_REPO}/git/ref/heads/${BLOG_BRANCH}`, {}, 'repo');
+  if (!refRes.ok) {
+    throwRepoWriteError(refRes.status, await readGithubMessage(refRes), '读取仓库分支失败，请稍后重试');
+  }
+  const parent = (await readJson<{ object?: { sha?: string } }>(refRes)).object?.sha;
+  if (!parent) throw new NotesRemoteError('读取仓库分支失败，请稍后重试');
+
+  const commitRes = await github(token, `/repos/${BLOG_REPO}/git/commits/${parent}`, {}, 'repo');
+  if (!commitRes.ok) {
+    throwRepoWriteError(commitRes.status, await readGithubMessage(commitRes), '读取最新提交失败，请稍后重试');
+  }
+  const baseTree = (await readJson<{ tree?: { sha?: string } }>(commitRes)).tree?.sha;
+  if (!baseTree) throw new NotesRemoteError('读取最新提交失败，请稍后重试');
+
+  const tree: Array<{ path: string; mode: '100644'; type: 'blob'; sha: string | null; content?: string }> = [];
+  for (const entry of entries) {
+    if (entry.remove) {
+      tree.push({ path: entry.path, mode: '100644', type: 'blob', sha: null });
+      continue;
+    }
+    const blobRes = await github(
+      token,
+      `/repos/${BLOG_REPO}/git/blobs`,
+      { method: 'POST', body: JSON.stringify({ content: entry.content ?? '', encoding: 'utf-8' }) },
+      'repo',
+    );
+    if (!blobRes.ok) {
+      throwRepoWriteError(blobRes.status, await readGithubMessage(blobRes), '创建提交失败，请稍后重试');
+    }
+    const blobSha = (await readJson<{ sha?: string }>(blobRes)).sha;
+    if (!blobSha) throw new NotesRemoteError('创建提交失败，请稍后重试');
+    tree.push({ path: entry.path, mode: '100644', type: 'blob', sha: blobSha });
+  }
+
+  const treeRes = await github(
+    token,
+    `/repos/${BLOG_REPO}/git/trees`,
+    { method: 'POST', body: JSON.stringify({ base_tree: baseTree, tree }) },
+    'repo',
+  );
+  if (!treeRes.ok) {
+    throwRepoWriteError(treeRes.status, await readGithubMessage(treeRes), '创建提交失败，请稍后重试');
+  }
+  const treeSha = (await readJson<{ sha?: string }>(treeRes)).sha;
+  if (!treeSha) throw new NotesRemoteError('创建提交失败，请稍后重试');
+
+  const commitNew = await github(
+    token,
+    `/repos/${BLOG_REPO}/git/commits`,
+    { method: 'POST', body: JSON.stringify({ message, tree: treeSha, parents: [parent] }) },
+    'repo',
+  );
+  if (!commitNew.ok) {
+    throwRepoWriteError(commitNew.status, await readGithubMessage(commitNew), '创建提交失败，请稍后重试');
+  }
+  const commitSha = (await readJson<{ sha?: string }>(commitNew)).sha;
+  if (!commitSha) throw new NotesRemoteError('创建提交失败，请稍后重试');
+
+  const tip = await github(
+    token,
+    `/repos/${BLOG_REPO}/git/refs/heads/${BLOG_BRANCH}`,
+    { method: 'PATCH', body: JSON.stringify({ sha: commitSha }) },
+    'repo',
+  );
+  if (!tip.ok) {
+    throwRepoWriteError(tip.status, await readGithubMessage(tip), '更新远端失败，请稍后重试');
+  }
+}
+
 /** 用 Git 提交写入文章：创建 blob / tree / commit，不是上传文件。随后 Actions 构建上线。 */
 export async function publishBlogPost(
   token: string,
@@ -269,80 +349,36 @@ export async function publishBlogPost(
     throwRepoWriteError(existing.status, await readGithubMessage(existing), '检查远端文章失败，请稍后重试');
   }
 
-  const refRes = await github(token, `/repos/${BLOG_REPO}/git/ref/heads/${BLOG_BRANCH}`, {}, 'repo');
-  if (!refRes.ok) {
-    throwRepoWriteError(refRes.status, await readGithubMessage(refRes), '读取仓库分支失败，请稍后重试');
-  }
-  const parent = (await readJson<{ object?: { sha?: string } }>(refRes)).object?.sha;
-  if (!parent) throw new NotesRemoteError('读取仓库分支失败，请稍后重试');
-
-  const commitRes = await github(token, `/repos/${BLOG_REPO}/git/commits/${parent}`, {}, 'repo');
-  if (!commitRes.ok) {
-    throwRepoWriteError(commitRes.status, await readGithubMessage(commitRes), '读取最新提交失败，请稍后重试');
-  }
-  const baseTree = (await readJson<{ tree?: { sha?: string } }>(commitRes)).tree?.sha;
-  if (!baseTree) throw new NotesRemoteError('读取最新提交失败，请稍后重试');
-
-  const blobRes = await github(
-    token,
-    `/repos/${BLOG_REPO}/git/blobs`,
-    { method: 'POST', body: JSON.stringify({ content: input.markdown, encoding: 'utf-8' }) },
-    'repo',
-  );
-  if (!blobRes.ok) {
-    throwRepoWriteError(blobRes.status, await readGithubMessage(blobRes), '创建提交失败，请稍后重试');
-  }
-  const blobSha = (await readJson<{ sha?: string }>(blobRes)).sha;
-  if (!blobSha) throw new NotesRemoteError('创建提交失败，请稍后重试');
-
-  const treeRes = await github(
-    token,
-    `/repos/${BLOG_REPO}/git/trees`,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        base_tree: baseTree,
-        tree: [{ path: relative, mode: '100644', type: 'blob', sha: blobSha }],
-      }),
-    },
-    'repo',
-  );
-  if (!treeRes.ok) {
-    throwRepoWriteError(treeRes.status, await readGithubMessage(treeRes), '创建提交失败，请稍后重试');
-  }
-  const treeSha = (await readJson<{ sha?: string }>(treeRes)).sha;
-  if (!treeSha) throw new NotesRemoteError('创建提交失败，请稍后重试');
-
   const title = input.title.replace(/\s+/g, ' ').trim().slice(0, 60) || '无标题';
-  const commitNew = await github(
+  await commitBlogTree(
     token,
-    `/repos/${BLOG_REPO}/git/commits`,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        message: updated ? `feat(blog): 更新《${title}》` : `feat(blog): 发布《${title}》`,
-        tree: treeSha,
-        parents: [parent],
-      }),
-    },
-    'repo',
+    updated ? `feat(blog): 更新《${title}》` : `feat(blog): 发布《${title}》`,
+    [{ path: relative, content: input.markdown }],
   );
-  if (!commitNew.ok) {
-    throwRepoWriteError(commitNew.status, await readGithubMessage(commitNew), '创建提交失败，请稍后重试');
-  }
-  const commitSha = (await readJson<{ sha?: string }>(commitNew)).sha;
-  if (!commitSha) throw new NotesRemoteError('创建提交失败，请稍后重试');
-
-  const tip = await github(
-    token,
-    `/repos/${BLOG_REPO}/git/refs/heads/${BLOG_BRANCH}`,
-    { method: 'PATCH', body: JSON.stringify({ sha: commitSha }) },
-    'repo',
-  );
-  if (!tip.ok) {
-    throwRepoWriteError(tip.status, await readGithubMessage(tip), updated ? '更新远端文章失败，请稍后重试' : '发布到仓库失败，请稍后重试');
-  }
   return { updated };
+}
+
+export async function archiveBlogPost(
+  token: string,
+  slug: string,
+  archived: boolean,
+): Promise<void> {
+  const file = await fetchPublishedBlogFile(token, slug);
+  if (!file) throw new NotesRemoteError('仓库里没找到这篇文章');
+  const markdown = setYamlBoolean(file.markdown, 'archived', archived);
+  const title = file.markdown.match(/^title:\s*(.*)$/m)?.[1]?.replace(/^['"]|['"]$/g, '').trim() || slug;
+  await commitBlogTree(
+    token,
+    archived ? `chore(blog): 归档《${title.slice(0, 60)}》` : `chore(blog): 取消归档《${title.slice(0, 60)}》`,
+    [{ path: file.path, content: markdown }],
+  );
+}
+
+export async function deleteBlogPost(token: string, slug: string): Promise<void> {
+  const file = await fetchPublishedBlogFile(token, slug);
+  if (!file) throw new NotesRemoteError('仓库里没找到这篇文章');
+  const title = file.markdown.match(/^title:\s*(.*)$/m)?.[1]?.replace(/^['"]|['"]$/g, '').trim() || slug;
+  await commitBlogTree(token, `chore(blog): 删除《${title.slice(0, 60)}》`, [{ path: file.path, remove: true }]);
 }
 
 function base64ToUtf8(content: string): string {
@@ -360,19 +396,20 @@ function decodeContentsFile(payload: { content?: string; encoding?: string }): s
 export async function fetchPublishedBlogFile(
   token: string,
   slug: string,
-): Promise<{ slug: string; markdown: string } | null> {
+): Promise<{ slug: string; markdown: string; path: string } | null> {
   const safe = slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '').slice(0, 80);
   if (!safe) return null;
   for (const ext of ['.md', '.mdx'] as const) {
-    const path = `${BLOG_DIR}/${safe}${ext}`.split('/').map(encodeURIComponent).join('/');
-    const response = await github(token, `/repos/${BLOG_REPO}/contents/${path}?ref=${BLOG_BRANCH}`, {}, 'repo');
+    const path = `${BLOG_DIR}/${safe}${ext}`;
+    const encoded = path.split('/').map(encodeURIComponent).join('/');
+    const response = await github(token, `/repos/${BLOG_REPO}/contents/${encoded}?ref=${BLOG_BRANCH}`, {}, 'repo');
     if (response.status === 404) continue;
     if (!response.ok) {
       throwRepoWriteError(response.status, await readGithubMessage(response), '读取这篇文章失败，请稍后重试');
     }
     const markdown = decodeContentsFile(await readJson<{ content?: string; encoding?: string }>(response));
     if (!markdown) continue;
-    return { slug: safe, markdown };
+    return { slug: safe, markdown, path };
   }
   return null;
 }

@@ -9,6 +9,7 @@ import rehypeSlug from 'rehype-slug';
 import remarkGithubBlockquoteAlert from 'remark-github-blockquote-alert';
 import remarkMath from 'remark-math';
 import { notesDevPlugin } from './scripts/notes-dev-plugin.mjs';
+import { remarkDiagrams } from './src/lib/diagrams';
 
 // https://astro.build/config
 export default defineConfig({
@@ -21,6 +22,7 @@ export default defineConfig({
       remarkPlugins: [
         remarkMath,
         remarkGithubBlockquoteAlert,
+        remarkDiagrams,
       ],
       rehypePlugins: [
         rehypeSlug,

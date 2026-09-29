@@ -2,9 +2,10 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import BlogSidebar from '../components/BlogSidebar.astro';
 import { getCollection } from 'astro:content';
+import { isListedPost } from '../utils/posts';
 
 const posts = (await getCollection('blog'))
-  .filter((post) => !post.data.draft)
+  .filter(isListedPost)
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 
 // 年份归档，按年份倒序

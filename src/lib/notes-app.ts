@@ -7,9 +7,11 @@ import {
   formatFullTime,
   formatNoteTime,
   groupNotes,
+  isArchivedNote,
   isBlankNote,
   isPublishedNote,
   loadLocalStore,
+  markNoteArchived,
   markNoteDraft,
   markNotePublished,
   noteFromBlogMarkdown,
@@ -34,12 +36,14 @@ import {
   type NoteStore,
 } from './notes';
 import {
+  archiveBlogPost,
   BLOG_ACTIONS_URL,
   BLOG_REPO,
   OWNER_LOGIN,
   TOKEN_CREATE_URL,
   TOKEN_SCOPES_HINT,
   clearRemoteSession,
+  deleteBlogPost,
   fetchLogin,
   fetchPublishedBlogFile,
   fetchPublishedBlogFiles,
@@ -185,6 +189,9 @@ function queryUi(root: HTMLElement) {
     publishConnect: el<HTMLButtonElement>('notes-publish-connect'),
     publishMenuLabel: el('notes-publish-menu-label'),
     unpublishItem: el<HTMLButtonElement>('notes-unpublish'),
+    archiveItem: el<HTMLButtonElement>('notes-archive'),
+    unarchiveItem: el<HTMLButtonElement>('notes-unarchive'),
+    deleteBlogItem: el<HTMLButtonElement>('notes-delete-blog'),
     prefsDialog: el<HTMLDialogElement>('notes-prefs-dialog'),
     prefsForm: el<HTMLFormElement>('notes-prefs-form'),
     sizeOutput: el('notes-size-output'),
@@ -230,6 +237,7 @@ let highlightFn: ((root: ParentNode) => void) | null = null;
 let highlightLoading: Promise<void> | null = null;
 let previewStale = true;
 let previewTimer = 0;
+let previewSeq = 0;
 let listTimer = 0;
 let statsTimer = 0;
 let localTimer = 0;
@@ -927,7 +935,12 @@ function renderList(): void {
       const title = document.createElement('span');
       title.className = 'notes-item__title';
       if (note.pinned) title.insertAdjacentHTML('afterbegin', icon('pin', 13));
-      if (isPublishedNote(note)) {
+      if (isArchivedNote(note)) {
+        const mark = document.createElement('span');
+        mark.className = 'notes-item__status';
+        mark.textContent = '已归档';
+        title.append(mark);
+      } else if (isPublishedNote(note)) {
         const mark = document.createElement('span');
         mark.className = 'notes-item__status';
         mark.textContent = '已发布';
@@ -1263,22 +1276,26 @@ function schedulePreview(delay?: number): void {
   previewStale = true;
   if (effectiveMode() === 'edit') return;
   window.clearTimeout(previewTimer);
-  const wait = delay ?? Math.min(480, 120 + Math.floor(ui.body.value.length / 300));
+  const wait = delay ?? 32;
   previewTimer = window.setTimeout(() => void renderPreview(), wait);
 }
 
 async function renderPreview(): Promise<void> {
+  const seq = ++previewSeq;
   if (!renderFn) await loadRenderer();
   const note = activeNote();
-  if (!note || !renderFn) return;
+  if (seq !== previewSeq || !note || !renderFn) return;
   ui.previewTitle.textContent = note.title.trim() || '无标题';
   ui.previewTitle.classList.toggle('is-placeholder', !note.title.trim());
   if (note.body.trim()) {
-    ui.preview.innerHTML = renderFn(note.body);
+    const html = renderFn(note.body);
+    if (seq !== previewSeq) return;
+    ui.preview.innerHTML = html;
     enhancePreview();
   } else {
     ui.preview.innerHTML = '<p class="notes-preview__placeholder">正文还是空的。左边写下的内容会在这里排版好。</p>';
   }
+  if (seq !== previewSeq) return;
   previewStale = false;
   syncPreviewScroll();
 }
@@ -1303,6 +1320,7 @@ function highlightBlocks(root: ParentNode): void {
 function enhancePreview(): void {
   highlightBlocks(ui.preview);
   for (const pre of ui.preview.querySelectorAll<HTMLPreElement>('pre')) {
+    if (pre.classList.contains('mermaid')) continue;
     const wrap = document.createElement('div');
     wrap.className = 'notes-code';
     const bar = document.createElement('div');
@@ -1318,6 +1336,7 @@ function enhancePreview(): void {
     pre.replaceWith(wrap);
     wrap.append(bar, pre);
   }
+  void import('./mermaid-client').then((module) => module.renderMermaid(ui.preview));
 }
 
 function toggleTaskFromPreview(input: HTMLInputElement): void {
@@ -1673,6 +1692,7 @@ function readPublishInput() {
     tags: parseTags(ui.publishTags.value),
     category: ui.publishCategory.value,
     draft: ui.publishDraft.checked,
+    archived: Boolean(activeNote()?.archived),
     body: ui.body.value,
   };
 }
@@ -1696,7 +1716,11 @@ function publishSubmitLabel(): string {
 function refreshPublishedActions(): void {
   const note = activeNote();
   const published = Boolean(note && isPublishedNote(note));
+  const archived = Boolean(note && isArchivedNote(note));
   ui.unpublishItem.hidden = !published;
+  ui.archiveItem.hidden = !published || archived;
+  ui.unarchiveItem.hidden = !archived;
+  ui.deleteBlogItem.hidden = !published;
   ui.publishMenuLabel.textContent = published ? '更新到博客' : '发布到博客';
 }
 
@@ -1712,6 +1736,61 @@ function saveActiveAsDraft(): void {
   refreshPublishedActions();
   renderList();
   showToast('已存回草稿。博客上的文章还在，改完后可以再更新发布');
+}
+
+async function requireBlogWrite(): Promise<boolean> {
+  if (ownerRequired() && !isSiteOwner(state.login)) {
+    showToast(`只有 @${OWNER_LOGIN} 可以改博客文章`);
+    return false;
+  }
+  if (!state.token) {
+    openSyncDialog();
+    return false;
+  }
+  return true;
+}
+
+async function archiveActive(archived: boolean): Promise<void> {
+  const note = activeNote();
+  if (!note?.publishedSlug) {
+    showToast('这篇还不是已发布的文章');
+    return;
+  }
+  if (archived && !window.confirm('归档后文章不会出现在博客列表，但链接仍然可以打开。确定归档？')) return;
+  if (!archived && !window.confirm('取消归档后，文章会重新出现在博客列表。确定继续？')) return;
+  if (!(await requireBlogWrite()) || !state.token) return;
+  try {
+    await archiveBlogPost(state.token, note.publishedSlug, archived);
+    markNoteArchived(note, archived);
+    touch(note);
+    persist();
+    refreshPublishedActions();
+    renderList();
+    showToast(archived ? '已提交归档，GitHub Actions 稍后会更新列表' : '已提交取消归档');
+  } catch (error) {
+    showToast(error instanceof NotesRemoteError ? error.message : '归档失败，请稍后重试');
+  }
+}
+
+async function deleteActiveBlog(): Promise<void> {
+  const note = activeNote();
+  if (!note?.publishedSlug) {
+    showToast('这篇还不是已发布的文章');
+    return;
+  }
+  if (!window.confirm('将从仓库删除这篇文章，博客上再也打不开。本地记录会变成草稿。确定删除？')) return;
+  if (!(await requireBlogWrite()) || !state.token) return;
+  try {
+    await deleteBlogPost(state.token, note.publishedSlug);
+    markNoteDraft(note);
+    touch(note);
+    persist();
+    refreshPublishedActions();
+    renderList();
+    showToast('已提交删除，本地还留着草稿');
+  } catch (error) {
+    showToast(error instanceof NotesRemoteError ? error.message : '删除失败，请稍后重试');
+  }
 }
 
 async function pullPublishedPosts(): Promise<void> {
@@ -1857,9 +1936,9 @@ async function publishToBlog(event: SubmitEvent): Promise<void> {
   }
 }
 
-function fillPrint(): void {
+function fillPrint(): HTMLElement | null {
   const note = activeNote();
-  if (!note) return;
+  if (!note) return null;
   const title = document.createElement('h1');
   title.textContent = note.title.trim() || '无标题';
   const meta = document.createElement('p');
@@ -1876,11 +1955,16 @@ function fillPrint(): void {
     article.append(pre);
   }
   ui.print.replaceChildren(title, meta, article);
+  return article;
 }
 
 async function printNote(): Promise<void> {
   await loadRenderer();
-  fillPrint();
+  const article = fillPrint();
+  if (article) {
+    const { renderMermaid } = await import('./mermaid-client');
+    await renderMermaid(article);
+  }
   window.print();
 }
 
@@ -2003,6 +2087,15 @@ function onRootClick(event: MouseEvent): void {
       return openPublishDialog();
     case 'unpublish':
       return saveActiveAsDraft();
+    case 'archive':
+      void archiveActive(true);
+      return;
+    case 'unarchive':
+      void archiveActive(false);
+      return;
+    case 'delete-blog':
+      void deleteActiveBlog();
+      return;
     case 'pull-published':
       void pullPublishedPosts();
       return;
@@ -2458,6 +2551,7 @@ export function initNotesApp(): void {
   setupDrop();
   bindEvents();
   void boot();
+  void import('./mermaid-client').then((module) => module.bootMermaid());
   // 渲染器较大，空闲时预先加载，第一次切到预览不用等
   const idle = window.requestIdleCallback as typeof window.requestIdleCallback | undefined;
   if (idle) idle.call(window, () => void loadRenderer(), { timeout: 3000 });

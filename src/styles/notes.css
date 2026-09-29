@@ -1132,6 +1132,37 @@ html.dark .notes-code { background: var(--shiki-dark-bg, #0d1117); }
   line-height: 1.7;
 }
 
+.notes-preview pre.mermaid {
+  display: flex;
+  justify-content: center;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.4rem 0;
+  overflow-x: auto;
+}
+
+.notes-preview pre.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.notes-preview .diagram-plantuml {
+  margin: 1.4em 0;
+  padding: 0.9rem;
+  overflow-x: auto;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.notes-preview .diagram-plantuml img {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+  margin: 0;
+}
+
 /* ---------- 状态栏 ---------- */
 
 .notes-status {

@@ -4,6 +4,7 @@ import Footer from '../components/Footer.astro';
 // ?url 让 KaTeX 样式作为独立资源产出，只有含公式的页面才会引用它。
 import katexStylesheet from 'katex/dist/katex.min.css?url';
 import '../styles/global.css';
+import MermaidInit from '../components/MermaidInit.astro';
 import { SITE_TITLE, SITE_DESCRIPTION, SITE_URL } from '../consts';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
   image?: string;
   type?: 'website' | 'article';
   math?: boolean;
+  mermaid?: boolean;
   pageTitle?: string; // backward compat
   /** 文档站等沉浸式页面可隐藏页脚 */
   hideFooter?: boolean;
@@ -26,6 +28,7 @@ const {
   image,
   type = 'website',
   math = false,
+  mermaid = false,
   hideFooter = false,
   noindex = false,
 } = Astro.props;
@@ -82,5 +85,6 @@ const socialImageURL = image ? new URL(image, Astro.site ?? SITE_URL) : undefine
       <slot />
     </main>
     {!hideFooter && <Footer />}
+    {mermaid && <MermaidInit />}
   </body>
 </html>
