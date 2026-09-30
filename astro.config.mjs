@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from 'node:fs';
 import { defineConfig } from 'astro/config';
 import { unified } from '@astrojs/markdown-remark';
 import mdx from '@astrojs/mdx';
@@ -10,6 +11,21 @@ import remarkGithubBlockquoteAlert from 'remark-github-blockquote-alert';
 import remarkMath from 'remark-math';
 import { notesDevPlugin } from './scripts/notes-dev-plugin.mjs';
 import { remarkDiagrams } from './src/lib/diagrams';
+
+// 归档文章页面带 noindex，站点地图里也不应再提交给搜索引擎。
+function archivedBlogPaths() {
+  const dir = new URL('./src/content/blog/', import.meta.url);
+  const paths = new Set();
+  for (const name of readdirSync(dir, { recursive: true })) {
+    const file = String(name).replace(/\\/g, '/');
+    if (!/\.mdx?$/.test(file) || file.split('/').some((part) => part.startsWith('_'))) continue;
+    const front = readFileSync(new URL(file, dir), 'utf8').match(/^---\r?\n([\s\S]*?)\r?\n---/)?.[1] ?? '';
+    if (/^archived:\s*['"]?(true|yes)['"]?\s*$/im.test(front)) paths.add(`/blog/${file.replace(/\.mdx?$/, '')}/`);
+  }
+  return paths;
+}
+
+const archivedPaths = archivedBlogPaths();
 
 // https://astro.build/config
 export default defineConfig({
@@ -59,7 +75,12 @@ export default defineConfig({
       wrap: true,
     },
   },
-  integrations: [mdx(), sitemap({ filter: (page) => !page.includes('/notes') })],
+  integrations: [
+    mdx(),
+    sitemap({
+      filter: (page) => !page.includes('/notes') && !archivedPaths.has(new URL(page).pathname.replace(/\/?$/, '/')),
+    }),
+  ],
   vite: {
     plugins: [notesDevPlugin()],
   },

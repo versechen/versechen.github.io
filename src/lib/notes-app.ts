@@ -1910,6 +1910,7 @@ async function publishToBlog(event: SubmitEvent): Promise<void> {
       note.title = input.title.trim();
       ui.title.value = note.title;
       markNotePublished(note, input.slug);
+      markNoteArchived(note, result.archived);
       touch(note);
       persist();
       refreshPublishedActions();
@@ -1917,7 +1918,11 @@ async function publishToBlog(event: SubmitEvent): Promise<void> {
     }
     ui.publishDialog.close();
     const done = result.updated ? '已更新仓库里的文章' : '已提交到仓库';
-    const extra = input.draft ? '博客草稿不会出现在列表里。' : 'GitHub Actions 正在后台构建，大约一两分钟后会出现在博客里。';
+    const extra = input.draft
+      ? '博客草稿不会出现在列表里。'
+      : result.archived
+        ? '这篇仍是归档状态，不会出现在博客列表里。'
+        : 'GitHub Actions 正在后台构建，大约一两分钟后会出现在博客里。';
     showToast(`${done}，记录里仍可继续改，也可以存回草稿。${extra}`, { label: '查看进度', run: () => window.open(BLOG_ACTIONS_URL, '_blank', 'noopener,noreferrer') }, 8000);
   } catch (caught) {
     if (caught instanceof NotesRemoteError && caught.code === 'exists') {

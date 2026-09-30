@@ -442,8 +442,13 @@ export function noteFromBlogMarkdown(source: string, slug: string, now = new Dat
   note.body = (matter?.[2] ?? text).replace(/^\n+/, '').slice(0, MAX_BODY);
   note.tags = parseTags(yamlScalar(front, 'tags').replace(/^\[|\]$/g, ''));
   markNotePublished(note, slug, now);
-  if (/^(true|yes)$/i.test(yamlScalar(front, 'archived'))) note.archived = true;
+  if (readYamlBoolean(text, 'archived')) note.archived = true;
   return note;
+}
+
+export function readYamlBoolean(source: string, key: string): boolean {
+  const front = source.replace(/\r\n/g, '\n').match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
+  return /^(true|yes)$/i.test(yamlScalar(front, key));
 }
 
 /** 给已有 frontmatter 开关布尔字段；没有 frontmatter 时会补一组。 */

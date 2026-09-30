@@ -427,6 +427,17 @@ function formatDate(date: Date) {
         }
         if (removing) await remote.deleteBlogPost(token, slug);
         else await remote.archiveBlogPost(token, slug, archive);
+        const notes = await import('../../lib/notes');
+        const store = notes.loadLocalStore();
+        const published = notes.normalizeBlogSlug(slug);
+        const now = new Date().toISOString();
+        for (const note of store.notes) {
+          if (note.publishedSlug !== published) continue;
+          if (removing) notes.markNoteDraft(note);
+          else notes.markNoteArchived(note, archive);
+          note.updatedAt = now;
+        }
+        notes.saveLocalStore(store);
         window.alert(removing ? '已提交删除，稍后刷新博客即可' : archive ? '已提交归档，稍后列表里会看不到' : '已提交取消归档');
         if (removing) window.location.href = '/blog';
         else window.location.reload();

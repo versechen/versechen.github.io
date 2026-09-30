@@ -1,4 +1,4 @@
-import { parseStore, serializeStore, setYamlBoolean, type NoteStore } from './notes';
+import { parseStore, readYamlBoolean, serializeStore, setYamlBoolean, type NoteStore } from './notes';
 
 export const TOKEN_KEY = 'codeverse.notes.githubToken';
 export const GIST_KEY = 'codeverse.notes.gistId';
@@ -334,7 +334,7 @@ async function commitBlogTree(
 export async function publishBlogPost(
   token: string,
   input: { slug: string; title: string; markdown: string; overwrite?: boolean },
-): Promise<{ updated: boolean }> {
+): Promise<{ updated: boolean; archived: boolean }> {
   const relative = `${BLOG_DIR}/${input.slug}.md`;
   const encoded = relative.split('/').map(encodeURIComponent).join('/');
   const existing = await github(token, `/repos/${BLOG_REPO}/contents/${encoded}?ref=${BLOG_BRANCH}`, {}, 'repo');
@@ -348,14 +348,17 @@ export async function publishBlogPost(
   if (!existing.ok && existing.status !== 404) {
     throwRepoWriteError(existing.status, await readGithubMessage(existing), '检查远端文章失败，请稍后重试');
   }
+  // 归档状态以仓库为准：文章页上归档过的文章，从记录页更新时不能被悄悄放回列表。
+  const remote = updated ? decodeContentsFile(await readJson<{ content?: string; encoding?: string }>(existing)) : null;
+  const archived = remote ? readYamlBoolean(remote, 'archived') : false;
 
   const title = input.title.replace(/\s+/g, ' ').trim().slice(0, 60) || '无标题';
   await commitBlogTree(
     token,
     updated ? `feat(blog): 更新《${title}》` : `feat(blog): 发布《${title}》`,
-    [{ path: relative, content: input.markdown }],
+    [{ path: relative, content: setYamlBoolean(input.markdown, 'archived', archived) }],
   );
-  return { updated };
+  return { updated, archived };
 }
 
 export async function archiveBlogPost(
