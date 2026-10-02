@@ -1,4 +1,5 @@
 ---
+import CoastalScene from '../../components/CoastalScene.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 import { isListedPost } from '../../utils/posts';
@@ -17,6 +18,7 @@ const tags = [...tagCounts.entries()].sort(
 ---
 <BaseLayout title="标签" description="按主题浏览代码陈诗的全部文章">
   <div class="page-hero container">
+      <CoastalScene />
     <div class="tag-hero-icon" aria-hidden="true">#</div>
     <h1 class="page-hero-title"><span class="gradient-text">文章标签</span></h1>
     <p class="page-hero-desc">{tags.length} 个主题 · {allPosts.length} 篇文章</p>

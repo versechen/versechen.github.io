@@ -1,4 +1,5 @@
 ---
+import CoastalScene from '../components/CoastalScene.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import BlogSidebar from '../components/BlogSidebar.astro';
 import { getCollection } from 'astro:content';
@@ -64,6 +65,7 @@ function fmt(date: Date) {
   <div class="blog-wrap">
     <!-- 页头 -->
     <header class="blog-head">
+      <CoastalScene />
       <h1 class="blog-head-title"><span class="gradient-text">博客</span></h1>
       <p class="blog-head-sub">
         {posts.length} 篇文章 · {years.length} 个年份 · {seriesList.length} 个系列 · {tagList.length} 个标签
@@ -79,6 +81,7 @@ function fmt(date: Date) {
         <!-- 结果状态：与文章列表对齐 -->
         <div class="toolbar">
           <div class="toolbar-inner">
+            <input id="coastal-mobile-search" class="coastal-mobile-search" type="search" placeholder="搜索海滨手记…" aria-label="搜索文章" />
             <button type="button" class="drawer-btn" id="drawer-open" aria-expanded="false" aria-controls="blog-sidebar">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
               筛选
@@ -181,6 +184,8 @@ function fmt(date: Date) {
   const groups = Array.from(document.querySelectorAll<HTMLElement>('.year-group'));
   const facetButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-facet]'));
   const searchInput = document.getElementById('search-input') as HTMLInputElement | null;
+  const mobileSearch = document.querySelector<HTMLInputElement>('#coastal-mobile-search');
+  mobileSearch?.addEventListener('input', () => { if (searchInput) { searchInput.value = mobileSearch.value; searchInput.dispatchEvent(new Event('input')); } });
   const countEl = document.getElementById('vis-count');
   const emptyEl = document.getElementById('empty-state');
   const activeBar = document.getElementById('active-bar');
@@ -199,6 +204,7 @@ function fmt(date: Date) {
     state.tag = sp.get('tag') ?? '';
     state.q = sp.get('q') ?? '';
     if (searchInput) searchInput.value = state.q;
+    if (mobileSearch) mobileSearch.value = state.q;
   }
 
   function writeURL(replace = false) {
@@ -248,6 +254,7 @@ function fmt(date: Date) {
         if (key === 'q') {
           state.q = '';
           if (searchInput) searchInput.value = '';
+          if (mobileSearch) mobileSearch.value = '';
         } else {
           state[key] = '';
         }
@@ -307,6 +314,7 @@ function fmt(date: Date) {
     clearTimeout(searchTimer);
     searchTimer = window.setTimeout(() => {
       state.q = searchInput.value;
+      if (mobileSearch) mobileSearch.value = state.q;
       apply();
     }, 120);
   });
@@ -314,6 +322,7 @@ function fmt(date: Date) {
   searchInput?.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       searchInput.value = '';
+      if (mobileSearch) mobileSearch.value = '';
       state.q = '';
       apply();
     }
@@ -322,6 +331,7 @@ function fmt(date: Date) {
   function resetAll() {
     state.year = state.series = state.tag = state.q = '';
     if (searchInput) searchInput.value = '';
+    if (mobileSearch) mobileSearch.value = '';
     apply();
   }
   clearAllBtn?.addEventListener('click', resetAll);

@@ -1,4 +1,5 @@
 ---
+import CoastalScene from '../../components/CoastalScene.astro';
 import { getCollection, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { isListedPost } from '../../utils/posts';
@@ -31,6 +32,7 @@ function fmt(d: Date) {
 
   <!-- Hero -->
   <div class="page-hero container">
+      <CoastalScene />
     <div class="tag-hero-badge" aria-hidden="true">#</div>
     <h1 class="page-hero-title"><span class="gradient-text">{tag}</span></h1>
     <p class="page-hero-desc">共 <strong>{posts.length}</strong> 篇文章</p>

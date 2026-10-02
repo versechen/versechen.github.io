@@ -1,0 +1,14 @@
+---
+const {href} = Astro.props;
+const shapes: Record<string,string> = {
+ '/':'<path d="M4 13 14 4l10 9" fill="#f1b6a0"/><path d="M7 12v12h14V12" fill="#fff1ce"/><path d="M12 24v-8h5v8" fill="#73b9bd"/><path d="M3 25q5-3 10 0t12 0" fill="none"/>',
+ '/blog':'<path d="M6 5h16v20H6z" fill="#fff0d2"/><path d="M10 11h7m-7 4h9m-9 4h5"/><path d="m19 4 5 3-8 12-3 1 1-4Z" fill="#8bc4ca"/>',
+ '/reading':'<path d="M3 7q6-3 11 1 5-4 11-1v17q-6-3-11 0-5-3-11 0Z" fill="#fff0d2"/><path d="M14 8v16M6 11l4 1m-4 4 4 1m8-5 4-1m-4 6 4-1"/>',
+ '/projects':'<path d="M4 21h22l-5 5H8Z" fill="#f1b6a0"/><path d="M14 3v18M12 5 4 18h8Z" fill="#a4d6d6"/><path d="m16 7 8 11h-8Z" fill="#fff0d2"/>',
+ '/life':'<path d="M5 21C-2 6 10 2 14 8c5-8 17-1 10 13l-9 5Z" fill="#f3c0b0"/><path d="m7 10 7 14m0-15v15m8-14-7 14M5 21h20" fill="none"/>',
+ '/notes':'<path d="M6 4h17v22H6Z" fill="#fff0d2"/><path d="M4 9h5M4 16h5m-5 6h5m4-11h6m-6 5h6"/><path d="m19 3 5 2-5 11-4 2v-4Z" fill="#a4d6d6"/>',
+ '/friends':'<path d="M3 8h24v17H3Z" fill="#fff0d2"/><path d="m3 8 12 9L27 8" fill="#a4d6d6"/><path d="m12 11 3 3 3-3" stroke="#cb755e"/>',
+ '/about':'<path d="m10 10-3 16h15l-3-16Z" fill="#fff0d2"/><path d="M9 5h11v6H9Z" fill="#9dced0"/><path d="m7 5 7-4 8 4m-12 13h10M14 6v3"/><path d="M2 26h25"/>'
+};
+---
+<svg class="coastal-nav-icon" viewBox="0 0 30 30" width="24" height="24" fill="none" stroke="#467583" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><Fragment set:html={shapes[href] ?? shapes['/']} /></svg>

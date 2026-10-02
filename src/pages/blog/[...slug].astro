@@ -1,4 +1,5 @@
 ---
+import CoastalScene from '../../components/CoastalScene.astro';
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import TableOfContents from '../../components/TableOfContents.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
@@ -46,6 +47,7 @@ function formatDate(date: Date) {
   <article class="post-page">
     <!-- Post Header -->
     <header class="post-header container animate-fade-up">
+      <CoastalScene />
       <div class="post-header-inner">
       <div class="post-toolbar">
         <a href="/blog">← 返回博客</a>

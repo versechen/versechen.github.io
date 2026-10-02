@@ -6,15 +6,15 @@ const output=process.env.PREVIEW_EVIDENCE||'/tmp/codeverse-v2-evidence';mkdirSyn
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
 const p=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'no-preference'});const checks=[];
 await p.goto(base+'/?visual-theme=poetize');await p.waitForTimeout(1000);
-assert.match(await p.locator('.hero-gradient').evaluate(el=>getComputedStyle(el).backgroundImage),/poetize-coast\.webp/);
+assert.match(await p.locator('.hero-gradient img').evaluate(el=>el.currentSrc),/home-wide-2172\.webp/);
 assert.equal(await p.locator('.hero-wrap').evaluate(el=>getComputedStyle(el,'::before').animationName),'poetize-wave-drift');
 assert.equal(await p.locator('.hero-wrap').evaluate(el=>getComputedStyle(el,'::after').animationName),'poetize-wave-drift');
 assert.equal(await p.locator('#poetize-petals').evaluate(el=>{const data=el.getContext('2d').getImageData(0,0,el.width,el.height).data;return data.some((v,i)=>i%4===3&&v>0)}),true);
 checks.push('Two animated wave layers and visible full-viewport petal pixels');
 await p.locator('.poetize-explore').click();await p.waitForTimeout(900);assert.ok(await p.evaluate(()=>scrollY)>300);
-assert.equal(await p.locator('.wall-card.has-img .card-title').first().evaluate(el=>getComputedStyle(el).color),'rgb(36, 68, 85)');
+assert.equal(await p.locator('.wall-card.has-img .card-title').first().evaluate(el=>getComputedStyle(el).color),'rgb(32, 63, 78)');
 await p.locator('.wall-card.has-img').first().hover();await p.waitForTimeout(1100);
-assert.equal(await p.locator('.card-img-bg').first().evaluate(el=>getComputedStyle(el).backgroundSize),'120%');
+assert.equal(await p.locator('.card-img-bg').first().evaluate(el=>getComputedStyle(el).transform),'matrix(1.025, 0, 0, 1.025, 0, 0)');
 await p.screenshot({path:output+'/home-feed.png'});
 checks.push('Explore scroll, readable card title, hover image zoom');
 await p.locator('#poetize-effects-toggle').click();assert.equal(await p.locator('#poetize-petals').isVisible(),false);
@@ -22,7 +22,7 @@ assert.equal(await p.locator('.hero-wrap').evaluate(el=>getComputedStyle(el,'::a
 await p.reload();assert.equal(await p.locator('#poetize-effects-toggle').getAttribute('aria-pressed'),'false');
 checks.push('Animation toggle pauses waves and stops canvas; choice persists');
 await p.goto(base+'/blog/markdown-style-guide/');await p.waitForTimeout(200);
-assert.match(await p.locator('.post-header').evaluate(el=>getComputedStyle(el).backgroundImage),/poetize-writing\.webp/);
+assert.match(await p.locator('.post-header .coastal-scene img').evaluate(el=>el.currentSrc),/writing-1672\.webp/);
 const originalCover=await p.locator('.poetize-article-cover').getAttribute('src');
 await p.locator('.poetize-cover-button').click();assert.equal(await p.locator('#poetize-lightbox').evaluate(el=>el.open),true);
 assert.equal(await p.locator('#poetize-lightbox img').getAttribute('src'),new URL(originalCover,base).href);

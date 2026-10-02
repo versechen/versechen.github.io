@@ -1,4 +1,5 @@
 ---
+import CoastalScene from '../components/CoastalScene.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection, render } from 'astro:content';
 import { PROJECT_STATUS_LABEL } from '../utils/projects';
@@ -23,6 +24,7 @@ const needsMath = rendered.some((r) => r.math);
     <div class="projects-veil" id="projects-veil" aria-hidden="true"></div>
 
     <header class="projects-hero" id="projects-hero">
+      <CoastalScene />
       <h1 class="projects-hero-title"><span class="gradient-text">项目</span></h1>
       <p class="projects-hero-desc">开源项目与实验作品 · 点击卡片预览 README</p>
     </header>

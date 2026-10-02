@@ -1,0 +1,8 @@
+---
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const scene = path === '/' ? 'home' : path.startsWith('/blog/') && !path.startsWith('/blog/series/') ? 'writing' : path.startsWith('/blog') ? 'journal' : path.startsWith('/projects') ? 'harbor' : path.startsWith('/reading') ? 'bookshop' : path.startsWith('/life') ? 'garden' : path.startsWith('/friends') ? 'cafe' : path.startsWith('/about') ? 'studio' : 'atlas';
+---
+<picture class="coastal-scene" aria-hidden="true" data-scene={scene}>
+  {scene === 'home' && <source media="(max-width: 600px)" srcset="/themes/coastal/home-portrait-470.webp 470w, /themes/coastal/home-portrait-941.webp 941w" sizes="100vw" />}
+  {scene === 'home' ? <img src="/themes/coastal/home-wide-2172.webp" srcset="/themes/coastal/home-wide-1086.webp 1086w, /themes/coastal/home-wide-2172.webp 2172w" sizes="(max-width: 1600px) 1800px, 100vw" width="2172" height="724" alt="" loading="eager" decoding="async" fetchpriority="high" /> : <img src={`/themes/coastal/${scene}-1672.webp`} srcset={`/themes/coastal/${scene}-840.webp 840w, /themes/coastal/${scene}-1672.webp 1672w`} sizes="(max-width: 768px) 700px, 100vw" width="1672" height="941" alt="" loading="eager" decoding="async" fetchpriority="high" />}
+</picture>

@@ -1,4 +1,5 @@
 ---
+import CoastalScene from '../components/CoastalScene.astro';
 import { AUTHOR, AUTHOR_BIO, GITHUB_URL } from '../consts';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
@@ -98,7 +99,7 @@ function timeAgo(date: Date): string {
     <canvas id="petal-canvas" aria-hidden="true"></canvas>
 
     <!-- Gradient background -->
-    <div class="hero-gradient"></div>
+    <div class="hero-gradient"><CoastalScene /></div>
 
     <!-- Anime floating sparkles -->
     <div class="sp sp1" aria-hidden="true">✦</div>

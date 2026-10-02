@@ -1,4 +1,5 @@
 ---
+import CoastalIcon from './CoastalIcon.astro';
 import { SITE_TITLE } from '../consts';
 
 const navLinks = [
@@ -34,7 +35,7 @@ const isActive = (href: string) =>
             class:list={['nav-link', { active: isActive(href) }]}
             aria-current={isActive(href) ? 'page' : undefined}
           >
-            {label}
+            <CoastalIcon href={href} /><span>{label}</span>
           </a>
         </li>
       ))}
