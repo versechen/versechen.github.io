@@ -119,6 +119,14 @@ export class LiveMarkdown {
   }
 
   private edit(container: HTMLElement, range: Block, caret = range.start): void {
+    // Inter-block whitespace belongs to the document, not the editable paragraph.
+    // Keep it outside the replacement range so select-all/paste cannot join the
+    // following heading, list or fence (including during input-driven autosave).
+    if (range.end < this.source.value.length) {
+      const raw = this.source.value.slice(range.start, range.end);
+      const separator = raw.match(/(?:\r?\n[ \t]*)+$/)?.[0] ?? '';
+      range = { ...range, end: range.end - separator.length };
+    }
     const area = document.createElement('textarea');
     area.className = 'notes-live__input';
     area.setAttribute('aria-label', '编辑 Markdown 段落');

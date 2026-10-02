@@ -68,3 +68,9 @@
 - `verify-visual-themes.mjs`：88 个路由／主题／明暗／视口组合通过；原 Mermaid CDN 动态模块在此环境仍加载失败，属于外部依赖限制。
 - `verify-poetize-interactions.mjs` 与 `verify-editor-preview.mjs` 全部通过，覆盖动画开关、灯箱、专注阅读、进度／返回顶部、编辑撤销与导出、草稿持久化、无外发请求及正式工作台鉴权。
 - 已查看 1440×1000 与 390×844 截图。新增动效使用 translate/opacity，不改变文档尺寸；后台行为采用模拟可见性事件验证，未在真实手机或 Safari 上测试。
+
+## 即时编辑块边界修复（2026-10-02）
+
+复现整段替换为不带尾换行的文本后，下一个标题直接拼接到段落的问题。共享 `LiveMarkdown` 现在将原有块间空白排除在可替换范围之外，输入时即保留分隔符，覆盖自动保存、Ctrl/⌘+Enter 和失焦提交；正式工作台与演示页均复用修复。
+
+`verify-live-boundaries.mjs` 在修复前复现失败，修复后 6 组用例通过：后接标题／列表／代码块、两种空行间隔、精确源码、撤销重做及源码往返。`verify-editor-preview.mjs`、本地开发工作台 `verify-live-editor.mjs`、check（0 错误／警告）与 build（32 页）通过。没有执行生产工作台远端写入。
