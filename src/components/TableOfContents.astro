@@ -17,7 +17,7 @@ const headings = Astro.props.headings.filter(
 ---
 
 {headings.length > 1 && (
-  <aside class="toc" id="article-toc" aria-label="文章目录">
+  <aside class="toc" id="article-toc" data-available="false" aria-label="文章目录">
     <button type="button" class="toc-trigger" id="article-toc-trigger" aria-controls="article-toc-panel" aria-expanded="false" aria-label="打开文章目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M3 6h1M3 12h1M3 18h1"/></svg></button>
 
     <div class="toc-panel" id="article-toc-panel" aria-hidden="true" inert>
@@ -46,6 +46,8 @@ const headings = Astro.props.headings.filter(
 )}
 
 <script>
+  import { tocBounds } from '../lib/toc-geometry';
+
   const toc = document.getElementById('article-toc');
   const panel = document.getElementById('article-toc-panel');
   const trigger = document.getElementById('article-toc-trigger');
@@ -57,16 +59,20 @@ const headings = Astro.props.headings.filter(
     let state: 'collapsed' | 'temporary' | 'pinned' = 'collapsed';
     try { if (localStorage.getItem(key) === '1') state = 'pinned'; } catch {}
     let hover = false, keyboard = false, intent = 0, hide = 0, frame = 0;
+    let bounds = { top: 0, bottom: 0, height: 0, available: false };
     const links = [...toc.querySelectorAll<HTMLAnchorElement>('[data-toc-link]')];
     const headings = links.map(link => document.getElementById(link.dataset.tocLink ?? ''));
     const held = () => hover || (keyboard && panel.contains(document.activeElement));
     const render = () => {
-      const open = state !== 'collapsed';
+      const open = bounds.available && state !== 'collapsed';
       toc.dataset.state = state;
+      toc.dataset.available = String(bounds.available);
       toc.classList.toggle('is-open', open);
       toc.classList.toggle('is-pinned', state === 'pinned');
       panel.inert = !open;
       panel.setAttribute('aria-hidden', String(!open));
+      trigger.inert = !bounds.available;
+      trigger.setAttribute('aria-hidden', String(!bounds.available));
       trigger.setAttribute('aria-expanded', String(open));
       trigger.setAttribute('aria-label', open ? '关闭文章目录' : '打开文章目录');
       pin.setAttribute('aria-pressed', String(state === 'pinned'));
@@ -79,6 +85,17 @@ const headings = Astro.props.headings.filter(
       const main = document.querySelector<HTMLElement>('.article-main');
       if(!main) return;
       const box = main.getBoundingClientRect();
+      const nav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height')) || 64;
+      bounds = tocBounds(box, innerHeight, nav);
+      toc.style.setProperty('--toc-top', `${bounds.top}px`);
+      toc.style.setProperty('--toc-height', `${bounds.height}px`);
+      toc.style.setProperty('--toc-trigger-top', `${Math.max(bounds.top, Math.min(innerHeight * .45, bounds.bottom - 44))}px`);
+      if (!bounds.available) {
+        clearTimeout(intent); clearTimeout(hide); hover = false;
+        // Pin is saved intent, never permission to float outside the article.
+        if (state === 'temporary') state = 'collapsed';
+        if (toc.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
+      }
       const width = Math.min(236, innerWidth - 32);
       const gutter = box.left >= width + 32 && innerWidth > 768;
       const left = gutter ? box.left - width - 16 : Math.max(8, box.left);
@@ -94,26 +111,33 @@ const headings = Astro.props.headings.filter(
     const persist = () => { try { localStorage.setItem(key, state === 'pinned' ? '1' : '0'); } catch {} };
     const collapse = () => {
       clearTimeout(intent);
-      if (panel.contains(document.activeElement)) trigger.focus({preventScroll:true});
+      if (bounds.available && panel.contains(document.activeElement)) trigger.focus({preventScroll:true});
       state = 'collapsed'; reset(); persist(); render();
     };
-    const reveal = () => { clearTimeout(intent); if(state !== 'pinned') state = 'temporary'; reset(); render(); };
+    const reveal = () => {
+      clearTimeout(intent); place();
+      if (!bounds.available) { render(); return; }
+      if(state !== 'pinned') state = 'temporary'; reset(); render();
+    };
     let pointer: { x:number; y:number } | null = null;
     const sense = () => {
+      if(!bounds.available) {
+        hover = false; leave(); return;
+      }
       if(!pointer || !matchMedia('(hover:hover) and (pointer:fine)').matches) return;
       const main = document.querySelector<HTMLElement>('.article-main');
       if(!main) return;
       const box = main.getBoundingClientRect();
-      const nav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height')) || 64;
       const target = document.elementFromPoint(pointer.x,pointer.y);
-      const inPanel = state !== 'collapsed' && !!target && panel.contains(target);
+      const inVerticalBounds = pointer.y >= bounds.top && pointer.y <= bounds.bottom;
+      const inPanel = state !== 'collapsed' && inVerticalBounds && !!target && panel.contains(target);
       const inReadingGutter = pointer.x >= 0 && pointer.x < box.left &&
-        pointer.y >= Math.max(nav,box.top) && pointer.y <= Math.min(innerHeight,box.bottom) &&
+        inVerticalBounds &&
         !target?.closest('header,footer,[role="navigation"]');
       const next = inPanel || inReadingGutter;
       if(next === hover) return;
       hover = next;
-      if(next) { reset(); if(state === 'collapsed') intent = window.setTimeout(reveal,100); }
+      if(next) { reset(); if(state === 'collapsed') intent = window.setTimeout(() => { place(); sense(); if (hover) reveal(); },100); }
       else leave();
     };
     document.addEventListener('pointermove', event => {
@@ -127,13 +151,19 @@ const headings = Astro.props.headings.filter(
     toc.addEventListener('pointerdown', () => { keyboard = false; });
     trigger.addEventListener('click', event => {
       clearTimeout(intent);
+      place();
+      if (!bounds.available) { render(); return; }
       if(state !== 'collapsed') collapse();
       else { keyboard = event.detail === 0; reveal(); if(keyboard) close.focus({preventScroll:true}); }
     });
     close.addEventListener('click', collapse);
     panel.addEventListener('focusin', reset);
     panel.addEventListener('focusout', () => requestAnimationFrame(leave));
-    pin.addEventListener('click', () => { state = state === 'pinned' ? 'temporary' : 'pinned'; reset(); persist(); render(); leave(); });
+    pin.addEventListener('click', () => {
+      place();
+      if (!bounds.available) { render(); return; }
+      state = state === 'pinned' ? 'temporary' : 'pinned'; reset(); persist(); render(); leave();
+    });
     toc.addEventListener('keydown', event => { if(event.key === 'Escape' && state !== 'collapsed') { event.preventDefault(); collapse(); } });
     const highlight = () => {
       const offset = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height')) || 64) + 24;
@@ -161,11 +191,12 @@ const headings = Astro.props.headings.filter(
   /* Geometry-based pointer sensing adds no hit-test overlay or reading column. */
   .toc { position:fixed; inset:0 auto 0 0; z-index:30; pointer-events:none; }
   /* Desktop entry is available to keyboard/AT, with no pointer target or visible marker. */
-  .toc-trigger { position:fixed; left:var(--toc-trigger-left,8px); top:45vh; width:1px; height:1px; padding:0; overflow:hidden;clip-path:inset(50%); border:0; background:var(--surface); color:var(--text-muted);pointer-events:none; }
+  .toc-trigger { position:fixed; left:var(--toc-trigger-left,8px); top:var(--toc-trigger-top,45vh); width:1px; height:1px; padding:0; overflow:hidden;clip-path:inset(50%); border:0; background:var(--surface); color:var(--text-muted);pointer-events:none; }
   .toc-trigger:focus-visible { width:44px;height:44px;clip-path:none;overflow:visible;display:grid;place-items:center;border:1px solid var(--border);border-radius:8px;pointer-events:auto; }
-  .toc-panel { position:fixed; top:calc(var(--nav-height, 64px) + 16px); left:var(--toc-left,8px); width:var(--toc-width,236px); max-height:calc(100dvh - var(--nav-height, 64px) - 32px); overflow:auto; overscroll-behavior:contain; padding:1.05rem 1.1rem 1.15rem; border:1px solid var(--border); border-radius:18px; background:var(--surface); box-shadow:var(--shadow-lg); opacity:0; pointer-events:none; transform:translateX(-8px); transition:opacity .16s linear,transform .16s ease; }
+  .toc-panel { position:fixed; box-sizing:border-box; top:var(--toc-top,80px); left:var(--toc-left,8px); width:var(--toc-width,236px); max-height:var(--toc-height,0px); overflow:auto; overscroll-behavior:contain; padding:1.05rem 1.1rem 1.15rem; border:1px solid var(--border); border-radius:18px; background:var(--surface); box-shadow:var(--shadow-lg); opacity:0; visibility:hidden; pointer-events:none; transform:translateX(-8px); transition:opacity .16s linear,transform .16s ease; }
   .toc .toc-panel { transition:opacity .16s linear,transform .16s ease; }
-  .toc.is-open .toc-panel { opacity:1; pointer-events:auto; transform:none; }
+  .toc.is-open .toc-panel { opacity:1; visibility:visible; pointer-events:auto; transform:none; }
+  .toc[data-available='false'] .toc-trigger { visibility:hidden; pointer-events:none; }
   .toc-close { margin-left:auto; border:0; background:transparent; color:var(--text-muted); cursor:pointer; font-size:24px; min-width:44px; min-height:44px; }
   .toc :is(button,a):focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
   @media(prefers-reduced-motion:reduce) { .toc .toc-panel { transition:none; } }

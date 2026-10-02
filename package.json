@@ -9,9 +9,10 @@
     "sync:projects": "node scripts/sync-github-projects.mjs",
     "check": "astro check",
     "build": "astro build",
-    "verify": "npm run sync:projects && npm run check && npm run build",
+    "verify": "npm run sync:projects && npm run test:toc && npm run check && npm run build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test:toc": "node --test tests/toc-bounds.test.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
