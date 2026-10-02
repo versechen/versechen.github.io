@@ -47,6 +47,8 @@ await page.locator('#theme-btn').click();
 await page.locator('#hamburger-btn').click();assert.equal(await page.locator('#hamburger-btn').getAttribute('aria-expanded'),'true');
 await page.keyboard.press('Escape');assert.equal(await page.locator('#hamburger-btn').getAttribute('aria-expanded'),'false');
 results.push({check:'mobile menu keyboard close',passed:true});
+assert.equal(await page.locator('#poetize-pet').isVisible(),false); // Approved v4 hides the decorative pet on mobile.
+await page.setViewportSize({width:1440,height:1000});
 await page.locator('#poetize-pet').click();assert.match(await page.locator('#poetize-pet-message').textContent(),/海风/);
 assert.equal(await page.locator('.poetize-pet-body').evaluate(el=>getComputedStyle(el).animationName),'none');
 await page.locator('h2').filter({hasText:'代码高亮与复制'}).evaluate(el=>el.scrollIntoView({block:'start'}));await page.waitForTimeout(200);
