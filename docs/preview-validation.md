@@ -60,3 +60,11 @@
 - 页面的本地草稿键独立于正式工作台，不读取账号令牌、不连接 GitHub、不提供发布。
 - 同一生产构建访问 `/notes/`，原站长登录门槛仍可见、工作台未解锁。
 - 类型检查 48 文件，0 errors / 0 warnings / 4 个原有 hints；构建 32 页。
+
+## 动效细节验证（2026-10-02）
+
+- `npm run check`：48 文件，0 errors / 0 warnings（4 条既有 API 提示）。`npm run build` 通过。
+- `verify-poetize-motion.mjs`：桌面悬浮／键盘焦点、主题切换过渡清理与刷新持久化、模拟 visibilitychange 暂停／恢复、编辑器焦点及源码不变、减少动态效果、390px 触屏卡片导航及无横向溢出全部通过。
+- `verify-visual-themes.mjs`：88 个路由／主题／明暗／视口组合通过；原 Mermaid CDN 动态模块在此环境仍加载失败，属于外部依赖限制。
+- `verify-poetize-interactions.mjs` 与 `verify-editor-preview.mjs` 全部通过，覆盖动画开关、灯箱、专注阅读、进度／返回顶部、编辑撤销与导出、草稿持久化、无外发请求及正式工作台鉴权。
+- 已查看 1440×1000 与 390×844 截图。新增动效使用 translate/opacity，不改变文档尺寸；后台行为采用模拟可见性事件验证，未在真实手机或 Safari 上测试。

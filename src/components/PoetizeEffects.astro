@@ -48,6 +48,7 @@
   const sync = () => {
     const running = active();
     root.dataset.poetizeMotion = running ? 'on' : 'off';
+    if (!running) document.querySelectorAll('.poetize-arriving').forEach(el => el.classList.remove('poetize-arriving'));
     effectsButton?.setAttribute('aria-pressed', String(enabled && !motion.matches));
     effectsButton?.setAttribute('aria-label', enabled ? '关闭花瓣与波浪动画' : '开启花瓣与波浪动画');
     if (effectsButton) { effectsButton.disabled = motion.matches; effectsButton.title = motion.matches ? '已遵循系统减少动态效果设置' : '花瓣与波浪动画'; }
@@ -74,7 +75,28 @@
   window.addEventListener('scroll', () => { if (!scrollFrame) scrollFrame = requestAnimationFrame(() => { updateProgress(); scrollFrame = 0; }); }, { passive:true });
   window.addEventListener('resize', () => { resize(); updateProgress(); });
   document.addEventListener('visibilitychange', sync); motion.addEventListener('change', sync);
-  new MutationObserver(sync).observe(root, {attributes:true, attributeFilter:['data-visual-theme']});
+  const themeObserver = new MutationObserver(sync);
+  const observeTheme = () => themeObserver.observe(root, {attributes:true, attributeFilter:['data-visual-theme']});
+  observeTheme();
+  // Animate once on arrival, without hiding content before JS or moving layout.
+  const arrivals = new IntersectionObserver(entries => entries.forEach(entry => {
+    if (!entry.isIntersecting || !active()) return;
+    entry.target.classList.add('poetize-arriving');
+    arrivals.unobserve(entry.target);
+  }), { threshold: .12 });
+  const arrivalTargets = document.querySelectorAll('.poetize-profile, .poetize-article-intro, .book-card, .project-card, .life-card, .tag-card, .post-row');
+  arrivalTargets.forEach(el => {
+    arrivals.observe(el);
+    el.addEventListener('animationend', () => el.classList.remove('poetize-arriving'));
+  });
+  window.addEventListener('pagehide', () => {
+    cancelAnimationFrame(raf); raf = 0;
+    cancelAnimationFrame(scrollFrame); scrollFrame = 0;
+    themeObserver.disconnect(); arrivals.disconnect();
+  });
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) { observeTheme(); sync(); updateProgress(); }
+  });
   resize(); sync(); updateProgress();
   const dialog = document.querySelector<HTMLDialogElement>('#poetize-lightbox');
   const lightboxImage = dialog?.querySelector('img');

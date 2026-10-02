@@ -23,7 +23,13 @@
     if (toggle) toggle.textContent = enabled ? '🌸' : '🌊';
   };
   sync();
+  let themeTimer: ReturnType<typeof setTimeout> | undefined;
   toggle?.addEventListener('click', () => {
+    clearTimeout(themeTimer);
+    if (!motion.matches) {
+      root.classList.add('visual-theme-changing');
+      themeTimer = setTimeout(() => root.classList.remove('visual-theme-changing'), 420);
+    }
     const next = root.dataset.visualTheme === 'poetize' ? 'original' : 'poetize';
     root.dataset.visualTheme = next;
     try { localStorage.setItem('visual-theme', next); } catch {}
@@ -45,7 +51,7 @@
   // Bound the particle count and throttle pointer feedback to avoid accumulating DOM nodes.
   let lastTrail = 0;
   document.addEventListener('pointermove', (event) => {
-    if (root.dataset.visualTheme !== 'poetize' || motion.matches || event.pointerType !== 'mouse' || performance.now() - lastTrail < 140) return;
+    if (root.dataset.visualTheme !== 'poetize' || motion.matches || root.dataset.poetizeMotion === 'off' || document.hidden || event.pointerType !== 'mouse' || performance.now() - lastTrail < 140) return;
     lastTrail = performance.now();
     const leaf = document.createElement('span');
     leaf.className = 'poetize-pointer-leaf';
