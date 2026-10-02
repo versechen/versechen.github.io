@@ -7,7 +7,7 @@ for(const width of [2048,1440,390,360])for(const dark of [false,true]){
  const p=await b.newPage({viewport:{width,height:width<500?844:1152},deviceScaleFactor:2,reducedMotion:'reduce'});
  await p.addInitScript(d=>{localStorage.setItem('visual-theme','poetize');localStorage.setItem('theme',d?'dark':'light');},dark);
  for(const [route,scene] of [['/','home'],['/about/','studio'],['/friends/','cafe'],['/blog/','journal']]){
-  await p.goto(base+route);await p.evaluate(()=>document.fonts.ready);await p.locator('.coastal-scene img').evaluate(img=>img.decode());
+  await p.goto(base+route);await p.evaluate(()=>document.fonts.ready);await p.locator('.coastal-scene img').evaluate(img=>img.decode());await p.waitForTimeout(350); // Let existing staggered entry delays settle before capturing evidence.
   assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   if(route==='/'){
    for(const [id,art] of [['markdown-style-guide','journal'],['using-mdx','studio']]){
