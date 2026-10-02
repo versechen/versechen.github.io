@@ -260,3 +260,23 @@ html[data-visual-theme='poetize'][data-poetize-motion='on'] .poetize-lightbox[op
  html.visual-theme-changing *, html[data-visual-theme='poetize'] .poetize-arriving { animation: none !important; transition: none !important; }
  html[data-visual-theme='poetize'] :is(.wall-card, .book-card, .project-card, .life-card, .tag-card, .post-row, [data-toc-link]) { translate: none !important; }
 }
+
+/* Coastal typography: one local sans family, restrained weights, readable CJK. */
+html[data-visual-theme='poetize'] {
+ --coast-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+ --coast-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', 'Noto Sans Mono CJK SC', monospace;
+}
+html[data-visual-theme='poetize'] body { font-family: var(--coast-sans); font-weight: 400; }
+html[data-visual-theme='poetize'] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--coast-sans); font-weight: 600; line-height: 1.5; }
+html[data-visual-theme='poetize'] .hero-site-name { font-weight: 500; line-height: 1.3; letter-spacing: .1em; }
+html[data-visual-theme='poetize'] :is(.post-title, .page-title, .hero-title) { font-weight: 500; letter-spacing: .035em; }
+html[data-visual-theme='poetize'] :is(.hero-typewriter-row, .hero-subtitle, .post-desc, .wall-subtitle) { font-weight: 400; letter-spacing: .035em; line-height: 1.8; }
+html[data-visual-theme='poetize'] #site-header .logo-text { font-weight: 600; letter-spacing: .035em; }
+html[data-visual-theme='poetize'] #site-header .nav-link { font-family: var(--coast-sans); font-size: .875rem; font-weight: 500; line-height: 1.5; letter-spacing: .03em; }
+html[data-visual-theme='poetize'] .wall-card .card-title,
+html[data-visual-theme='poetize'] :is(.book-card, .project-card, .life-card, .post-row) :is(h2, h3) { font-weight: 600; letter-spacing: .015em; line-height: 1.6; }
+html[data-visual-theme='poetize'] .wall-card .card-desc { font-size: .875rem; font-weight: 400; line-height: 1.85; }
+html[data-visual-theme='poetize'] .prose { font-family: var(--coast-sans); font-size: 1rem; font-weight: 400; line-height: 1.9; letter-spacing: .01em; }
+html[data-visual-theme='poetize'] .prose :is(h2, h3, h4) { font-weight: 600; letter-spacing: .02em; }
+html[data-visual-theme='poetize'] :is(code, pre, kbd, .notes-body, .notes-live__input) { font-family: var(--coast-mono); letter-spacing: normal; }
+html[data-visual-theme='poetize'] pre { line-height: 1.7; }

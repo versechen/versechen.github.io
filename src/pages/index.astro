@@ -259,7 +259,8 @@ function timeAgo(date: Date): string {
       var(--bg);
   }
 
-  :global(html.dark) .hero-gradient {
+  /* Sakura's scoped dark background must not cover the Poetize painting. */
+  :global(html.dark:not([data-visual-theme='poetize'])) .hero-gradient {
     background: radial-gradient(ellipse 80% 80% at 50% 0%,
       rgba(232,121,164,0.18) 0%,
       rgba(147,51,234,0.12) 40%,
