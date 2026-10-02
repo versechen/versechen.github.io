@@ -1,28 +1,28 @@
 import assert from 'node:assert/strict';
-import {mkdirSync} from 'node:fs';
+import {mkdirSync,writeFileSync} from 'node:fs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const b=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
-const base=process.env.PREVIEW_URL||'http://127.0.0.2:4322', out='/workspace/toc-evidence';mkdirSync(out,{recursive:true});
-for(const theme of ['original','poetize'])for(const dark of [false,true]){
- const p=await b.newPage({viewport:{width:1198,height:835},reducedMotion:'reduce'});
- await p.addInitScript(({theme,dark})=>{localStorage.setItem('visual-theme',theme);localStorage.setItem('theme',dark?'dark':'light');localStorage.setItem('codeverse.articleToc.pinned','1');},{theme,dark});
- await p.goto(base+'/blog/markdown-style-guide/');const state=()=>p.locator('#article-toc').getAttribute('data-state');
- assert.equal(await state(),'collapsed');await p.evaluate(()=>scrollTo(0,1000));await p.waitForTimeout(150);assert.equal(await state(),'collapsed');
- const trigger=p.locator('#article-toc-trigger'), panel=p.locator('#article-toc-panel');const y=(await trigger.boundingBox()).y;
- await p.screenshot({path:`${out}/${theme}-${dark?'dark':'light'}-collapsed.png`});
- await trigger.hover();await p.waitForTimeout(100);assert.equal(await state(),'collapsed');await p.waitForTimeout(180);assert.equal(await state(),'temporary');
- await panel.hover();await p.evaluate(()=>scrollBy(0,300));await p.waitForTimeout(150);assert.equal(await state(),'temporary');
- await p.mouse.move(1000,700);await p.evaluate(()=>scrollBy(0,140));await p.waitForTimeout(150);const opacity=await panel.evaluate(e=>+getComputedStyle(e).opacity);assert.ok(opacity>.2&&opacity<.8,`${opacity}`);
- await p.screenshot({path:`${out}/${theme}-${dark?'dark':'light'}-fade.png`});
- await p.evaluate(()=>scrollBy(0,150));await p.waitForTimeout(150);assert.equal(await state(),'collapsed');assert.equal(await panel.evaluate(e=>e.inert),true);assert.equal((await trigger.boundingBox()).y,y);
- await trigger.focus();await p.keyboard.press('Enter');assert.equal(await state(),'temporary');await p.keyboard.press('Tab');await p.evaluate(()=>scrollBy(0,400));await p.waitForTimeout(100);assert.equal(await state(),'temporary');
- await p.keyboard.press('Escape');await p.waitForTimeout(50);assert.equal(await state(),'collapsed');assert.equal(await trigger.evaluate(e=>e===document.activeElement),true);
- await trigger.click();await p.locator('#article-toc-pin').click();assert.equal(await state(),'pinned');await p.reload();assert.equal(await state(),'pinned');
- await p.locator('#article-toc-pin').click();assert.equal(await state(),'temporary');
- await p.locator('[data-toc-link]').nth(3).click();await p.waitForTimeout(200);assert.ok(new URL(p.url()).hash);assert.ok(await p.evaluate(()=>document.getElementById(decodeURIComponent(location.hash.slice(1))).getBoundingClientRect().top>=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height'))));assert.equal(await p.locator('[data-toc-link][aria-current=location]').count(),1);await p.goBack();await p.waitForTimeout(100);
- await p.locator('#article-toc-close').click();await p.reload();assert.equal(await state(),'collapsed');
- await p.setViewportSize({width:390,height:844});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
- await p.close();
+const base=process.env.PREVIEW_URL||'http://127.0.0.2:4322',out='/workspace/toc-sidebar-evidence';mkdirSync(out,{recursive:true});const rows=[];
+for(const route of ['using-mdx','markdown-style-guide'])for(const width of [2048,1440])for(const theme of ['original','poetize'])for(const dark of [false,true]){
+ const p=await b.newPage({viewport:{width,height:1173},reducedMotion:'reduce'});
+ await p.addInitScript(({theme,dark})=>{localStorage.setItem('visual-theme',theme);localStorage.setItem('theme',dark?'dark':'light');},{theme,dark});
+ await p.goto(base+'/blog/'+route+'/');await p.evaluate(()=>scrollTo(0,700));await p.waitForTimeout(250);
+ const t=p.locator('#article-toc'),trigger=p.locator('#article-toc-trigger'),panel=p.locator('#article-toc-panel');
+ assert.equal(await t.getAttribute('data-state'),'collapsed');assert.equal((await trigger.textContent()).trim(),'');
+ const main=await p.locator('.article-main').boundingBox();assert.ok(Math.abs(main.x+main.width/2-width/2)<1);assert.ok(main.width<=860);
+ if(theme==='poetize'&&dark)await p.screenshot({path:`${out}/${route}-${width}-hidden.png`});
+ await trigger.hover();await p.waitForTimeout(180);assert.equal(await t.getAttribute('data-state'),'temporary');
+ const rect=await panel.boundingBox();assert.ok(Math.abs(main.x-rect.x-rect.width-16)<1);
+ // The narrow gutter bridge remains hit-testable during a slow crossing.
+ await p.mouse.move(main.x-8,rect.y+100);await p.waitForTimeout(250);assert.equal(await t.getAttribute('data-state'),'temporary');await panel.hover();await p.waitForTimeout(220);assert.equal(await t.getAttribute('data-state'),'temporary');
+ if(theme==='poetize'&&dark)await p.screenshot({path:`${out}/${route}-${width}-open.png`});
+ const stable=await p.locator('.article-main').boundingBox();assert.equal(stable.x,main.x);assert.equal(stable.width,main.width);
+ await p.mouse.move(width-50,600);await p.waitForTimeout(380);assert.equal(await t.getAttribute('data-state'),'collapsed');assert.equal(await panel.evaluate(e=>e.inert),true);
+ await trigger.hover();await p.waitForTimeout(180);await p.locator('#article-toc-pin').click();await p.mouse.move(width-50,600);await p.evaluate(()=>scrollBy(0,200));await p.waitForTimeout(300);assert.equal(await t.getAttribute('data-state'),'pinned');
+ await p.locator('#article-toc-pin').click();await p.mouse.move(width-50,600);await p.waitForTimeout(380);assert.equal(await t.getAttribute('data-state'),'collapsed');
+ await trigger.focus();await p.keyboard.press('Enter');await p.mouse.move(width-60,610);await p.waitForTimeout(250);assert.equal(await t.getAttribute('data-state'),'temporary');await p.keyboard.press('Escape');assert.equal(await t.getAttribute('data-state'),'collapsed');assert.equal(await trigger.evaluate(e=>e===document.activeElement),true);
+ await p.setViewportSize({width:1100,height:900});await p.waitForTimeout(100);await trigger.hover();await p.waitForTimeout(180);assert.equal(await t.getAttribute('data-layout'),'overlay');assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ rows.push({route,width,theme,dark,mainLeft:main.x,mainWidth:main.width,tocLeft:rect.x,tocWidth:rect.width,gap:main.x-rect.x-rect.width});await p.close();
 }
-const touch=await b.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:'reduce'});await touch.goto(base+'/blog/markdown-style-guide/?visual-theme=poetize');await touch.locator('#article-toc-trigger').tap();assert.equal(await touch.locator('#article-toc').getAttribute('data-state'),'temporary');await touch.locator('#article-toc-pin').tap();assert.equal(await touch.locator('#article-toc').getAttribute('data-state'),'pinned');await touch.screenshot({path:out+'/touch-pinned.png'});await touch.locator('#article-toc-close').tap();assert.equal(await touch.locator('#article-toc-panel').evaluate(e=>e.inert),true);await touch.close();
-const normal=await b.newPage({viewport:{width:1198,height:835}});await normal.goto(base+'/blog/markdown-style-guide/?visual-theme=poetize');await normal.locator('#article-toc-trigger').focus();await normal.keyboard.press('Space');await normal.waitForTimeout(250);assert.equal(await normal.locator('#article-toc').getAttribute('data-state'),'temporary');await normal.locator('#article-toc-pin').click();await normal.screenshot({path:out+'/desktop-pinned.png'});await normal.keyboard.press('Escape');assert.equal(await normal.locator('#article-toc').getAttribute('data-state'),'collapsed');await normal.close();await b.close();console.log('PASS both themes/modes: collapsed, legacy pin ignored, hover intent, held interaction, distance fade, fixed trigger, keyboard/Escape, pin persistence/unpin, hash/back, resize and touch');
+const p=await b.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});await p.goto(base+'/blog/using-mdx/?visual-theme=poetize');await p.locator('#article-toc-trigger').tap();await p.locator('#article-toc-pin').tap();assert.equal(await p.locator('#article-toc').getAttribute('data-state'),'pinned');assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await p.waitForTimeout(350);await p.screenshot({path:out+'/mobile-open.png'});await p.locator('#article-toc-close').tap();assert.equal(await p.locator('#article-toc-panel').evaluate(e=>e.inert),true);await p.close();
+await b.close();writeFileSync(out+'/geometry.json',JSON.stringify(rows,null,2));console.log('PASS 16 desktop route/theme/mode/width states: centered 860px reading column, 16px gap, no text trigger, bridge crossing, leave hide without scroll, pin/unpin, keyboard/Escape, resize overlay; mobile icon/pin/close');

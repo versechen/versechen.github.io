@@ -18,7 +18,8 @@ const headings = Astro.props.headings.filter(
 
 {headings.length > 1 && (
   <aside class="toc" id="article-toc" aria-label="文章目录">
-    <button type="button" class="toc-trigger" id="article-toc-trigger" aria-controls="article-toc-panel" aria-expanded="false" aria-label="打开文章目录">目录</button>
+    <button type="button" class="toc-trigger" id="article-toc-trigger" aria-controls="article-toc-panel" aria-expanded="false" aria-label="打开文章目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M3 6h1M3 12h1M3 18h1"/></svg></button>
+    <span class="toc-bridge" aria-hidden="true"></span>
     <div class="toc-panel" id="article-toc-panel" aria-hidden="true" inert>
 
       <div class="toc-head">
@@ -55,10 +56,10 @@ const headings = Astro.props.headings.filter(
     const key = 'codeverse.articleToc.pin.v2';
     let state: 'collapsed' | 'temporary' | 'pinned' = 'collapsed';
     try { if (localStorage.getItem(key) === '1') state = 'pinned'; } catch {}
-    let hover = false, distance = 0, previousY = scrollY, intent = 0, frame = 0;
+    let hover = false, keyboard = false, intent = 0, hide = 0, frame = 0;
     const links = [...toc.querySelectorAll<HTMLAnchorElement>('[data-toc-link]')];
     const headings = links.map(link => document.getElementById(link.dataset.tocLink ?? ''));
-    const held = () => hover || panel.contains(document.activeElement);
+    const held = () => hover || (keyboard && panel.contains(document.activeElement));
     const render = () => {
       const open = state !== 'collapsed';
       toc.dataset.state = state;
@@ -71,9 +72,27 @@ const headings = Astro.props.headings.filter(
       pin.setAttribute('aria-pressed', String(state === 'pinned'));
       pin.setAttribute('aria-label', state === 'pinned' ? '取消固定目录' : '固定目录');
       pin.title = state === 'pinned' ? '取消固定目录' : '固定目录';
-      toc.style.setProperty('--toc-opacity', String(state === 'pinned' || held() ? 1 : Math.max(0, 1 - Math.max(0, distance - 40) / 200)));
+
     };
-    const reset = () => { distance = 0; previousY = scrollY; };
+    const reset = () => { clearTimeout(hide); };
+    const place = () => {
+      const main = document.querySelector<HTMLElement>('.article-main');
+      if(!main) return;
+      const box = main.getBoundingClientRect();
+      const width = Math.min(236, innerWidth - 32);
+      const gutter = box.left >= width + 32 && innerWidth > 768;
+      const left = gutter ? box.left - width - 16 : Math.max(8, box.left);
+      toc.style.setProperty('--toc-left', `${left}px`);
+      toc.style.setProperty('--toc-width', `${width}px`);
+      toc.style.setProperty('--toc-trigger-left', `${gutter ? box.left - 22 : Math.max(4,box.left - 8)}px`);
+      toc.style.setProperty('--toc-bridge-left', `${left + width}px`);
+      toc.style.setProperty('--toc-bridge-width', `${gutter ? 16 : 0}px`);
+      toc.dataset.layout = gutter ? 'gutter' : 'overlay';
+    };
+    const leave = () => {
+      clearTimeout(intent); clearTimeout(hide);
+      if(state === 'temporary' && !held()) hide = window.setTimeout(() => { if(state === 'temporary' && !held()) collapse(); },180);
+    };
     const persist = () => { try { localStorage.setItem(key, state === 'pinned' ? '1' : '0'); } catch {} };
     const collapse = () => {
       clearTimeout(intent);
@@ -81,20 +100,23 @@ const headings = Astro.props.headings.filter(
       state = 'collapsed'; reset(); persist(); render();
     };
     const reveal = () => { clearTimeout(intent); if(state !== 'pinned') state = 'temporary'; reset(); render(); };
-    trigger.addEventListener('pointerenter', event => {
-      if (event.pointerType === 'mouse' && matchMedia('(hover:hover)').matches && state === 'collapsed') intent = window.setTimeout(reveal, 220);
+    toc.addEventListener('pointerenter', event => {
+      if(event.pointerType !== 'mouse') return;
+      hover = true; reset();
+      if(state === 'collapsed' && matchMedia('(hover:hover)').matches) intent = window.setTimeout(reveal,140);
     });
-    trigger.addEventListener('pointerleave', () => clearTimeout(intent));
+    toc.addEventListener('pointerleave', event => { if(event.pointerType === 'mouse') { hover = false; leave(); } });
+    document.addEventListener('keydown', event => { if(event.key === 'Tab') keyboard = true; });
+    toc.addEventListener('pointerdown', () => { keyboard = false; });
     trigger.addEventListener('click', event => {
+      clearTimeout(intent);
       if(state !== 'collapsed') collapse();
-      else { reveal(); if(event.detail === 0) close.focus({preventScroll:true}); }
+      else { keyboard = event.detail === 0; reveal(); if(keyboard) close.focus({preventScroll:true}); }
     });
     close.addEventListener('click', collapse);
-    panel.addEventListener('pointerenter', event => { if(event.pointerType === 'mouse') { hover = true; reset(); render(); } });
-    panel.addEventListener('pointerleave', () => { hover = false; reset(); render(); });
-    panel.addEventListener('focusin', () => { reset(); render(); });
-    panel.addEventListener('focusout', () => { requestAnimationFrame(() => { reset(); render(); }); });
-    pin.addEventListener('click', () => { state = state === 'pinned' ? 'temporary' : 'pinned'; reset(); persist(); render(); });
+    panel.addEventListener('focusin', reset);
+    panel.addEventListener('focusout', () => requestAnimationFrame(leave));
+    pin.addEventListener('click', () => { state = state === 'pinned' ? 'temporary' : 'pinned'; reset(); persist(); render(); leave(); });
     toc.addEventListener('keydown', event => { if(event.key === 'Escape' && state !== 'collapsed') { event.preventDefault(); collapse(); } });
     const highlight = () => {
       const offset = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height')) || 64) + 24;
@@ -104,31 +126,36 @@ const headings = Astro.props.headings.filter(
     };
     const update = () => {
       frame = 0;
-      const delta = scrollY - previousY; previousY = scrollY;
-      if(state === 'temporary') {
-        if(held()) reset();
-        else if(delta > 0) { distance += delta; if(distance >= 240) { state = 'collapsed'; distance = 0; } }
-      }
-      render(); highlight();
+      place(); render(); highlight();
     };
     const schedule = () => { if(!frame) frame = requestAnimationFrame(update); };
     window.addEventListener('scroll', schedule, {passive:true});
     window.addEventListener('resize', schedule);
+    const geometryObserver = new ResizeObserver(schedule);
+    const reading = document.querySelector('.article-main');
+    if(reading) geometryObserver.observe(reading);
     window.addEventListener('hashchange', schedule);
     window.addEventListener('pageshow', schedule);
-    render(); highlight();
+    place(); render(); highlight();
   }
 </script>
 
 <style>
   /* A small fixed intent target; the overlay never reserves a reading column. */
   .toc { position:fixed; inset:0 auto 0 0; z-index:30; pointer-events:none; }
-  .toc-trigger { position:fixed; left:6px; top:45vh; width:44px; min-height:48px; border:1px solid var(--border); border-radius:12px; background:var(--surface); color:var(--text-1); pointer-events:auto; cursor:pointer; font-size:12px; box-shadow:var(--shadow); }
-  .toc-panel { position:fixed; top:calc(var(--nav-height, 64px) + 16px); left:56px; width:min(260px,calc(100vw - 72px)); max-height:calc(100dvh - var(--nav-height, 64px) - 32px); overflow:auto; overscroll-behavior:contain; padding:1.05rem 1.1rem 1.15rem; border:1px solid var(--border); border-radius:18px; background:var(--surface); box-shadow:var(--shadow-lg); opacity:0; pointer-events:none; transform:translateX(-8px); transition:opacity .16s linear,transform .16s ease; }
-  .toc.is-open .toc-panel { opacity:var(--toc-opacity,1); pointer-events:auto; transform:none; }
+  .toc-trigger { position:fixed; left:var(--toc-trigger-left,8px); top:45vh; width:22px; height:84px; padding:0; display:grid;place-items:center; border:0; border-radius:8px; background:transparent; color:var(--text-muted); pointer-events:auto; cursor:pointer; }
+  .toc-trigger::before { content:''; position:absolute; width:3px;height:36px;border-radius:3px;background:var(--border-hover,var(--border)); }
+  .toc-trigger svg { opacity:0; }
+  .toc-trigger:hover::before,.toc-trigger:focus-visible::before { opacity:0; }
+  .toc-trigger:hover svg,.toc-trigger:focus-visible svg { opacity:1; }
+  .toc-bridge { position:fixed; left:var(--toc-bridge-left); width:var(--toc-bridge-width); top:calc(var(--nav-height,64px) + 16px);bottom:16px;pointer-events:none; }
+  .toc.is-open .toc-bridge { pointer-events:auto; }
+  .toc-panel { position:fixed; top:calc(var(--nav-height, 64px) + 16px); left:var(--toc-left,8px); width:var(--toc-width,236px); max-height:calc(100dvh - var(--nav-height, 64px) - 32px); overflow:auto; overscroll-behavior:contain; padding:1.05rem 1.1rem 1.15rem; border:1px solid var(--border); border-radius:18px; background:var(--surface); box-shadow:var(--shadow-lg); opacity:0; pointer-events:none; transform:translateX(-8px); transition:opacity .16s linear,transform .16s ease; }
+  .toc .toc-panel { transition:opacity .16s linear,transform .16s ease; }
+  .toc.is-open .toc-panel { opacity:1; pointer-events:auto; transform:none; }
   .toc-close { margin-left:auto; border:0; background:transparent; color:var(--text-muted); cursor:pointer; font-size:24px; min-width:44px; min-height:44px; }
   .toc :is(button,a):focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
-  @media(prefers-reduced-motion:reduce) { .toc-panel { transition:none; } }
+  @media(prefers-reduced-motion:reduce) { .toc .toc-panel { transition:none; } }
 
   .toc-head {
     display: flex;
@@ -212,5 +239,10 @@ const headings = Astro.props.headings.filter(
     color: var(--primary);
   }
 
-  @media(pointer:coarse) { .toc-pin { width:44px;height:44px; } }
+  @media(pointer:coarse), (max-width:768px) {
+    .toc-trigger { width:44px;height:44px;background:var(--surface);border:1px solid var(--border); }
+    .toc-trigger::before { display:none; }
+    .toc-trigger svg { opacity:1; }
+    .toc-pin { width:44px;height:44px; }
+  }
 </style>
