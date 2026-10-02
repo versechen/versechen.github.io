@@ -191,7 +191,6 @@ html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) :is(.poetize-tool
  html[data-visual-theme='poetize'] .article-layout { padding: 0 12px; }
  html[data-visual-theme='poetize'] .article-main { padding: 24px 20px; border-radius: 16px; }
  html[data-visual-theme='poetize'] .toc { margin-bottom: 20px; }
- html[data-visual-theme='poetize'] .toc-panel { max-height: 180px; }
  html[data-visual-theme='poetize'] .poetize-article-intro { flex-direction: column; padding: 16px; }
  .poetize-cover-button { flex: auto; width: 100%; }
  .poetize-article-cover { height: 112px; }
