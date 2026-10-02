@@ -29,7 +29,7 @@ export class LiveMarkdown {
   private docId = '';
   private enabled = false;
 
-  constructor(private source: HTMLTextAreaElement, private host: HTMLElement) {
+  constructor(private source: HTMLTextAreaElement, private host: HTMLElement, private options: { localResourcesOnly?: boolean } = {}) {
     this.history = [source.value];
     this.historyAt = 0;
     this.revision = source.value;
@@ -200,7 +200,25 @@ export class LiveMarkdown {
       section.setAttribute('role', 'group');
       section.setAttribute('aria-label', 'Markdown 段落，按 Enter 编辑');
       const raw = source.slice(range.start, range.end);
-      section.innerHTML = raw.trim() ? renderNote(`${raw}\n\n${definitions}`) : '<p class="notes-live__placeholder">写下第一句话…</p>';
+      const rendered = raw.trim() ? renderNote(`${raw}\n\n${definitions}`) : '<p class="notes-live__placeholder">写下第一句话…</p>';
+      if (this.options.localResourcesOnly) {
+        // Inert template: never attach remote image/PlantUML URLs to the live DOM.
+        const template = document.createElement('template');
+        template.innerHTML = rendered;
+        template.content.querySelectorAll('img').forEach(image => {
+          let local = false;
+          try {
+            const url = new URL(image.getAttribute('src') ?? '', location.href);
+            local = url.origin === location.origin && (url.pathname.startsWith('/themes/') || url.pathname.startsWith('/_astro/') || url.pathname === '/favicon.svg');
+          } catch { /* Malformed URLs remain source text, never network requests. */ }
+          if (!local) {
+            const placeholder = document.createElement('span');
+            placeholder.textContent = `[${image.alt || '图片'}：演示中不加载外部资源]`;
+            image.replaceWith(placeholder);
+          }
+        });
+        section.append(template.content);
+      } else section.innerHTML = rendered;
       // Checkbox editing is performed through Markdown to retain one mutation path.
       section.querySelectorAll<HTMLInputElement>('input').forEach((input) => { input.disabled = true; });
       this.host.append(section);

@@ -1,0 +1,110 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/notes.css';
+const example = `# 让文字在眼前成形
+
+这是一份可直接编辑的示例。**点击这一段**，就在原位置写下你的想法；离开段落或按 Ctrl/⌘ + Enter，它会恢复排版。
+
+## 从一个小想法开始
+
+- 输入一段 Markdown
+- 用空行完成段落，立即看到排版
+- 切换「源码」检查原文，再切回来继续写
+
+> 写作和编程一样，好的工具让人专注于想表达的内容。
+
+### 今天的清单
+
+- [x] 试一试即时编辑
+- [ ] 写下一句自己的话
+
+\`\`\`typescript
+const thought = '像诗一样写代码';
+console.log(thought);
+\`\`\`
+
+| 体验 | 操作 |
+| --- | --- |
+| 原位编辑 | 点击任意段落 |
+| 完成排版 | 空行、离开段落或 Ctrl/⌘ + Enter |
+| 撤销 / 重做 | Ctrl/⌘ + Z / Shift + Z |
+
+![海边的写作时光](/themes/poetize-writing-mobile.webp)
+
+草稿只保存在当前浏览器。点击「导出 Markdown」可以带走原文。
+`;
+---
+<BaseLayout title="即时编辑体验" description="无需登录，试用原位 Markdown 编辑；示例与草稿仅在当前浏览器。" noindex math>
+  <section class="editor-demo" aria-labelledby="demo-heading">
+    <header class="demo-heading">
+      <a href="/blog/markdown-style-guide/?visual-theme=poetize">← 返回文章预览</a>
+      <span class="demo-badge">本地演示 · 无需登录</span>
+      <h1 id="demo-heading">让写作，回到文字本身</h1>
+      <p>点击段落即可编辑，离开即排版。只保存浏览器草稿，不连接账号、不发布文章。</p>
+    </header>
+    <div class="demo-paper">
+      <div class="demo-toolbar" role="group" aria-label="编辑器工具">
+        <div class="demo-modes"><button id="demo-live" type="button" aria-pressed="true">即时</button><button id="demo-source" type="button" aria-pressed="false">源码</button></div>
+        <div class="demo-actions"><button id="demo-undo" type="button" title="撤销 Ctrl/⌘+Z">↶ 撤销</button><button id="demo-redo" type="button" title="重做 Ctrl/⌘+Shift+Z">↷ 重做</button><button id="demo-export" type="button">导出 Markdown ↓</button></div>
+      </div>
+      <div class="demo-content">
+        <textarea id="demo-body" aria-label="Markdown 源码" spellcheck="false" hidden>{example}</textarea>
+        <div id="demo-rendered" class="notes-live prose"></div>
+      </div>
+      <footer class="demo-footer"><span id="demo-save-status" role="status">草稿仅保存在此浏览器</span><span>Ctrl/⌘ + Enter 完成段落</span></footer>
+    </div>
+    <p class="demo-limit">块级即时编辑：活动段落显示 Markdown 标记，表格通过源码编辑；外部图片与图表请求在演示中停用。正式工作台的登录与发布流程保持不变。</p>
+  </section>
+</BaseLayout>
+<style>
+  .editor-demo { --notes-font: inherit; --notes-size: 16px; --notes-leading: 1.9; --notes-muted: var(--text-muted); max-width: 1060px; margin: auto; padding: 100px 24px 60px; }
+  :global(html[data-visual-theme='poetize']:has(.editor-demo) header#site-header:not(.scrolled)) { background: #245970; }
+  :global(html[data-visual-theme='poetize']:has(.editor-demo) .poetize-tools), :global(html[data-visual-theme='poetize']:has(.editor-demo) .poetize-companion), :global(html[data-visual-theme='poetize']:has(.editor-demo) #poetize-petals) { display: none; }
+  .demo-heading { margin-bottom: 24px; }
+  .demo-heading > a { font-size: .8rem; color: var(--primary); }
+  .demo-badge { float: right; padding: 4px 10px; border: 1px solid var(--border); border-radius: 100px; color: var(--text-muted); font-size: .7rem; }
+  .demo-heading h1 { font-size: clamp(1.7rem,4vw,2.2rem); margin: 18px 0 8px; }
+  .demo-heading p, .demo-limit { font-size: .85rem; color: var(--text-muted); }
+  .demo-paper { border: 1px solid var(--border); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+  .demo-toolbar { display: flex; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .demo-modes, .demo-actions { display: flex; gap: 8px; }
+  button { border: 1px solid transparent; color: var(--text-2); padding: 6px 12px; border-radius: 8px; font-size: .8rem; }
+  button:hover, button[aria-pressed='true'] { border-color: var(--border); background: var(--gradient-subtle); color: var(--primary); }
+  .demo-content { padding: 35px 50px 45px; }
+  #demo-body { width: 100%; min-height: 70vh; resize: vertical; border: 0; outline: 0; background: transparent; color: var(--text-1); font: 15px/1.9 ui-monospace,monospace; tab-size: 2; }
+  #demo-body[hidden] { display: none; }
+  .demo-footer { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 12px 20px; border-top: 1px solid var(--border); font-size: .72rem; color: var(--text-muted); }
+  .demo-limit { margin-top: 20px; line-height: 1.9; }
+  @media (max-width:600px) { .editor-demo { padding: 88px 12px 30px; } .demo-content { padding: 24px 18px; } .demo-toolbar { padding: 10px; gap: 8px; } .demo-actions { gap: 2px; } button { padding: 6px 8px; font-size: .72rem; } .demo-badge { float: none; display: block; width: max-content; margin-top: 12px; } }
+</style>
+<script>
+  import { LiveMarkdown } from '../lib/notes-live';
+  const source = document.querySelector<HTMLTextAreaElement>('#demo-body')!;
+  const host = document.querySelector<HTMLElement>('#demo-rendered')!;
+  const status = document.querySelector<HTMLElement>('#demo-save-status')!;
+  const key = 'codeverse.editor-preview.draft.v1';
+  try { const draft = localStorage.getItem(key); if (draft !== null) source.value = draft; } catch { status.textContent = '浏览器存储不可用，请导出保存'; }
+  const editor = new LiveMarkdown(source, host, {localResourcesOnly:true});
+  editor.setDocument('public-local-demo'); editor.setEnabled(true);
+  let live = true;
+  const switchMode = (next: boolean) => {
+    live = next; editor.setEnabled(live); source.hidden = live;
+    document.querySelector('#demo-live')?.setAttribute('aria-pressed',String(live));
+    document.querySelector('#demo-source')?.setAttribute('aria-pressed',String(!live));
+    if (!live) source.focus();
+  };
+  document.querySelector('#demo-live')?.addEventListener('click',()=>switchMode(true));
+  document.querySelector('#demo-source')?.addEventListener('click',()=>switchMode(false));
+  source.addEventListener('input',()=>{try {localStorage.setItem(key,source.value); status.textContent='已保存到当前浏览器';}catch{status.textContent='浏览器存储不可用，请导出保存';}});
+  const history = (redo:boolean) => {
+    const target = live ? host : source;
+    target.dispatchEvent(new KeyboardEvent('keydown',{key:'z',ctrlKey:true,shiftKey:redo,bubbles:true}));
+  };
+  document.querySelector('#demo-undo')?.addEventListener('click',()=>history(false));
+  document.querySelector('#demo-redo')?.addEventListener('click',()=>history(true));
+  document.querySelector('#demo-export')?.addEventListener('click',()=>{
+    const url = URL.createObjectURL(new Blob([source.value],{type:'text/markdown;charset=utf-8'}));
+    const link = document.createElement('a'); link.href=url; link.download='即时编辑体验.md'; link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
+</script>

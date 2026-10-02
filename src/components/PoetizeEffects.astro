@@ -22,7 +22,7 @@
   let raf = 0;
   let width = innerWidth, height = innerHeight;
   const petals = Array.from({ length: 17 }, () => ({ x: Math.random() * width, y: Math.random() * height, size: 3 + Math.random() * 4, angle: Math.random() * 6.28, speed: .25 + Math.random() * .4 }));
-  const active = () => root.dataset.visualTheme === 'poetize' && !document.querySelector('#notes-app, .docs-shell') && enabled && !motion.matches && !document.hidden && root.dataset.readingFocus !== 'true';
+  const active = () => root.dataset.visualTheme === 'poetize' && !document.querySelector('#notes-app, .docs-shell, .editor-demo') && enabled && !motion.matches && !document.hidden && root.dataset.readingFocus !== 'true';
   const resize = () => {
     width = innerWidth; height = innerHeight;
     if (!canvas || !ctx) return;

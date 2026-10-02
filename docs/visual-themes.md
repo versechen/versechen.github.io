@@ -38,3 +38,7 @@ npm run preview -- --host 0.0.0.0
 ```
 
 文章入口：`/blog/markdown-style-guide/?visual-theme=poetize`。首页、博客、读书、项目、生活、友链、关于、标签及文章详情共用主题。验证脚本及限制见 [验证记录](preview-validation.md)。工作台编辑功能测试使用现有本地开发模式；生产版本仍要求原站长鉴权。
+
+### 无账号体验入口
+
+`/editor-preview/?visual-theme=poetize` 是可直接访问的独立演示页，复用同一个 `LiveMarkdown` 类。它只使用示例文档与 `codeverse.editor-preview.draft.v1` 浏览器草稿，提供即时/源码、撤销/重做和 Markdown 导出。它不导入工作台、GitHub 同步或发布模块，不读取令牌，也不访问文档 API。外部图片与 PlantUML URL 在插入 DOM 前替换为占位说明，避免把输入内容发送到外部渲染服务；原 Markdown 保留供导出。正式 `/notes/` 的鉴权没有改变。
