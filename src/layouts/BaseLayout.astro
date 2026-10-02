@@ -1,8 +1,8 @@
 ---
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
-import ForestWorld from '../components/ForestWorld.astro';
-import '../styles/forest.css';
+import PoetizeWorld from '../components/PoetizeWorld.astro';
+import '../styles/poetize.css';
 // ?url 让 KaTeX 样式作为独立资源产出，只有含公式的页面才会引用它。
 import katexStylesheet from 'katex/dist/katex.min.css?url';
 import '../styles/global.css';
@@ -74,7 +74,18 @@ const socialImageURL = image ? new URL(image, Astro.site ?? SITE_URL) : undefine
         // 隐私模式或禁用存储时 localStorage 会抛异常。
         try { stored = localStorage.getItem('theme'); } catch (e) {}
         try {
-          if (localStorage.getItem('visual-theme') === 'forest') document.documentElement.dataset.visualTheme = 'forest';
+          const requested = new URLSearchParams(location.search).get('visual-theme');
+          if (requested === 'poetize' || requested === 'original') {
+            localStorage.setItem('visual-theme', requested);
+            const cleanURL = new URL(location.href);
+            cleanURL.searchParams.delete('visual-theme');
+            history.replaceState(history.state, '', cleanURL);
+          }
+          const visual = localStorage.getItem('visual-theme');
+          if (visual === 'forest' || visual === 'poetize') {
+            document.documentElement.dataset.visualTheme = 'poetize';
+            if (visual === 'forest') localStorage.setItem('visual-theme', 'poetize');
+          }
         } catch (e) {}
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (stored === 'dark' || (!stored && prefersDark)) {
@@ -86,7 +97,7 @@ const socialImageURL = image ? new URL(image, Astro.site ?? SITE_URL) : undefine
   <body>
     <a class="skip-link" href="#main-content">跳到正文</a>
     <Header />
-    <ForestWorld />
+    <PoetizeWorld />
     <main id="main-content" tabindex="-1">
       <slot />
     </main>

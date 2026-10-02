@@ -110,6 +110,7 @@ function formatDate(date: Date) {
       <TableOfContents headings={headings} />
 
       <div class="article-main">
+        {post.data.heroImage && <img class="poetize-article-cover" src={post.data.heroImage.src} width={post.data.heroImage.width} height={post.data.heroImage.height} alt={post.data.title} loading="lazy" /> }
         <div class="prose animate-fade-up animate-delay-1">
           <Content />
         </div>
