@@ -1,4 +1,5 @@
 import { parseStore, readYamlBoolean, serializeStore, setYamlBoolean, type NoteStore } from './notes';
+import { assignBlogCover, parseCoverRegistry } from './blog-covers.mjs';
 
 export const TOKEN_KEY = 'codeverse.notes.githubToken';
 export const GIST_KEY = 'codeverse.notes.gistId';
@@ -12,6 +13,7 @@ const KEEPALIVE_LIMIT = 60_000;
 export const BLOG_REPO = 'versechen/versechen.github.io';
 export const BLOG_BRANCH = 'main';
 export const BLOG_DIR = 'src/content/blog';
+const COVER_REGISTRY = 'src/config/blog-covers.json';
 export const OWNER_LOGIN = BLOG_REPO.split('/')[0] ?? 'versechen';
 export const BLOG_ACTIONS_URL = `https://github.com/${BLOG_REPO}/actions`;
 export const TOKEN_CREATE_URL =
@@ -134,6 +136,9 @@ async function readGithubMessage(response: Response): Promise<string> {
 
 function throwRepoWriteError(status: number, githubMessage: string, fallback: string): never {
   const text = githubMessage.toLowerCase();
+  if (/reference update failed|not a fast forward|not fast.?forward/.test(text)) {
+    throw new NotesRemoteError('仓库刚有新提交，封面尚未占用，请重新发布', 'other');
+  }
   if (status === 404 || /not found|resource not accessible/.test(text)) {
     throw new NotesRemoteError(`没有这个仓库的写入权限。${TOKEN_SCOPES_HINT}`, 'auth');
   }
@@ -255,17 +260,21 @@ async function commitBlogTree(
   token: string,
   message: string,
   entries: Array<{ path: string; content?: string; remove?: boolean }>,
+  snapshotParent?: string,
 ): Promise<void> {
   const probe = await github(token, `/repos/${BLOG_REPO}`, {}, 'repo');
   if (classicWriteScope(probe) === false) {
     throw new NotesRemoteError(`当前令牌只有草稿同步权限，改不了博客。${TOKEN_SCOPES_HINT}`, 'auth');
   }
 
-  const refRes = await github(token, `/repos/${BLOG_REPO}/git/ref/heads/${BLOG_BRANCH}`, {}, 'repo');
-  if (!refRes.ok) {
-    throwRepoWriteError(refRes.status, await readGithubMessage(refRes), '读取仓库分支失败，请稍后重试');
+  let parent = snapshotParent;
+  if (!parent) {
+    const refRes = await github(token, `/repos/${BLOG_REPO}/git/ref/heads/${BLOG_BRANCH}`, {}, 'repo');
+    if (!refRes.ok) {
+      throwRepoWriteError(refRes.status, await readGithubMessage(refRes), '读取仓库分支失败，请稍后重试');
+    }
+    parent = (await readJson<{ object?: { sha?: string } }>(refRes)).object?.sha;
   }
-  const parent = (await readJson<{ object?: { sha?: string } }>(refRes)).object?.sha;
   if (!parent) throw new NotesRemoteError('读取仓库分支失败，请稍后重试');
 
   const commitRes = await github(token, `/repos/${BLOG_REPO}/git/commits/${parent}`, {}, 'repo');
@@ -322,7 +331,7 @@ async function commitBlogTree(
   const tip = await github(
     token,
     `/repos/${BLOG_REPO}/git/refs/heads/${BLOG_BRANCH}`,
-    { method: 'PATCH', body: JSON.stringify({ sha: commitSha }) },
+    { method: 'PATCH', body: JSON.stringify({ sha: commitSha, force: false }) },
     'repo',
   );
   if (!tip.ok) {
@@ -335,9 +344,14 @@ export async function publishBlogPost(
   token: string,
   input: { slug: string; title: string; markdown: string; overwrite?: boolean },
 ): Promise<{ updated: boolean; archived: boolean }> {
+  // 文章和封面清单都从同一个提交读取；并发发布只能有一方快进成功。
+  const refRes = await github(token, `/repos/${BLOG_REPO}/git/ref/heads/${BLOG_BRANCH}`, {}, 'repo');
+  if (!refRes.ok) throwRepoWriteError(refRes.status, await readGithubMessage(refRes), '读取仓库分支失败');
+  const parent = (await readJson<{ object?: { sha?: string } }>(refRes)).object?.sha;
+  if (!parent) throw new NotesRemoteError('读取仓库分支失败，请稍后重试');
   const relative = `${BLOG_DIR}/${input.slug}.md`;
   const encoded = relative.split('/').map(encodeURIComponent).join('/');
-  const existing = await github(token, `/repos/${BLOG_REPO}/contents/${encoded}?ref=${BLOG_BRANCH}`, {}, 'repo');
+  const existing = await github(token, `/repos/${BLOG_REPO}/contents/${encoded}?ref=${parent}`, {}, 'repo');
   if (classicWriteScope(existing) === false) {
     throw new NotesRemoteError(`当前令牌只有草稿同步权限，发不了博客。${TOKEN_SCOPES_HINT}`, 'auth');
   }
@@ -352,11 +366,26 @@ export async function publishBlogPost(
   const remote = updated ? decodeContentsFile(await readJson<{ content?: string; encoding?: string }>(existing)) : null;
   const archived = remote ? readYamlBoolean(remote, 'archived') : false;
 
+  const coversRes = await github(token, `/repos/${BLOG_REPO}/contents/${COVER_REGISTRY}?ref=${parent}`, {}, 'repo');
+  if (!coversRes.ok) throwRepoWriteError(coversRes.status, await readGithubMessage(coversRes), '读取封面清单失败');
+  const coversText = decodeContentsFile(await readJson<{ content?: string; encoding?: string }>(coversRes));
+  if (!coversText) throw new NotesRemoteError('封面清单为空，请检查仓库配置');
+  let assigned;
+  try {
+    assigned = assignBlogCover(input.markdown, input.slug, parseCoverRegistry(JSON.parse(coversText)));
+  } catch (error) {
+    throw new NotesRemoteError(error instanceof Error ? error.message : '分配封面失败');
+  }
+
   const title = input.title.replace(/\s+/g, ' ').trim().slice(0, 60) || '无标题';
   await commitBlogTree(
     token,
     updated ? `feat(blog): 更新《${title}》` : `feat(blog): 发布《${title}》`,
-    [{ path: relative, content: setYamlBoolean(input.markdown, 'archived', archived) }],
+    [
+      { path: relative, content: setYamlBoolean(assigned.markdown, 'archived', archived) },
+      { path: COVER_REGISTRY, content: `${JSON.stringify(assigned.registry, null, 2)}\n` },
+    ],
+    parent,
   );
   return { updated, archived };
 }

@@ -7,6 +7,7 @@ category: '训练与推理'
 series: '训练与推理入门'
 seriesOrder: 1
 draft: false
+heroImage: '../../assets/images/cover-spring.svg'
 ---
 
 第一次跑通 DDP 时，我看到两组 loss 不一样，梯度和权重却完全一样。程序打印了 `PASS`，但还有几个问题没想明白：两个 rank 到底分到了什么数据？`set_epoch()` 在做什么？代码里没有写 `all_reduce()`，梯度是在哪里同步的？最后那句 `all_gather()` 又有什么用？

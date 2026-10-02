@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "presets": [
+    "cover-code.svg",
+    "cover-mountain.svg",
+    "cover-architecture.svg",
+    "cover-markdown.svg",
+    "cover-garden.svg",
+    "cover-spring.svg",
+    "cover-music.svg"
+  ],
+  "assigned": {
+    "first-post": "cover-code.svg",
+    "second-post": "cover-mountain.svg",
+    "third-post": "cover-architecture.svg",
+    "markdown-style-guide": "cover-markdown.svg",
+    "using-mdx": "cover-markdown.svg",
+    "ddp-basics-two-cpu-processes": "cover-spring.svg"
+  }
+}

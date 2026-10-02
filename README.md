@@ -51,6 +51,8 @@ src/
 
 完整格式示例见 `src/content/blog/markdown-style-guide.md`。
 
+新增文章会从已有预设中随机分配一张未使用封面，并固定在文章的 `heroImage` 字段。记录页发布会自动完成分配；直接编辑 Markdown 时，请先执行 `npm run covers:assign`，把文章与 `src/config/blog-covers.json` 一起提交。封面用完后需补充图片，已有分配记录应保留。详见 `docs/content.md`。
+
 ## 部署
 
 推送到 `main` 后，`.github/workflows/deploy.yml` 会使用 Node.js 22 执行：

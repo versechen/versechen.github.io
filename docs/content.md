@@ -7,6 +7,22 @@
 
 完整 Markdown 格式示例见 `src/content/blog/markdown-style-guide.md`。
 
+## 文章封面
+
+记录页发布新文章时，会从 `src/config/blog-covers.json` 的 `presets` 中随机选择一张未使用图片，把 `heroImage` 和 `assigned` 分配记录一起写入 Git 提交。更新文章保留原封面；删除或归档文章也不释放它用过的图片。两个窗口同时发布时，仓库快进检查会阻止第二次提交覆盖第一份分配记录，刷新后重试即可。
+
+直接写 Markdown 时，提交前执行：
+
+```bash
+npm run covers:assign
+npm run check
+npm run build
+```
+
+文章和封面清单必须一起提交。构建会检查它们是否一致，不会在每次构建或访问页面时重新随机。
+
+预设用完会提示补充图片，不会重新使用旧封面。将新图片放进 `src/assets/images/`，把文件名加入 `presets` 即可扩充；保留 `assigned` 中的历史记录。启用前已有的文章封面保持原样，旧文章之间原有的重复也保留，新分配会排除这些已用图片。
+
 ## 项目（来自 GitHub）
 
 项目卡片与文档**不再手写维护正文**，而是由同步脚本生成：
