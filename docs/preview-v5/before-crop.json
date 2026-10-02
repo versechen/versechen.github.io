@@ -1,0 +1,74 @@
+[
+  {
+    "viewport": 390,
+    "dpr": 1,
+    "currentSrc": "http://127.0.0.2:4322/themes/coastal/home-portrait-470.webp",
+    "width": 390,
+    "height": 520,
+    "objectFit": "cover",
+    "objectPosition": "40% 50%"
+  },
+  {
+    "viewport": 390,
+    "dpr": 2,
+    "currentSrc": "http://127.0.0.2:4322/themes/coastal/home-portrait-941.webp",
+    "width": 390,
+    "height": 520,
+    "objectFit": "cover",
+    "objectPosition": "40% 50%"
+  },
+  {
+    "viewport": 1024,
+    "dpr": 1,
+    "currentSrc": "http://127.0.0.2:4322/themes/coastal/home-wide-2172.webp",
+    "width": 1024,
+    "height": 657,
+    "objectFit": "cover",
+    "objectPosition": "50% 53%"
+  },
+  {
+    "viewport": 1024,
+    "dpr": 2,
+    "currentSrc": "http://127.0.0.2:4322/themes/coastal/home-wide-2172.webp",
+    "width": 1024,
+    "height": 657,
+    "objectFit": "cover",
+    "objectPosition": "50% 53%"
+  },
+  {
+    "viewport": 1440,
+    "dpr": 1,
+    "currentSrc": "http://127.0.0.2:4322/themes/coastal/home-wide-2172.webp",
+    "width": 1440,
+    "height": 657,
+    "objectFit": "cover",
+    "objectPosition": "50% 53%"
+  },
+  {
+    "viewport": 1440,
+    "dpr": 2,
+    "currentSrc": "http://127.0.0.2:4322/themes/coastal/home-wide-2172.webp",
+    "width": 1440,
+    "height": 657,
+    "objectFit": "cover",
+    "objectPosition": "50% 53%"
+  },
+  {
+    "viewport": 2048,
+    "dpr": 1,
+    "currentSrc": "http://127.0.0.2:4322/themes/coastal/home-wide-2172.webp",
+    "width": 2048,
+    "height": 657,
+    "objectFit": "cover",
+    "objectPosition": "50% 53%"
+  },
+  {
+    "viewport": 2048,
+    "dpr": 2,
+    "currentSrc": "http://127.0.0.2:4322/themes/coastal/home-wide-2172.webp",
+    "width": 2048,
+    "height": 657,
+    "objectFit": "cover",
+    "objectPosition": "50% 53%"
+  }
+]
