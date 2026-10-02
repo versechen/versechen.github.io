@@ -1,6 +1,8 @@
 ---
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import ForestWorld from '../components/ForestWorld.astro';
+import '../styles/forest.css';
 // ?url 让 KaTeX 样式作为独立资源产出，只有含公式的页面才会引用它。
 import katexStylesheet from 'katex/dist/katex.min.css?url';
 import '../styles/global.css';
@@ -71,6 +73,9 @@ const socialImageURL = image ? new URL(image, Astro.site ?? SITE_URL) : undefine
         let stored = null;
         // 隐私模式或禁用存储时 localStorage 会抛异常。
         try { stored = localStorage.getItem('theme'); } catch (e) {}
+        try {
+          if (localStorage.getItem('visual-theme') === 'forest') document.documentElement.dataset.visualTheme = 'forest';
+        } catch (e) {}
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (stored === 'dark' || (!stored && prefersDark)) {
           document.documentElement.classList.add('dark');
@@ -81,6 +86,7 @@ const socialImageURL = image ? new URL(image, Astro.site ?? SITE_URL) : undefine
   <body>
     <a class="skip-link" href="#main-content">跳到正文</a>
     <Header />
+    <ForestWorld />
     <main id="main-content" tabindex="-1">
       <slot />
     </main>

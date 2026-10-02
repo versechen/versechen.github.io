@@ -120,7 +120,7 @@ function timeAgo(date: Date): string {
 
       <p class="hero-typewriter-row animate-in" style="--delay:.2s">
         <span class="sr-only">像诗一样写代码，用技术探索世界</span>
-        <span id="typewriter-text" aria-hidden="true"></span><span class="typewriter-cursor" aria-hidden="true"></span>
+        <span id="typewriter-text" aria-hidden="true">像诗一样写代码</span><span class="typewriter-cursor" aria-hidden="true"></span>
       </p>
 
       <div class="hero-ctas animate-in" style="--delay:.35s">
@@ -951,6 +951,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
   }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
 
   items.forEach((el, i) => {
+    el.classList.add('reveal-pending');
     (el as HTMLElement).style.setProperty('--reveal-delay', `${(i % 6) * 60}ms`);
     io.observe(el);
   });
@@ -958,8 +959,8 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 </script>
 
 <style>
-  /* Scroll-reveal animation */
-  .wall-card {
+  /* Visible by default: reveal is a progressive enhancement. */
+  .wall-card.reveal-pending {
     opacity: 0;
     transform: translateY(24px);
     transition:
@@ -968,7 +969,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
       box-shadow .3s ease;
   }
 
-  .wall-card.revealed {
+  .wall-card.revealed, .wall-card:focus-visible {
     opacity: 1;
     transform: translateY(0);
   }

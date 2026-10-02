@@ -1,0 +1,65 @@
+---
+// Decorative layers are shared by all pages; interactive effects stay in this component.
+const flakes = Array.from({ length: 28 }, (_, i) => ({ left: (i * 37) % 100, delay: -(i * 1.7), duration: 12 + (i % 7) * 2 }));
+---
+<div class="forest-weather" aria-hidden="true">
+  {flakes.map(f => <i class="forest-flake" style={`--left:${f.left}%;--delay:${f.delay}s;--duration:${f.duration}s`}>❄︎</i>)}
+</div>
+<div class="forest-companion">
+  <span class="forest-pet-message" role="status" id="forest-pet-message">今天也慢慢来，森林一直在这里。</span>
+  <button class="forest-pet" id="forest-pet" aria-label="和森林小宠物打招呼" title="点我打个招呼">
+    <svg viewBox="0 0 120 120" width="88" height="88" aria-hidden="true">
+      <ellipse cx="60" cy="108" rx="35" ry="6" fill="#203c2a" opacity=".15"/>
+      <g class="forest-pet-body"><path d="M28 55Q16 0 39 24l14 22h16l14-22q23-24 9 31Q118 103 60 107Q2 103 28 55" fill="#f4e9cf" stroke="#657b55" stroke-width="2"/>
+      <ellipse cx="60" cy="84" rx="25" ry="19" fill="#fff8e9"/>
+      <g class="forest-pet-eyes" fill="#344c38"><circle cx="43" cy="63" r="4"/><circle cx="77" cy="63" r="4"/></g>
+      <path d="M55 73q5 7 10 0" fill="none" stroke="#344c38" stroke-width="2" stroke-linecap="round"/>
+      <g fill="#e5b19b" opacity=".7"><ellipse cx="34" cy="73" rx="7" ry="4"/><ellipse cx="86" cy="73" rx="7" ry="4"/></g>
+      <path d="M56 30q-4-21 18-18-2 18-18 18" fill="#719358"/></g>
+    </svg>
+  </button>
+</div>
+<script>
+  const root = document.documentElement;
+  const toggle = document.getElementById('visual-theme-btn');
+  const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const sync = () => {
+    const enabled = root.dataset.visualTheme === 'forest';
+    toggle?.setAttribute('aria-pressed', String(enabled));
+    toggle?.setAttribute('aria-label', enabled ? '切换回原始主题' : '切换温馨森林主题');
+    if (toggle) toggle.textContent = enabled ? '🌸' : '🌿';
+  };
+  sync();
+  toggle?.addEventListener('click', () => {
+    const next = root.dataset.visualTheme === 'forest' ? 'original' : 'forest';
+    root.dataset.visualTheme = next;
+    try { localStorage.setItem('visual-theme', next); } catch {}
+    sync();
+  });
+  const pet = document.getElementById('forest-pet');
+  const message = document.getElementById('forest-pet-message');
+  const greetings = ['送你一片幸运叶子 🌿', '雪落下的时候，记得喝杯热茶 ☕', '写一点代码，也留一点时间看云 ☁', '今天也慢慢来，森林一直在这里。'];
+  let greeting = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  pet?.addEventListener('click', () => {
+    if (message) message.textContent = greetings[greeting++ % greetings.length];
+    pet.classList.remove('is-happy');
+    requestAnimationFrame(() => pet.classList.add('is-happy'));
+    clearTimeout(timer);
+    timer = setTimeout(() => pet.classList.remove('is-happy'), 900);
+  });
+  // Bound the particle count and throttle pointer feedback to avoid accumulating DOM nodes.
+  let lastTrail = 0;
+  document.addEventListener('pointermove', (event) => {
+    if (root.dataset.visualTheme !== 'forest' || motion.matches || event.pointerType !== 'mouse' || performance.now() - lastTrail < 140) return;
+    lastTrail = performance.now();
+    const leaf = document.createElement('span');
+    leaf.className = 'forest-pointer-leaf';
+    leaf.textContent = '✦';
+    leaf.setAttribute('aria-hidden', 'true');
+    leaf.style.left = `${event.clientX}px`;
+    leaf.style.top = `${event.clientY}px`;
+    document.body.append(leaf);
+    setTimeout(() => leaf.remove(), 850);
+  }, { passive: true });
+</script>
