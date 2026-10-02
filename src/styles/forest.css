@@ -84,3 +84,8 @@ html[data-visual-theme='forest'] .icon-btn:hover { background: #a6ba8b22; color:
 html[data-visual-theme='forest'] .badge-blog { color: var(--primary); background: #a6ba8b22; }
 html[data-visual-theme='forest'] .card-tag { color: var(--secondary); background: #a6ba8b18; border-color: var(--border); }
 html[data-visual-theme='forest'] .type-blog::before { background: var(--gradient); }
+/* Astro's scoped dark-mode rules add an attribute; these selectors must outrank it. */
+html.dark[data-visual-theme='forest'] .hero-wrap .hero-gradient { background: linear-gradient(#192b2466, #192b2499), url('/themes/forest.svg') center / cover; }
+html.dark[data-visual-theme='forest'] #site-header,
+html.dark[data-visual-theme='forest'] #site-header.scrolled,
+html.dark[data-visual-theme='forest'] #nav-links.open { background: var(--glass-bg); }
