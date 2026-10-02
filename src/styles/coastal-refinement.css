@@ -1,11 +1,11 @@
 /* Coastal editorial collection. Original Sakura has no matching selectors. */
 @font-face {
- font-family: 'Coastal Editorial'; src: url('/fonts/coastal-editorial.woff') format('woff');
+ font-family: 'Coastal Hand'; src: url('/fonts/coastal-hand.woff2') format('woff2');
  font-style: normal; font-weight: 400; font-display: swap;
 }
 .coastal-scene, .coastal-nav-icon, .coastal-mobile-search { display: none; }
 html[data-visual-theme='poetize'] {
- --coast-display: 'Coastal Editorial', 'Noto Serif CJK SC', 'Songti SC', STSong, SimSun, serif;
+ --coast-display: 'Coastal Hand', 'Kaiti SC', KaiTi, var(--coast-sans);
  --bg: #f4f5ef; --bg-alt: #e6f0ed; --surface: #fffef9; --surface-hover: #fff;
  --text-1: #203f4e; --text-2: #3c5964; --text-muted: #58717a;
  --primary: #176a80; --secondary: #266b70; --border: #cbdcd7; --border-hover: #78a8ad;
@@ -181,7 +181,7 @@ html[data-visual-theme='poetize'] #site-header:not(.scrolled) {
  background:linear-gradient(180deg,#082c487a,#082c4838 75%,#082c4812);
 }
 html[data-visual-theme='poetize'] #site-header .nav-link {
- font-family:var(--coast-sans);font-weight:600;letter-spacing:.045em;
+ font-family:var(--coast-display);font-weight:400;letter-spacing:.045em;
 }
 html[data-visual-theme='poetize'] #site-header:not(.scrolled) :is(.nav-link,.logo-text,.icon-btn) {
  text-shadow:0 1px 3px #082b48,0 0 10px #082b4870;
@@ -215,4 +215,9 @@ html[data-visual-theme='poetize'] .side-item .side-item-count { color:var(--text
 }
 html[data-visual-theme='poetize'] .page-hero:has(.coastal-scene[data-scene='studio'],.coastal-scene[data-scene='cafe']) .page-hero-desc {
  background:#113b50b8;border-radius:6px;padding:.2em .65em;text-shadow:0 1px 2px #082b48;
+}
+
+/* Handwritten accents; long prose and editing keep their readable system stacks. */
+html[data-visual-theme='poetize'] :is(.prose h1,.prose h2,.prose h3,.prose h4,.blog-main .post-title,.notes-live__block h1,.notes-live__block h2,.notes-live__block h3) {
+ font-family:var(--coast-display);font-weight:400;
 }

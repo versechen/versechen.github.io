@@ -54,3 +54,7 @@
 | 2048 | 657 | 683（布局舍入） | 0% → 约 0% |
 
 2048/DPR2 仍需约 4096×1366 实际像素，源图仅 2172×724；截图是 DPR2 捕获，不能据此称源图为 4K。`sizes` 同步匹配 cover 实际绘制宽度。Poetize 的 poetry-font 字库尚未确认内部名称及再分发许可，本轮未复制或修改现有 OFL 字体。
+
+### 海滨字体候选预览
+
+新预览将展示字体替换为官方 LXGW WenKai Regular v1.522 的本地 WOFF2 子集，内部族名 Coastal Hand；SIL OFL 1.1 许可、上游固定源、覆盖范围和重建步骤见 `docs/font-preview/README.md`。正文仍为系统无衬线字体；不是 Poetize 同款。图片不变。
