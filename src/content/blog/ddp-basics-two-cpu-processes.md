@@ -281,7 +281,9 @@ for epoch in range(5):
 
 某条样本本轮归 rank 0、下轮归 rank 1，是正常的数据分配变化。两个进程都访问原始数据集，分别计算自己本轮应取的索引。采样器在这一步只处理索引，不会把上一轮 rank 0 内存中的样本传送给 rank 1。
 
-因此，“每个 rank 永久拥有一份固定的数据”不适合作为启用 shuffle 后的理解方式。更准确的说法是：**每轮先确定全局顺序，再按 rank 划分本轮任务。**实现细节可对照 [PyTorch 2.5.1 的采样器源码](https://github.com/pytorch/pytorch/blob/v2.5.1/torch/utils/data/distributed.py)。
+因此，“每个 rank 永久拥有一份固定的数据”不适合作为启用 shuffle 后的理解方式。更准确的说法是：**每轮先确定全局顺序，再按 rank 划分本轮任务。**
+
+实现细节可对照 [PyTorch 2.5.1 的采样器源码](https://github.com/pytorch/pytorch/blob/v2.5.1/torch/utils/data/distributed.py)。
 
 ## 6. 梯度同步藏在哪一行
 
