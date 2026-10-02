@@ -7,6 +7,7 @@ import { isListedPost } from '../utils/posts';
 import coverGarden from '../assets/images/cover-garden.svg';
 import coverMountain from '../assets/images/cover-mountain.svg';
 import coverMusic from '../assets/images/cover-music.svg';
+import coverMarkdown from '../assets/images/cover-markdown.svg';
 
 const allPosts = (await getCollection('blog')).filter(isListedPost);
 const recentPosts = allPosts.sort(
@@ -38,6 +39,7 @@ interface DynItem {
   icon: string;
   image: string;
   featured?: boolean;
+  coastalImage?: string;
 }
 
 const dynamics: DynItem[] = [
@@ -50,6 +52,10 @@ const dynamics: DynItem[] = [
     href: `/blog/${p.id}`,
     icon: '📝',
     image: p.data.heroImage?.src ?? '',
+    // Only the two known template covers get coastal thumbnails; metadata stays intact.
+    coastalImage: p.data.heroImage?.src === coverMarkdown.src
+      ? ({ 'markdown-style-guide': '/themes/coastal/journal-840.webp', 'using-mdx': '/themes/coastal/studio-840.webp' } as Record<string, string>)[p.id]
+      : undefined,
     featured: i === 0,
   })),
   ...lifeRecords.map(r => ({
@@ -171,7 +177,7 @@ function timeAgo(date: Date): string {
           <a
             href={item.href}
             class:list={['wall-card tilt-card', `type-${item.type}`, { featured: item.featured, 'has-img': !!item.image }]}
-            style={item.image ? `--card-img: url(${item.image})` : ''}
+            style={`${item.image ? `--card-img: url(${item.image});` : ''}${item.coastalImage ? `--coastal-card-img: url(${item.coastalImage});` : ''}`}
             data-type={item.type}
           >
             <!-- Image background (only when has-img) -->

@@ -176,3 +176,43 @@ html[data-visual-theme='poetize'] .coastal-mobile-search::placeholder { color:va
 html[data-visual-theme='poetize'] .coastal-mobile-search:focus { outline:2px solid var(--primary);outline-offset:2px; }
 html[data-visual-theme='poetize'] .poetize-profile-landscape { background-image:url('/themes/coastal/home-840.webp'); }
 @media(hover:hover) { html[data-visual-theme='poetize'] .masonry .wall-card.has-img:hover .card-img-bg { transform:scale(1.025); } }
+/* Local reading contrast: shade only the navigation strip and title lettering. */
+html[data-visual-theme='poetize'] #site-header:not(.scrolled) {
+ background:linear-gradient(180deg,#082c487a,#082c4838 75%,#082c4812);
+}
+html[data-visual-theme='poetize'] #site-header .nav-link {
+ font-family:var(--coast-sans);font-weight:600;letter-spacing:.045em;
+}
+html[data-visual-theme='poetize'] #site-header:not(.scrolled) :is(.nav-link,.logo-text,.icon-btn) {
+ text-shadow:0 1px 3px #082b48,0 0 10px #082b4870;
+}
+html[data-visual-theme='poetize'] .hero-site-name,
+html[data-visual-theme='poetize'] .page-hero:has(.coastal-scene[data-scene='studio'],.coastal-scene[data-scene='cafe']) .page-hero-title {
+ position:relative;isolation:isolate;text-shadow:0 2px 3px #062b45,0 0 16px #062b4580;
+}
+html[data-visual-theme='poetize'] .hero-site-name::before,
+html[data-visual-theme='poetize'] .page-hero:has(.coastal-scene[data-scene='studio'],.coastal-scene[data-scene='cafe']) .page-hero-title::before {
+ content:'';position:absolute;inset:4% -7%;z-index:-1;pointer-events:none;
+ background:linear-gradient(90deg,transparent,#10394db3 12%,#10394db3 88%,transparent);
+ border-radius:50%;filter:blur(15px);
+}
+html[data-visual-theme='poetize'] .coastal-scene[data-scene='studio'] img { object-position:55% 45%; }
+html[data-visual-theme='poetize'] .coastal-scene[data-scene='cafe'] img { object-position:65% 40%; }
+html[data-visual-theme='poetize'] .wall-card .card-img-bg {
+ background-image:var(--coastal-card-img,var(--card-img));
+}
+@media(max-width:600px) {
+ html[data-visual-theme='poetize'] .coastal-scene[data-scene='home'] img { object-position:40% 50%; }
+ html[data-visual-theme='poetize'] .hero-site-name::before { inset:8% -4%;filter:blur(12px); }
+}
+html[data-visual-theme='poetize'] .side-item .side-item-count { color:var(--text-1);background:var(--bg-alt); }
+@media(max-width:600px) {
+ html[data-visual-theme='poetize'] .hero-wrap { height:520px;min-height:520px; }
+ html[data-visual-theme='poetize'] .wall-section { padding-top:26px; }
+ html[data-visual-theme='poetize'] .wall-header { margin-bottom:18px; }
+ html[data-visual-theme='poetize'] .poetize-companion { display:none; }
+ html[data-visual-theme='poetize'] .poetize-tools { right:2px;bottom:10px;gap:4px; }
+}
+html[data-visual-theme='poetize'] .page-hero:has(.coastal-scene[data-scene='studio'],.coastal-scene[data-scene='cafe']) .page-hero-desc {
+ background:#113b50b8;border-radius:6px;padding:.2em .65em;text-shadow:0 1px 2px #082b48;
+}

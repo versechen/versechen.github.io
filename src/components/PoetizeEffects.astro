@@ -30,9 +30,11 @@
     canvas.width = width * dpr; canvas.height = height * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
+  // Reading and filtering surfaces keep decorative particles away from text/forms.
+  const petalsAllowed = !document.querySelector('.blog-sidebar, .article-main');
   let previous = 0;
   const draw = (time: number) => {
-    if (!ctx || !active()) { raf = 0; return; }
+    if (!ctx || !active() || !petalsAllowed) { raf = 0; return; }
     const step = Math.min((time - previous) / 16.67 || 1, 2); previous = time;
     ctx.clearRect(0, 0, width, height);
     for (const petal of petals) {
@@ -52,9 +54,10 @@
     effectsButton?.setAttribute('aria-pressed', String(enabled && !motion.matches));
     effectsButton?.setAttribute('aria-label', enabled ? '关闭花瓣与波浪动画' : '开启花瓣与波浪动画');
     if (effectsButton) { effectsButton.disabled = motion.matches; effectsButton.title = motion.matches ? '已遵循系统减少动态效果设置' : '花瓣与波浪动画'; }
-    if (canvas) canvas.hidden = !running;
-    if (running && !raf) { previous = performance.now(); raf = requestAnimationFrame(draw); }
-    if (!running && raf) { cancelAnimationFrame(raf); raf = 0; ctx?.clearRect(0, 0, width, height); }
+    const canvasRunning = running && petalsAllowed;
+    if (canvas) canvas.hidden = !canvasRunning;
+    if (canvasRunning && !raf) { previous = performance.now(); raf = requestAnimationFrame(draw); }
+    if (!canvasRunning && raf) { cancelAnimationFrame(raf); raf = 0; ctx?.clearRect(0, 0, width, height); }
   };
   effectsButton?.addEventListener('click', () => { enabled = !enabled; try { localStorage.setItem('poetize-effects', enabled ? 'on' : 'off'); } catch {} sync(); });
   focusButton?.addEventListener('click', () => {
