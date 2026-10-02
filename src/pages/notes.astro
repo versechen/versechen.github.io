@@ -102,7 +102,7 @@ const syntaxItems = [
 ---
 
 <BaseLayout title="记录" description="站长工作台" math hideFooter noindex>
-  <div class="notes-page" id="notes-app" data-mode="split" data-locked>
+  <div class="notes-page" id="notes-app" data-mode="live" data-locked>
     <noscript><p class="notes-noscript">在线记录需要启用 JavaScript。</p></noscript>
 
     <section class="notes-gate" id="notes-gate" aria-labelledby="notes-gate-title">
@@ -192,10 +192,11 @@ const syntaxItems = [
 
           <div class="notes-toolbar__end">
             <div class="notes-views" role="group" aria-label="视图">
-              <button type="button" class="notes-view" data-view="edit" aria-pressed="false" data-tip="只看编辑" data-keys="Alt+1">
-                <Fragment set:html={icon('edit', 16)} /><span>编辑</span>
+              <button type="button" class="notes-view" data-view="live" aria-pressed="true" data-tip="原位即时排版"><Fragment set:html={icon('edit', 16)} /><span>即时</span></button>
+              <button type="button" class="notes-view" data-view="edit" aria-pressed="false" data-tip="Markdown 源码" data-keys="Alt+1">
+                <Fragment set:html={icon('edit', 16)} /><span>源码</span>
               </button>
-              <button type="button" class="notes-view notes-view--split" data-view="split" aria-pressed="true" data-tip="左右分栏" data-keys="Alt+2">
+              <button type="button" class="notes-view notes-view--split" data-view="split" aria-pressed="false" data-tip="左右分栏" data-keys="Alt+2">
                 <Fragment set:html={icon('columns', 16)} /><span>分栏</span>
               </button>
               <button type="button" class="notes-view" data-view="preview" aria-pressed="false" data-tip="只看预览" data-keys="Alt+3">
@@ -254,6 +255,7 @@ const syntaxItems = [
                   <datalist id="notes-tag-options"></datalist>
                 </div>
                 <textarea id="notes-body" class="notes-body" aria-label="正文" placeholder="开始书写…  输入 / 可插入标题、待办、表格、提示块等" spellcheck="false"></textarea>
+                <article id="notes-live" class="notes-live notes-preview prose" aria-label="即时 Markdown 编辑器" hidden></article>
                 <div class="notes-starter" id="notes-starter" hidden>
                   <span class="notes-starter__label">快速开始</span>
                   {TEMPLATES.map((template) => (

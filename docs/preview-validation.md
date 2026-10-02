@@ -1,7 +1,9 @@
 # Poetize 风格预览验证
 
+## 第一轮历史记录
+
 - 基线：远端 main `7f28240a2324871b53819556fe3542a7d6b9d70d`。
-- 本地分支：`preview/poetize-global`；未 push、未创建 PR、未合并、未部署 GitHub Pages。
+- 分支：`preview/poetize-global`。第一轮本地验证后，用户已明确授权推送此独立预览分支；没有创建 PR、合并 main 或部署正式 GitHub Pages。
 - 环境：Node 24.19.0 / Chromium；云环境可用，文件和预览进程均已确认保留。
 - 没有仓库 AGENTS.md、.agents/skills/SKILL.md；工作区 .agents 目录为空。已阅读 README 与 docs/visual-themes.md。
 
@@ -32,3 +34,17 @@
 - 生产预览文章入口（环境内部）：`http://127.0.0.2:4322/blog/markdown-style-guide/?visual-theme=poetize`。
 - 文章离线 HTML：内联现有构建的 CSS、JavaScript、本地图片与字体；默认海蓝主题，支持两个主题和明暗切换、正文与目录。导航至其他页面会提示使用完整预览包。外部图表依赖仍需网络。
 - 完整预览包：包含 dist、截图、检查日志和补丁。解压后在 dist 运行 `python3 -m http.server 4321`，访问 `http://localhost:4321/blog/markdown-style-guide/?visual-theme=poetize`。
+
+## 第二轮：精细绘画与即时编辑（2026-10-02）
+
+参考依据来自父端实际浏览器观察：1174×753 首页短插画首屏、半透明字幕、双层慢波浪、全页花瓣、资料侧栏与双列配图卡片；文章较短的配图标题区、摘要卡片及返回顶部。父端提供可见行为的尺寸/动画参数，本环境直接访问参考站仍被代理拒绝；没有把参考站未加载的正文当成排版证据。
+
+### 新增验证
+
+- `scripts/verify-poetize-interactions.mjs`：读取实际 computed style，确认绘画 WebP、两个波浪动画；读取 Canvas alpha 确认真正绘制；点击下行入口后 scrollY 改变；卡片标题实际颜色非白色；hover 后图片 background-size=120%；关闭效果后动画暂停、Canvas 隐藏且刷新偏好保留。
+- 文章封面灯箱打开、Escape 关闭、焦点返回；专注阅读可逆，正文保留；进度条随正文滚动，返回顶部到 scrollY=0；减少动态效果令动画按钮禁用、Canvas 隐藏。
+- `scripts/verify-live-editor.mjs`：在本地开发模式验证标题/强调/链接/列表/引用/代码/图片/表格、原位编辑、工具栏选区、真实剪贴板粘贴、空行后新标题排版、即时/源码正文逐字一致、跨模式撤销重做、composition 事件期间控件不替换、Markdown 导出与刷新保存、390px 无横向溢出。
+- 编辑器没有新增依赖，也没有修改鉴权与发布入口。生产预览未登录时仍显示原站长登录门槛；因此生产站长登录后的编辑链路、真实 GitHub 写操作没有测试。真实系统输入法候选窗口没有自动化，只验证了 composition 事件与正文保留。
+- 即时模式是块级渲染；活动块仍显示 Markdown 标记，复杂表格通过源码编辑，不能称为完整 Typora 复刻。
+
+88 个组合测试的范围仍是路由返回、主题状态、明暗状态和无页面横向溢出，并非每个组合都逐像素人工验收。人工查看首页及配图卡片、文章桌面/手机和深色、正文代码、专注阅读，以及编辑器桌面/手机截图。

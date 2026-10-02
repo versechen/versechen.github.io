@@ -83,7 +83,9 @@ import {
 } from './notes-editor';
 import { icon, type IconName } from './notes-icons';
 
-type Mode = 'edit' | 'split' | 'preview';
+import { LiveMarkdown } from './notes-live';
+
+type Mode = 'live' | 'edit' | 'split' | 'preview';
 type SyncState = 'local' | 'dev' | 'pending' | 'syncing' | 'synced' | 'error' | 'offline';
 
 type Prefs = {
@@ -106,7 +108,7 @@ const DEFAULT_PREFS: Prefs = {
   spellcheck: false,
   scrollSync: true,
   slash: true,
-  mode: 'split',
+  mode: 'live',
 };
 const REMOTE_IDLE = 2500;
 /** GitHub 对写操作有频率限制，两次推送至少间隔这么久。 */
@@ -235,6 +237,7 @@ let renderFn: ((source: string) => string) | null = null;
 let renderLoading: Promise<void> | null = null;
 let highlightFn: ((root: ParentNode) => void) | null = null;
 let highlightLoading: Promise<void> | null = null;
+let liveEditor: LiveMarkdown | null = null;
 let previewStale = true;
 let previewTimer = 0;
 let previewSeq = 0;
@@ -399,7 +402,7 @@ function loadPrefs(): Prefs {
       spellcheck: typeof raw.spellcheck === 'boolean' ? raw.spellcheck : DEFAULT_PREFS.spellcheck,
       scrollSync: typeof raw.scrollSync === 'boolean' ? raw.scrollSync : DEFAULT_PREFS.scrollSync,
       slash: typeof raw.slash === 'boolean' ? raw.slash : DEFAULT_PREFS.slash,
-      mode: pick('mode', ['edit', 'split', 'preview']),
+      mode: pick('mode', ['live', 'edit', 'split', 'preview']),
     };
   } catch {
     return { ...DEFAULT_PREFS };
@@ -462,6 +465,8 @@ function effectiveMode(): Mode {
 function applyMode(): void {
   const mode = effectiveMode();
   ui.root.dataset.mode = mode;
+  liveEditor ??= new LiveMarkdown(ui.body, document.getElementById('notes-live')!);
+  liveEditor.setEnabled(mode === 'live');
   for (const button of ui.root.querySelectorAll<HTMLButtonElement>('[data-view]')) {
     button.setAttribute('aria-pressed', String(button.dataset.view === mode));
   }
@@ -1104,6 +1109,7 @@ function fillEditor(options: { keepSelection?: boolean } = {}): void {
   const { selectionStart, selectionEnd } = ui.body;
   ui.title.value = note.title;
   if (ui.body.value !== note.body) ui.body.value = note.body;
+  liveEditor?.setDocument(note.id);
   if (options.keepSelection) {
     const max = note.body.length;
     ui.body.setSelectionRange(Math.min(selectionStart, max), Math.min(selectionEnd, max));
@@ -1211,7 +1217,7 @@ function onBodyInput(): void {
   schedulePreview();
   scheduleList();
   persist();
-  updateSlash();
+  if (effectiveMode() !== 'live') updateSlash();
 }
 
 function deleteActive(options: { silent?: boolean } = {}): Note | null {

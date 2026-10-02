@@ -1,0 +1,88 @@
+<canvas id="poetize-petals" aria-hidden="true"></canvas>
+<div class="poetize-reading-progress" aria-hidden="true"></div>
+<div class="poetize-tools" aria-label="阅读工具">
+  <button id="poetize-effects-toggle" aria-label="关闭花瓣与波浪动画" aria-pressed="true" title="花瓣与波浪动画">✿</button>
+  <button id="poetize-focus-toggle" aria-label="开启专注阅读" aria-pressed="false" title="专注阅读"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h7a2 2 0 0 1 2 2v14a3 3 0 0 0-3-3H3Zm18 0h-7a2 2 0 0 0-2 2v14a3 3 0 0 1 3-3h6Z"/></svg></button>
+  <button id="poetize-top" aria-label="返回顶部" title="返回顶部"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7M12 5v15"/></svg></button>
+</div>
+<dialog class="poetize-lightbox" id="poetize-lightbox" aria-label="文章封面大图">
+  <button type="button" class="poetize-lightbox-close" aria-label="关闭封面大图">×</button>
+  <img alt="" />
+</dialog>
+<script>
+  const root = document.documentElement;
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  const effectsButton = document.querySelector<HTMLButtonElement>('#poetize-effects-toggle');
+  const focusButton = document.querySelector<HTMLButtonElement>('#poetize-focus-toggle');
+  const topButton = document.querySelector<HTMLButtonElement>('#poetize-top');
+  const canvas = document.querySelector<HTMLCanvasElement>('#poetize-petals');
+  const ctx = canvas?.getContext('2d');
+  let enabled = true;
+  try { enabled = localStorage.getItem('poetize-effects') !== 'off'; } catch {}
+  let raf = 0;
+  let width = innerWidth, height = innerHeight;
+  const petals = Array.from({ length: 17 }, () => ({ x: Math.random() * width, y: Math.random() * height, size: 3 + Math.random() * 4, angle: Math.random() * 6.28, speed: .25 + Math.random() * .4 }));
+  const active = () => root.dataset.visualTheme === 'poetize' && !document.querySelector('#notes-app, .docs-shell') && enabled && !motion.matches && !document.hidden && root.dataset.readingFocus !== 'true';
+  const resize = () => {
+    width = innerWidth; height = innerHeight;
+    if (!canvas || !ctx) return;
+    const dpr = Math.min(devicePixelRatio, 2);
+    canvas.width = width * dpr; canvas.height = height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  let previous = 0;
+  const draw = (time: number) => {
+    if (!ctx || !active()) { raf = 0; return; }
+    const step = Math.min((time - previous) / 16.67 || 1, 2); previous = time;
+    ctx.clearRect(0, 0, width, height);
+    for (const petal of petals) {
+      petal.y += petal.speed * step; petal.x += (.35 + Math.sin(petal.angle) * .25) * step; petal.angle += .007 * step;
+      if (petal.y > height + 12) { petal.y = -12; petal.x = Math.random() * width; }
+      if (petal.x > width + 12) petal.x = -12;
+      ctx.save(); ctx.translate(petal.x, petal.y); ctx.rotate(petal.angle); ctx.scale(1, .5 + Math.abs(Math.cos(petal.angle)) * .5);
+      ctx.beginPath(); ctx.moveTo(0, -petal.size); ctx.bezierCurveTo(petal.size * 1.4, -petal.size, petal.size, petal.size, 0, petal.size); ctx.bezierCurveTo(-petal.size, petal.size * .3, -petal.size * .7, -petal.size * .7, 0, -petal.size);
+      ctx.fillStyle = 'rgba(248, 161, 185, .46)'; ctx.fill(); ctx.restore();
+    }
+    raf = requestAnimationFrame(draw);
+  };
+  const sync = () => {
+    const running = active();
+    root.dataset.poetizeMotion = running ? 'on' : 'off';
+    effectsButton?.setAttribute('aria-pressed', String(enabled && !motion.matches));
+    effectsButton?.setAttribute('aria-label', enabled ? '关闭花瓣与波浪动画' : '开启花瓣与波浪动画');
+    if (effectsButton) { effectsButton.disabled = motion.matches; effectsButton.title = motion.matches ? '已遵循系统减少动态效果设置' : '花瓣与波浪动画'; }
+    if (canvas) canvas.hidden = !running;
+    if (running && !raf) { previous = performance.now(); raf = requestAnimationFrame(draw); }
+    if (!running && raf) { cancelAnimationFrame(raf); raf = 0; ctx?.clearRect(0, 0, width, height); }
+  };
+  effectsButton?.addEventListener('click', () => { enabled = !enabled; try { localStorage.setItem('poetize-effects', enabled ? 'on' : 'off'); } catch {} sync(); });
+  focusButton?.addEventListener('click', () => {
+    const focused = root.dataset.readingFocus !== 'true'; root.dataset.readingFocus = String(focused);
+    focusButton.setAttribute('aria-pressed', String(focused)); focusButton.setAttribute('aria-label', focused ? '退出专注阅读' : '开启专注阅读');
+    sync(); window.dispatchEvent(new Event('resize'));
+    if (focused) document.querySelector('.article-main')?.scrollIntoView({ behavior: motion.matches ? 'auto' : 'smooth', block: 'start' });
+  });
+  topButton?.addEventListener('click', () => { window.scrollTo({top:0, behavior:motion.matches ? 'auto' : 'smooth'}); });
+  const updateProgress = () => {
+    if (topButton) topButton.hidden = scrollY < 300;
+    const article = document.querySelector<HTMLElement>('.article-main');
+    const start = article ? article.getBoundingClientRect().top + scrollY - 90 : 0;
+    const end = article ? start + article.offsetHeight - innerHeight + 90 : document.documentElement.scrollHeight - innerHeight;
+    root.style.setProperty('--reading-progress', String(Math.max(0, Math.min(1, (scrollY - start) / Math.max(1, end - start)))));
+  };
+  let scrollFrame = 0;
+  window.addEventListener('scroll', () => { if (!scrollFrame) scrollFrame = requestAnimationFrame(() => { updateProgress(); scrollFrame = 0; }); }, { passive:true });
+  window.addEventListener('resize', () => { resize(); updateProgress(); });
+  document.addEventListener('visibilitychange', sync); motion.addEventListener('change', sync);
+  new MutationObserver(sync).observe(root, {attributes:true, attributeFilter:['data-visual-theme']});
+  resize(); sync(); updateProgress();
+  const dialog = document.querySelector<HTMLDialogElement>('#poetize-lightbox');
+  const lightboxImage = dialog?.querySelector('img');
+  document.querySelectorAll<HTMLButtonElement>('.poetize-cover-button').forEach(button => button.addEventListener('click', () => {
+    const source = button.querySelector('img');
+    if (!dialog || !source || !lightboxImage) return;
+    lightboxImage.src = source.src; lightboxImage.alt = source.alt; dialog.showModal();
+  }));
+  dialog?.querySelector('button')?.addEventListener('click', () => dialog.close());
+  dialog?.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+</script>

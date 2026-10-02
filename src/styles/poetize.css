@@ -7,81 +7,151 @@ html[data-visual-theme='poetize'] {
   --gradient: linear-gradient(120deg, #168aad, #41b9bb); --gradient-subtle: linear-gradient(135deg, #e3f3fa, #edfaf7);
   --shadow-sm: 0 2px 8px #245b6e08; --shadow: 0 8px 30px #245b6e0c; --shadow-lg: 0 16px 45px #245b6e14;
   --shadow-xl: 0 24px 64px #245b6e20; --glass-shadow: var(--shadow); --radius: 18px; --radius-lg: 24px;
-  --coast-overlay: linear-gradient(#134d6b45, #134d6b18);
+  --coast-overlay: linear-gradient(180deg, #082b454a, #082b450c 45%, #082b4540);
 }
 html.dark[data-visual-theme='poetize'] {
   --primary: #78cce3; --secondary: #86d4d4; --bg: #122630; --bg-alt: #193440; --surface: #1c3542; --surface-hover: #234250;
   --text-1: #e6f3f7; --text-2: #b9d5df; --text-muted: #9bbac8; --glass-bg: #1c3542f5;
   --glass-border: #355564; --border: #355564; --border-hover: #6ca8bb; --gradient-subtle: linear-gradient(135deg, #203d4c, #254851);
-  --gradient: linear-gradient(120deg, #378ba9, #38989b); --coast-overlay: linear-gradient(#082b4b80, #082b4b99);
+  --gradient: linear-gradient(120deg, #378ba9, #38989b); --coast-overlay: linear-gradient(180deg, #09263b85, #09263b55 45%, #09263b99);
 }
-.poetize-article-cover, .poetize-companion { display: none; }
+/* Keep all additions out of the original Sakura layout. */
+.poetize-article-intro, .poetize-companion, .poetize-tools, .poetize-reading-progress,
+.poetize-profile, .poetize-explore, #poetize-petals { display: none; }
 html[data-visual-theme='poetize'] main { padding-top: 0; }
-html[data-visual-theme='poetize'] #site-header { background: transparent; backdrop-filter: none; border-color: #ffffff20; }
+html[data-visual-theme='poetize'] header#site-header:not(.scrolled) { background: transparent; backdrop-filter: none; border-color: #ffffff24; }
 html[data-visual-theme='poetize'] #site-header:not(.scrolled) :is(.nav-link, .icon-btn) { color: #fff; }
 html[data-visual-theme='poetize'] #site-header:not(.scrolled) :is(.logo-text, .logo-star) { background: none; color: #fff; -webkit-text-fill-color: #fff; }
 html[data-visual-theme='poetize'] #site-header:not(.scrolled) .hamburger-line { background: white; }
-html[data-visual-theme='poetize'] #site-header.scrolled { background: var(--glass-bg); backdrop-filter: blur(16px); box-shadow: var(--shadow); }
-html[data-visual-theme='poetize'] :is(.nav-link.active, .nav-link:hover, .icon-btn:hover) { background: #79cee626; color: var(--primary); }
-/* Shared coastal mastheads; page content and routes remain in their existing layouts. */
+html[data-visual-theme='poetize'] header#site-header.scrolled,
+html.dark[data-visual-theme='poetize'] header#site-header.scrolled { background: var(--glass-bg); backdrop-filter: blur(18px); box-shadow: var(--shadow); }
+html[data-visual-theme='poetize'] .nav-link { position: relative; border-radius: 6px; transition: color .25s, background .25s; }
+html[data-visual-theme='poetize'] .nav-link::after { content: ''; position: absolute; height: 2px; bottom: -3px; left: 18%; right: 18%; background: currentColor; transform: scaleX(0); transition: transform .3s; transform-origin: left; }
+html[data-visual-theme='poetize'] :is(.nav-link.active, .nav-link:hover, .icon-btn:hover) { background: #79cee61a; color: var(--primary); }
+html[data-visual-theme='poetize'] .nav-link:is(:hover, :focus-visible, .active)::after { transform: scaleX(1); }
+html[data-visual-theme='poetize'] #site-header:not(.scrolled) .nav-link:hover { color: #b4f7ee; }
+/* Two original paintings, with responsive assets. The article's own cover stays in its reading card. */
 html[data-visual-theme='poetize'] :is(.hero-gradient, .post-header, .page-hero, .blog-head, .projects-hero) {
-  background: var(--coast-overlay), url('/themes/poetize-coast.svg') center 48% / cover;
+  background: var(--coast-overlay), url('/themes/poetize-coast.webp') center 54% / cover;
 }
-html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero) {
-  position: relative; padding: 130px 28px 90px; margin-top: 0; margin-bottom: 40px; min-height: 360px; border: 0;
-}
+html[data-visual-theme='poetize'] .post-header { background-image: linear-gradient(90deg, #072a49a6 0%, #072a494d 58%, #072a491c), url('/themes/poetize-writing.webp'); background-position: center 58%; }
+html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero) { position: relative; overflow: hidden; padding: 108px 28px 70px; margin-top: 0; margin-bottom: 30px; min-height: 300px; border: 0; }
 html[data-visual-theme='poetize'] :is(.page-hero, .post-header) { max-width: none; width: 100%; }
 html[data-visual-theme='poetize'] :is(.blog-wrap, .projects-page) { padding-top: 0; }
-html[data-visual-theme='poetize'] :is(.blog-head, .projects-hero) { border-radius: 0 0 28px 28px; }
+html[data-visual-theme='poetize'] :is(.blog-head, .projects-hero) { border-radius: 0; }
+html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero, .hero-wrap)::before,
 html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero, .hero-wrap)::after {
-  content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 65px; background: var(--bg);
-  mask: url('/themes/poetize-wave.svg') center / 100% 100%; pointer-events: none;
+  content: ''; position: absolute; bottom: -1px; left: -50%; width: 200%; height: 58px; background: var(--bg);
+  mask: url('/themes/poetize-wave.svg') left bottom / 50% 100% repeat-x; pointer-events: none; z-index: 3;
+  animation: poetize-wave-drift 120s linear infinite;
 }
-html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero) :is(h1, p, .gradient-text, .post-meta, .post-toolbar a) { color: #fff; background: none; -webkit-text-fill-color: currentColor; text-shadow: 0 2px 14px #143d5b44; }
-html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero) .tag { background: #ffffffed; color: #28647c; border-color: #ffffff70; }
-html[data-visual-theme='poetize'] .post-header-inner { max-width: 840px; }
-html[data-visual-theme='poetize'] .post-title { font-size: clamp(1.85rem, 4vw, 3rem); letter-spacing: .025em; line-height: 1.4; }
-html[data-visual-theme='poetize'] .post-desc { max-width: 700px; line-height: 1.9; opacity: .95; }
-html[data-visual-theme='poetize'] .post-hero-image { display: none; }
-html[data-visual-theme='poetize'] .article-main { max-width: 820px; margin: 0 auto; padding: 44px 48px; background: var(--surface); border: 1px solid var(--border); border-radius: 24px; box-shadow: var(--shadow); }
-html[data-visual-theme='poetize'] .poetize-article-cover { display: block; width: 100%; max-height: 240px; object-fit: cover; border-radius: 16px; margin-bottom: 32px; }
-html[data-visual-theme='poetize'] .prose { line-height: 1.95; font-size: 1rem; color: var(--text-1); }
-html[data-visual-theme='poetize'] .prose h2 { padding-bottom: .55rem; border-bottom: 1px solid var(--border); }
-html[data-visual-theme='poetize'] .prose pre { border: 1px solid var(--border); border-radius: 14px; box-shadow: none; }
-html[data-visual-theme='poetize'] .copy-code-button { opacity: 1; }
-html[data-visual-theme='poetize'] .copy-code-button:hover { background: #187fa1; }
-html[data-visual-theme='poetize'] :is(.toc-panel, .card, .book-card, .project-card, .life-card, .tag-card, .tag-post-card, .series-post-card, .wall-card, .post-row) { border-color: var(--border); background-color: var(--surface); border-radius: 20px; box-shadow: var(--shadow); }
-html[data-visual-theme='poetize'] .wall-card:not(.has-img) { background: var(--surface); }
-html[data-visual-theme='poetize'] .wall-card:not(.has-img) :is(.card-desc, .card-date) { color: var(--text-2); }
-html[data-visual-theme='poetize'] .wall-card:not(.has-img) .card-tag { background: var(--bg-alt); color: var(--secondary); border-color: var(--border); }
-html[data-visual-theme='poetize'] .badge-blog { background: var(--bg-alt); color: var(--primary); }
-html[data-visual-theme='poetize'] .type-blog::before { background: var(--gradient); }
-html[data-visual-theme='poetize'] .hero-wrap { height: 100svh; min-height: 620px; }
-html[data-visual-theme='poetize'] .hero-body { max-width: 850px; padding: 2rem; }
-html[data-visual-theme='poetize'] .hero-site-name { font-size: clamp(3rem, 7vw, 6rem); color: white; letter-spacing: .1em; text-shadow: 0 4px 25px #14557655; }
-html[data-visual-theme='poetize'] .name-accent { background: none; -webkit-text-fill-color: #fff; }
-html[data-visual-theme='poetize'] :is(.hero-typewriter-row, .scroll-hint) { color: #fff; }
-html[data-visual-theme='poetize'] .hero-eyebrow { color: #fff; background: #164f6a44; border-color: #ffffff55; }
-html[data-visual-theme='poetize'] .scroll-hint { bottom: 85px; }
-html[data-visual-theme='poetize'] :is(#petal-canvas, .sp) { display: none; }
-html[data-visual-theme='poetize'] .cta-btn { box-shadow: var(--shadow); }
-/* Dense workspaces keep the compact navigation and all existing controls. */
-html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) main { padding-top: var(--nav-height); }
-html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) #site-header { background: #245970; }
-html[data-visual-theme='poetize'] ::selection { background: #6bc7df55; }
-@media (max-width: 768px) {
-  html[data-visual-theme='poetize'] .nav-links.open { background: var(--surface); }
-  html[data-visual-theme='poetize'] #site-header .nav-links.open .nav-link { color: var(--text-1); }
-  html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero) { padding: 105px 22px 70px; margin-bottom: 24px; }
-  html[data-visual-theme='poetize'] .article-layout { padding: 0 12px; }
-  html[data-visual-theme='poetize'] .article-main { padding: 24px 20px; border-radius: 20px; }
-  html[data-visual-theme='poetize'] .toc { margin-bottom: 20px; }
-  html[data-visual-theme='poetize'] .poetize-article-cover { max-height: 160px; }
-  html[data-visual-theme='poetize'] .hero-wrap { min-height: 570px; }
-}
-@media print { html[data-visual-theme='poetize'] .post-header { background: none; padding: 20px; } html[data-visual-theme='poetize'] .post-header :is(h1,p,.post-meta) { color: black; text-shadow: none; } }
+html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero, .hero-wrap)::before { bottom: 10px; opacity: .48; height: 68px; animation-duration: 90s; animation-direction: reverse; }
+@keyframes poetize-wave-drift { to { transform: translateX(25%); } }
+html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero) :is(h1, p, .gradient-text, .post-meta, .post-toolbar a) { color: #fff; background: none; -webkit-text-fill-color: currentColor; text-shadow: 0 2px 14px #143d5b66; }
+html[data-visual-theme='poetize'] .post-header { min-height: 360px; padding-top: 95px; padding-bottom: 60px; }
+html[data-visual-theme='poetize'] .post-header-inner { max-width: 960px; }
+html[data-visual-theme='poetize'] .post-toolbar { margin-bottom: 1.15rem; font-size: .78rem; }
+html[data-visual-theme='poetize'] .post-title { font-size: clamp(1.7rem, 3.5vw, 2.65rem); letter-spacing: .025em; line-height: 1.4; }
+html[data-visual-theme='poetize'] .post-desc { max-width: 660px; font-size: .92rem; line-height: 1.9; opacity: .9; }
+html[data-visual-theme='poetize'] .post-header .post-meta { display: flex; flex-wrap: wrap; gap: .2em .6em; font-size: .74rem; margin-bottom: .65rem; }
+html[data-visual-theme='poetize'] .post-header .post-meta > * { white-space: nowrap; }
 html[data-visual-theme='poetize'] .post-header .updated-date { color: #e7f8ff; }
 html[data-visual-theme='poetize'] .post-header .post-edit { color: #245970; }
+html[data-visual-theme='poetize'] .post-header .tag { background: #ffffff24; color: #fff; border-color: #ffffff60; backdrop-filter: blur(8px); font-size: .7rem; }
+html[data-visual-theme='poetize'] .post-hero-image { display: none; }
+/* Shorter, image-led home masthead keeps the feed in the first scroll. */
+html[data-visual-theme='poetize'] .hero-wrap { height: clamp(400px, 53svh, 580px); min-height: 400px; }
+html[data-visual-theme='poetize'] .hero-body { max-width: 850px; padding: 4rem 2rem 3rem; gap: .85rem; }
+html[data-visual-theme='poetize'] .hero-site-name { font-size: clamp(2.6rem, 4.8vw, 4.2rem); color: white; letter-spacing: .12em; text-shadow: 0 4px 25px #143d5b88; }
+html[data-visual-theme='poetize'] .name-accent { background: none; -webkit-text-fill-color: #fff; }
+html[data-visual-theme='poetize'] .hero-eyebrow { color: #fff; background: transparent; border: 0; padding: 0; font-size: .72rem; letter-spacing: .13em; backdrop-filter: none; }
+html[data-visual-theme='poetize'] .eyebrow-dot { background: #beefe6; }
+html[data-visual-theme='poetize'] .hero-typewriter-row { color: #fff; background: #122d4b99; border: 1px solid #ffffff26; border-radius: 8px; padding: .45rem 1.1rem; height: auto; min-height: 2.4rem; font-size: .93rem; letter-spacing: .1em; backdrop-filter: blur(6px); }
+html[data-visual-theme='poetize'] .hero-ctas { margin-top: .2rem; gap: .65rem; }
+html[data-visual-theme='poetize'] .cta-btn { padding: .45rem 1.05rem; font-size: .76rem; box-shadow: none; border: 1px solid #ffffff66; background: #ffffff20; color: #fff; backdrop-filter: blur(6px); }
+html[data-visual-theme='poetize'] .cta-btn:hover { background: #fff; color: #245970; box-shadow: 0 8px 20px #163c4d33; transform: translateY(-3px); }
+html[data-visual-theme='poetize'] :is(#petal-canvas, .sp, .scroll-hint) { display: none; }
+html[data-visual-theme='poetize'] .poetize-explore { display: grid; justify-items: center; position: absolute; z-index: 4; bottom: 39px; left: 50%; transform: translateX(-50%); color: #fff; font-size: .65rem; letter-spacing: .12em; text-shadow: 0 1px 5px #163c4d99; }
+.poetize-explore svg { width: 25px; height: 25px; stroke: currentColor; stroke-width: 2; fill: none; animation: poetize-arrow 1.5s ease-in-out infinite; }
+@keyframes poetize-arrow { 50% { transform: translateY(6px); } }
+/* Profile rail and image-first cards echo the reference's dense, airy feed. */
+html[data-visual-theme='poetize'] .wall-section { padding: 2rem 0 5rem; }
+html[data-visual-theme='poetize'] .wall-header { margin-bottom: 1.8rem; text-align: left; padding-left: 285px; }
+html[data-visual-theme='poetize'] .wall-title { font-size: 1.4rem; }
+html[data-visual-theme='poetize'] .wall-subtitle { font-size: .78rem; }
+html[data-visual-theme='poetize'] .poetize-home-grid { display: grid; grid-template-columns: 255px minmax(0, 1fr); gap: 30px; align-items: start; }
+html[data-visual-theme='poetize'] .poetize-profile { display: block; border-radius: 16px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); text-align: center; padding-bottom: 1.4rem; position: sticky; top: 88px; }
+.poetize-profile-landscape { height: 105px; background: url('/themes/poetize-coast-mobile.webp') center 48% / cover; }
+.poetize-profile-avatar { display: grid; place-items: center; position: relative; width: 66px; height: 66px; margin: -33px auto 12px; border: 4px solid var(--surface); border-radius: 50%; background: var(--gradient); color: white; font-family: serif; font-size: 1.7rem; transition: transform .6s; }
+.poetize-profile-avatar:hover { transform: rotate(12deg); }
+.poetize-profile h3 { font-size: 1.1rem; }
+.poetize-profile-tagline { color: var(--text-muted); font-size: .76rem; margin: 6px 0 16px; }
+.poetize-profile-bio { color: var(--text-2); font-size: .76rem; line-height: 1.9; padding: 0 22px; }
+.poetize-profile-stats { display: grid; grid-template-columns: 1fr 1fr; margin: 18px 22px; }
+.poetize-profile-stats a { display: grid; font-size: .7rem; color: var(--text-muted); }
+.poetize-profile-stats a + a { border-left: 1px solid var(--border); }
+.poetize-profile-stats strong { font-size: 1.25rem; color: var(--text-1); }
+.poetize-profile-link { display: block; margin: 0 20px; padding: 8px; border-radius: 8px; background: var(--gradient-subtle); color: var(--primary); font-size: .76rem; }
+.poetize-profile-reading { border-top: 1px solid var(--border); margin: 20px 20px 0; padding-top: 18px; text-align: left; }
+.poetize-profile-reading h4 { font-size: .78rem; margin-bottom: 12px; }
+.poetize-profile-reading a { display: flex; position: relative; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: .74rem; color: var(--text-2); }
+.poetize-profile-reading a::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: var(--primary); transform: scaleX(0); transform-origin: left; transition: transform .35s; }
+.poetize-profile-reading a:hover { color: var(--primary); }
+.poetize-profile-reading a:hover::after { transform: scaleX(1); }
+html[data-visual-theme='poetize'] .masonry { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); columns: auto; gap: 24px; }
+html[data-visual-theme='poetize'] .wall-card { margin: 0; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 3px 16px #2857700d; padding: 22px; will-change: auto; transition: transform .3s, box-shadow .3s; }
+html[data-visual-theme='poetize'] .wall-card::before { display: none; }
+html[data-visual-theme='poetize'] .wall-card.has-img { padding-top: 196px; }
+html[data-visual-theme='poetize'] .card-img-bg { bottom: auto; height: 174px; border-radius: 0; background-size: 100% auto; transition: background-size 1s cubic-bezier(.2,.65,.3,1); }
+html[data-visual-theme='poetize'] .card-img-bg::after { background: linear-gradient(transparent 65%,#0c2e4220); }
+html[data-visual-theme='poetize'] .wall-card.has-img:hover .card-img-bg { transform: none; background-size: 120% auto; }
+html[data-visual-theme='poetize'] .wall-card.has-img :is(.card-title, .card-arrow) { color: var(--text-1); }
+html[data-visual-theme='poetize'] .wall-card.has-img :is(.card-desc, .card-date) { color: var(--text-muted); }
+html[data-visual-theme='poetize'] .wall-card .card-title { font-size: 1rem; line-height: 1.6; }
+html[data-visual-theme='poetize'] .wall-card .card-desc { font-size: .79rem; line-height: 1.85; }
+html[data-visual-theme='poetize'] .wall-card .card-tag { color: var(--secondary); background: var(--bg-alt); border-color: var(--border); font-size: .65rem; }
+html[data-visual-theme='poetize'] .wall-card .card-type-badge { color: var(--primary); background: var(--bg-alt); border-color: var(--border); }
+html[data-visual-theme='poetize'] .wall-card.featured:not(.has-img) { background: var(--surface); border-color: var(--border); }
+html[data-visual-theme='poetize'] .wall-card:hover { box-shadow: 0 12px 32px #28577020; }
+/* Article reading card: abstract and original cover, with an accessible lightbox. */
+html[data-visual-theme='poetize'] .article-main { max-width: 860px; margin: 0 auto; padding: 38px 44px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); scroll-margin-top: 86px; }
+html[data-visual-theme='poetize'] .poetize-article-intro { display: flex; gap: 18px; padding: 20px; margin-bottom: 30px; background: var(--gradient-subtle); border: 1px solid var(--border); border-radius: 12px; }
+.poetize-abstract { flex: 1; min-width: 0; }
+.poetize-abstract > span { font-size: .72rem; color: var(--primary); letter-spacing: .12em; font-weight: 700; }
+.poetize-abstract p { font-size: .85rem; line-height: 1.9; margin-top: 8px; color: var(--text-2); }
+.poetize-cover-button { position: relative; align-self: center; flex: 0 0 155px; overflow: hidden; border-radius: 9px; background: var(--bg-alt); cursor: zoom-in; }
+.poetize-article-cover { display: block; width: 100%; height: 120px; object-fit: cover; transition: transform 1s; }
+.poetize-cover-button:hover img { transform: scale(1.12); }
+.poetize-cover-button > span { position: absolute; bottom: 0; right: 0; left: 0; padding: 5px; background: #173647aa; color: white; font-size: .65rem; }
+html[data-visual-theme='poetize'] .prose { line-height: 1.95; font-size: 1rem; color: var(--text-1); }
+html[data-visual-theme='poetize'] .prose h2 { padding-bottom: .55rem; border-bottom: 1px solid var(--border); }
+html[data-visual-theme='poetize'] .prose pre { border: 1px solid var(--border); border-radius: 12px; box-shadow: none; }
+html[data-visual-theme='poetize'] .copy-code-button { opacity: 1; }
+html[data-visual-theme='poetize'] .copy-code-button:hover { background: #187fa1; }
+html[data-visual-theme='poetize'] :is(.toc-panel, .card, .book-card, .project-card, .life-card, .tag-card, .tag-post-card, .series-post-card, .post-row) { border-color: var(--border); background-color: var(--surface); border-radius: 16px; box-shadow: var(--shadow); transition: border-color .3s, box-shadow .3s; }
+html[data-visual-theme='poetize'] .tag { background: var(--bg-alt); border-color: var(--border); }
+html[data-visual-theme='poetize'] ::selection { background: #6bc7df55; }
+/* Effects stop completely when the theme is inactive, page hidden, or motion is disabled. */
+html[data-visual-theme='poetize'] #poetize-petals { display: block; position: fixed; inset: 0; width: 100%; height: 100%; z-index: 105; pointer-events: none; }
+html[data-visual-theme='poetize'] #poetize-petals[hidden] { display: none; }
+html[data-visual-theme='poetize'] .poetize-reading-progress { display: block; position: fixed; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg,#6dcbdc,#f2bfd4); transform: scaleX(var(--reading-progress,0)); transform-origin: left; z-index: 110; }
+html[data-visual-theme='poetize'] .poetize-tools { display: grid; gap: 8px; position: fixed; right: 16px; bottom: 96px; z-index: 90; }
+.poetize-tools button { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 12px; background: var(--glass-bg); color: var(--primary); box-shadow: var(--shadow); backdrop-filter: blur(12px); transition: transform .25s, background .25s; }
+.poetize-tools button:hover { transform: translateY(-3px); background: var(--bg-alt); }
+.poetize-tools button[aria-pressed='true'] { background: var(--gradient-subtle); }
+.poetize-tools button:disabled { opacity: .45; cursor: default; }
+.poetize-tools button[hidden], html:not(:has(.post-page)) #poetize-focus-toggle { display: none; }
+.poetize-tools svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.6; fill: none; }
+.poetize-lightbox { margin: auto; max-width: min(94vw,1100px); max-height: 92svh; padding: 12px; border: 1px solid #ffffff55; border-radius: 16px; background: var(--surface); box-shadow: 0 30px 100px #0008; }
+.poetize-lightbox::backdrop { background: #0a1f30cc; backdrop-filter: blur(14px); }
+.poetize-lightbox img { max-height: 82svh; width: auto; object-fit: contain; border-radius: 8px; }
+.poetize-lightbox-close { position: absolute; top: 20px; right: 20px; width: 34px; height: 34px; border-radius: 50%; background: #173647cc; color: white; font-size: 1.4rem; }
+html[data-visual-theme='poetize'][data-reading-focus='true'] :is(.post-header, .poetize-article-intro, .poetize-companion) { display: none; }
+html[data-visual-theme='poetize'][data-reading-focus='true'] .post-page { padding-top: 90px; }
+html[data-visual-theme='poetize'][data-reading-focus='true'] header#site-header { background: var(--glass-bg); }
+html[data-visual-theme='poetize'][data-reading-focus='true'] #site-header :is(.nav-link, .icon-btn, .logo-text, .logo-star) { color: var(--text-1); -webkit-text-fill-color: currentColor; }
+html[data-visual-theme='poetize'][data-reading-focus='true'] .hamburger-line { background: var(--text-1); }
+/* Existing friendly companion remains a small, optional corner interaction. */
 html[data-visual-theme='poetize'] .poetize-companion { display: flex; position: fixed; right: 16px; bottom: 14px; z-index: 25; align-items: flex-end; gap: 8px; }
 .poetize-pet { width: 64px; height: 64px; border-radius: 50%; }
 .poetize-pet svg { width: 64px; height: 64px; }
@@ -91,22 +161,67 @@ html[data-visual-theme='poetize'] .poetize-companion { display: flex; position: 
 .poetize-pet.is-happy .poetize-pet-body { animation: coast-hop .4s ease-in-out 2; }
 @keyframes coast-breathe { 50% { transform: scale(1.02,.98); } }
 @keyframes coast-hop { 50% { transform: translateY(-10px); } }
-.poetize-pointer-leaf { position: fixed; z-index: 103; pointer-events: none; color: #6fb9c8; animation: coast-trail .8s ease-out forwards; }
+.poetize-pointer-leaf { position: fixed; z-index: 103; pointer-events: none; color: #e9a9c0; animation: coast-trail .8s ease-out forwards; }
 @keyframes coast-trail { to { opacity: 0; transform: translateY(20px) scale(.3); } }
+/* Dense workspaces keep all original controls and compact navigation. */
+html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) main { padding-top: var(--nav-height); }
+html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) header#site-header:not(.scrolled) { background: #245970; }
+html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) :is(.poetize-tools, #poetize-petals, .poetize-companion) { display: none; }
+@media (max-width: 900px) {
+ html[data-visual-theme='poetize'] .poetize-home-grid { grid-template-columns: 210px minmax(0,1fr); gap: 20px; }
+ html[data-visual-theme='poetize'] .masonry { gap: 18px; }
+ html[data-visual-theme='poetize'] .wall-header { padding-left: 230px; }
+}
 @media (max-width: 768px) {
- html[data-visual-theme='poetize'] .toc-panel { max-height: 210px; }
+ html[data-visual-theme='poetize'] .nav-links.open { background: var(--surface); }
+ html[data-visual-theme='poetize'] #site-header .nav-links.open .nav-link { color: var(--text-1); }
+ html[data-visual-theme='poetize'] :is(.hero-gradient, .page-hero, .blog-head, .projects-hero) { background-image: var(--coast-overlay), url('/themes/poetize-coast-mobile.webp'); background-position: 60% center; }
+ html[data-visual-theme='poetize'] .post-header { background-image: linear-gradient(90deg,#072a49b3,#072a4955), url('/themes/poetize-writing-mobile.webp'); background-position: 46% center; }
+ html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero) { padding: 94px 22px 65px; margin-bottom: 24px; }
+ html[data-visual-theme='poetize'] .hero-wrap { height: 460px; min-height: 460px; }
+ html[data-visual-theme='poetize'] .hero-ctas { flex-direction: row; }
+ html[data-visual-theme='poetize'] .hero-body { padding: 3rem 1rem; }
+ html[data-visual-theme='poetize'] .hero-site-name { font-size: 2.6rem; }
+ html[data-visual-theme='poetize'] .hero-eyebrow { font-size: .65rem; }
+ html[data-visual-theme='poetize'] .cta-btn { padding: .45rem .75rem; font-size: .7rem; }
+ html[data-visual-theme='poetize'] .poetize-home-grid { display: block; }
+ html[data-visual-theme='poetize'] .poetize-profile { display: none; }
+ html[data-visual-theme='poetize'] .wall-header { padding-left: 0; }
+ html[data-visual-theme='poetize'] .masonry { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ html[data-visual-theme='poetize'] .article-layout { padding: 0 12px; }
+ html[data-visual-theme='poetize'] .article-main { padding: 24px 20px; border-radius: 16px; }
+ html[data-visual-theme='poetize'] .toc { margin-bottom: 20px; }
+ html[data-visual-theme='poetize'] .toc-panel { max-height: 180px; }
+ html[data-visual-theme='poetize'] .poetize-article-intro { flex-direction: column; padding: 16px; }
+ .poetize-cover-button { flex: auto; width: 100%; }
+ .poetize-article-cover { height: 112px; }
+ html[data-visual-theme='poetize'] .poetize-tools { right: 7px; bottom: 65px; }
+ .poetize-tools button { width: 32px; height: 32px; border-radius: 10px; }
  html[data-visual-theme='poetize'] .poetize-companion { right: 5px; bottom: 5px; }
  .poetize-pet, .poetize-pet svg { width: 48px; height: 48px; }
 }
-@media (prefers-reduced-motion: reduce) { .poetize-pet-body { animation: none !important; } .poetize-pointer-leaf { display: none; } }
-@media print { .poetize-companion { display: none !important; } }
-/* Outrank Astro's scoped dark header without changing the Sakura header. */
-html[data-visual-theme='poetize'] header#site-header:not(.scrolled) { background: transparent; }
-html.dark[data-visual-theme='poetize'] header#site-header.scrolled { background: var(--glass-bg); }
-html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) header#site-header:not(.scrolled) { background: #245970; }
-html[data-visual-theme='poetize'] .post-header .post-meta { display: flex; flex-wrap: wrap; gap: .2em .6em; }
-html[data-visual-theme='poetize'] .post-header .post-meta > * { white-space: nowrap; }
-html[data-visual-theme='poetize'] .tag { background: var(--bg-alt); border-color: var(--border); }
+@media (max-width: 520px) { html[data-visual-theme='poetize'] .masonry { grid-template-columns: 1fr; } }
+html[data-poetize-motion='off'] :is(.hero-wrap, .post-header, .page-hero, .blog-head, .projects-hero)::before,
+html[data-poetize-motion='off'] :is(.hero-wrap, .post-header, .page-hero, .blog-head, .projects-hero)::after,
+html[data-poetize-motion='off'] :is(.poetize-explore svg, .poetize-pet-body) { animation-play-state: paused; }
+html[data-poetize-motion='off'] .poetize-pointer-leaf { display: none; }
 @media (prefers-reduced-motion: reduce) {
  html[data-visual-theme='poetize'] .animate-in { animation: none; opacity: 1; transform: none; }
+ .poetize-pet-body { animation: none !important; }
+ .poetize-pointer-leaf { display: none; }
 }
+@media print {
+ .poetize-companion, .poetize-tools, #poetize-petals { display: none !important; }
+ html[data-visual-theme='poetize'] .post-header { background: none; padding: 20px; }
+ html[data-visual-theme='poetize'] .post-header :is(h1,p,.post-meta) { color: black; text-shadow: none; }
+}
+/* These selectors outrank the original scoped image-overlay card colors. */
+html[data-visual-theme='poetize'] .masonry .wall-card.has-img :is(.card-title, .card-arrow) { color: var(--text-1); }
+html[data-visual-theme='poetize'] .masonry .wall-card.has-img :is(.card-desc, .card-date) { color: var(--text-muted); }
+html[data-visual-theme='poetize'] .masonry .wall-card.has-img .card-tag { color: var(--secondary); background: var(--bg-alt); border-color: var(--border); }
+html[data-visual-theme='poetize'] .masonry .wall-card.has-img .card-type-badge { color: var(--primary); background: var(--bg-alt); border-color: var(--border); }
+html[data-visual-theme='poetize'] .masonry .wall-card.has-img:hover .card-title { color: var(--primary); }
+html[data-visual-theme='poetize'] .wall-card:not(.has-img) { padding-top: 196px; }
+html[data-visual-theme='poetize'] .wall-card:not(.has-img)::before { display: block; opacity: 1; height: 174px; border-radius: 0; background: url('/themes/poetize-writing-mobile.webp') center / cover; }
+html[data-visual-theme='poetize'] .wall-card.type-life:not(.has-img)::before { background-image: url('/themes/poetize-coast-mobile.webp'); }
+html[data-visual-theme='poetize'] .wall-card .card-emoji { display: none; }

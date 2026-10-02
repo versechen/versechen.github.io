@@ -1,20 +1,33 @@
 # 页面主题
 
-导航栏的 🌊 按钮开启「海蓝诗境」（Poetize 风格），🌸 按钮切回原有樱花主题。旁边的太阳 / 月亮按钮只切换浅色和深色，两个选择互相独立。
+导航栏 🌊 开启「海蓝诗境」（Poetize 风格），🌸 切回原有樱花主题。太阳 / 月亮只切换浅色和深色，两个选择互相独立。
 
-`visual-theme` 保存 `original` 或 `poetize`，第一次访问仍使用樱花主题；旧值 `forest` 自动迁移为 `poetize`。禁用存储时按钮仍能切换当前页面。审查链接可带 `?visual-theme=poetize` 或 `?visual-theme=original`，支持存储时会记住指定选择。
+`visual-theme` 保存 `original` 或 `poetize`；第一次访问使用樱花，旧 `forest` 自动迁移到 `poetize`。存储禁用时按钮仍可切换当前页。审查链接可带 `?visual-theme=poetize`，应用后移除此参数，避免刷新覆盖之后手动选择。
 
-## 结构
+## 第二版视觉与交互
 
-- `src/styles/poetize.css`：全部新样式限定在 `html[data-visual-theme='poetize']`，为首页、文章详情、列表与普通页面提供海蓝色系、插画标题区、透明导航、波浪过渡和圆角卡片。工作台和项目文档保留紧凑布局。
-- `src/components/PoetizeWorld.astro`：主题切换和延续原森林组件的互动小宠物。宠物更换为海蓝描边，问候语与鼠标粒子跟随新主题；不再显示森林飘雪。
-- `public/themes/poetize-coast.svg`、`poetize-wave.svg`：本次原创矢量海岸和波浪，没有使用参考站插画、远程字体或图片。
-- `src/layouts/BaseLayout.astro`：首次绘制前恢复选择、迁移旧值，挂载主题组件。
-- 文章内容与封面保留。新主题将封面展示在正文卡片开头，樱花主题仍按原布局展示；目录定位、代码高亮与复制、文章翻页沿用原实现。
+- 首页使用原创精细海岸绘画、较短首屏、半透明打字字幕、两层缓慢波浪和可点击下行入口；正文使用作者侧栏与双列配图卡片。触屏改为单列，保留原内容和路由。
+- 文章使用另一幅原创面海书桌绘画作为标题背景；文章自身封面保留在正文摘要旁，可点击放大，Escape 关闭并返回焦点。
+- 全页轻量花瓣、导航下划线、图片渐进放大、阅读进度、返回顶部和专注阅读按钮。动画按钮记住开关；系统减少动态效果时停用，页面隐藏或非当前主题时停止花瓣循环。工作台和文档不启用装饰动画。
+- 樱花原布局保留。视觉样式以 `html[data-visual-theme='poetize']` 限定；不改变文章 Markdown、已有鉴权或发布流程。
 
-减少动态效果时关闭宠物动画和指针粒子。手机目录限定高度，可滚动浏览；正文代码块、表格保持横向滚动。
+## 实现与资源
 
-## 本地预览
+- `src/styles/poetize.css`：新主题色、页面布局、动画和响应式样式。
+- `src/components/PoetizeWorld.astro`：主题按钮、互动小宠物。
+- `src/components/PoetizeEffects.astro`：全页花瓣、动画偏好、阅读工具及封面灯箱。
+- `public/themes/poetize-{coast,writing}.webp` 和对应 `-mobile.webp`：本次原创生成的绘画，见 [资源来源](theme-assets.md)。没有下载参考站独有插画。
+- `src/layouts/BaseLayout.astro`：首次绘制前恢复偏好；挂载主题组件。
+
+## 即时 Markdown 编辑
+
+工作台 `/notes/` 新增默认「即时」模式。标题、段落、列表、引用、代码、链接、图片和表格按块原位排版；点击块编辑它的 Markdown，空行、离开块或 Ctrl/⌘+Enter 后恢复排版。完整 Markdown textarea 仍是唯一正文源，不进行 HTML 反向序列化。
+
+保留源码、分栏和阅读模式，以及原保存、导出、鉴权和显式发布流程。即时与源码共用撤销历史；输入法组合期间保留活动编辑控件。没有新增依赖或外部 CDN。
+
+这是块级即时编辑，并非完整复刻 Typora：活动块仍显示 Markdown 标记，表格通过源码编辑；即时模式使用顶部插入菜单，斜杠菜单保留在源码模式。复杂跨块扩展（如脚注、图表）以源码/阅读模式为准。
+
+## 验证与预览
 
 ```sh
 npm ci
@@ -24,5 +37,4 @@ npm run build
 npm run preview -- --host 0.0.0.0
 ```
 
-优先审查文章：`http://localhost:4321/blog/markdown-style-guide/?visual-theme=poetize`。
-同时检查 `/`、`/blog/`、`/reading/`、`/projects/`、`/life/`、`/friends/`、`/about/`、`/tags/`。分别测试两个视觉主题 × 两个明暗模式、刷新、跨页面、手机菜单和禁用存储。
+文章入口：`/blog/markdown-style-guide/?visual-theme=poetize`。首页、博客、读书、项目、生活、友链、关于、标签及文章详情共用主题。验证脚本及限制见 [验证记录](preview-validation.md)。工作台编辑功能测试使用现有本地开发模式；生产版本仍要求原站长鉴权。

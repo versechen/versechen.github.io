@@ -2240,3 +2240,21 @@ html.notes-focus-mode .notes-page { height: 100dvh; padding: 0; }
   .notes-print .prose a[target='_blank']::after { content: ''; }
   .notes-print .prose details > :not(summary) { display: block; }
 }
+
+/* Inline, source-preserving Markdown writing. */
+.notes-page[data-mode='live'] .notes-pane--preview { display: none; }
+.notes-page[data-mode='live'] #notes-body { position: absolute; opacity: 0; width: 1px; min-height: 1px; height: 1px; pointer-events: none; }
+.notes-live { order: 3; min-height: 40vh; font-family: var(--notes-font); font-size: var(--notes-size); line-height: var(--notes-leading); }
+.notes-live__hint { margin: 0 0 24px !important; font-size: 12px; line-height: 1.8; color: var(--notes-muted); }
+.notes-live__block { position: relative; margin: 0 0 1.1em; padding: 5px 9px; border-radius: 7px; outline: 1px solid transparent; cursor: text; overflow-wrap: anywhere; }
+.notes-live__block:hover { background: color-mix(in srgb, var(--primary) 4%, transparent); }
+.notes-live__block:focus-visible, .notes-live__block.is-editing { outline-color: color-mix(in srgb, var(--primary) 30%, transparent); background: color-mix(in srgb, var(--primary) 3%, transparent); }
+.notes-live__block > :first-child { margin-top: 0; }
+.notes-live__block > :last-child { margin-bottom: 0; }
+.notes-live__block img { max-height: 440px; object-fit: contain; border-radius: 10px; }
+.notes-live__block pre, .notes-live__block table { max-width: 100%; overflow-x: auto; }
+.notes-live__input { display: block; width: 100%; min-height: 2em; resize: none; overflow: hidden; background: transparent; border: 0; outline: 0; padding: 0; color: var(--text-1); caret-color: var(--primary); font-family: var(--notes-font); font-size: var(--notes-size); line-height: var(--notes-leading); tab-size: 2; }
+.notes-live__append { padding: 8px 12px; border: 1px dashed var(--border-hover); border-radius: 8px; color: var(--notes-muted); font-size: 13px; }
+.notes-live__append:hover { color: var(--primary); border-color: var(--primary); }
+.notes-live__placeholder { color: var(--notes-muted); }
+@media (max-width: 599px) { .notes-live__hint { font-size: 11px; } .notes-view { padding-inline: 7px; } }

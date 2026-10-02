@@ -1,6 +1,7 @@
 ---
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import PoetizeEffects from '../components/PoetizeEffects.astro';
 import PoetizeWorld from '../components/PoetizeWorld.astro';
 import '../styles/poetize.css';
 // ?url 让 KaTeX 样式作为独立资源产出，只有含公式的页面才会引用它。
@@ -98,6 +99,7 @@ const socialImageURL = image ? new URL(image, Astro.site ?? SITE_URL) : undefine
     <a class="skip-link" href="#main-content">跳到正文</a>
     <Header />
     <PoetizeWorld />
+    <PoetizeEffects />
     <main id="main-content" tabindex="-1">
       <slot />
     </main>

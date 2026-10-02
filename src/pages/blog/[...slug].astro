@@ -110,7 +110,10 @@ function formatDate(date: Date) {
       <TableOfContents headings={headings} />
 
       <div class="article-main">
-        {post.data.heroImage && <img class="poetize-article-cover" src={post.data.heroImage.src} width={post.data.heroImage.width} height={post.data.heroImage.height} alt={post.data.title} loading="lazy" /> }
+        <div class="poetize-article-intro">
+          <div class="poetize-abstract"><span>写在前面</span><p>{post.data.description}</p></div>
+          {post.data.heroImage && <button type="button" class="poetize-cover-button" aria-label="查看文章封面大图"><img class="poetize-article-cover" src={post.data.heroImage.src} width={post.data.heroImage.width} height={post.data.heroImage.height} alt={post.data.title} loading="lazy" /><span>查看封面 ↗</span></button>}
+        </div>
         <div class="prose animate-fade-up animate-delay-1">
           <Content />
         </div>
