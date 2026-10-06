@@ -7,7 +7,7 @@ const source=ts.transpile(readFileSync(new URL('../src/lib/sakura-effects.ts',im
 function fixture({width=1174,height=753,reading=false,reduced=false,paused=false,theme,saveData=false,heroHeight=height,storage=new Map(),storageBlocked=false,href='https://example.com/',wall={now:0}}={}){
  let time=0,id=0,seed=12345;const frames=new Map(),events=new Map(),signals=[];
  function element(){return {hidden:true,disabled:false,title:'',dataset:{},attrs:{},events:{},setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,f){this.events[k]=f;}};}
- function canvas(){const c=element();let x=0,y=0;const ctx={items:[],globalAlpha:1,clearRect(){this.items=[];},setTransform(){},save(){},restore(){},translate(a,b){x=a;y=b;},rotate(){},scale(){},drawImage(_,a,b,size){this.items.push({x,y,size,alpha:this.globalAlpha});},createLinearGradient(){return{addColorStop(){}};},beginPath(){},moveTo(){},bezierCurveTo(){},lineTo(){},fill(){},stroke(){},quadraticCurveTo(){},rect(){},clip(){}};c.getContext=()=>ctx;c.ctx=ctx;return c;}
+ function canvas(){const c=element();let x=0,y=0,angle=0;const ctx={items:[],globalAlpha:1,clearRect(){this.items=[];},setTransform(){},save(){},restore(){},translate(a,b){x=a;y=b;},rotate(value){angle=value;},scale(){},drawImage(_,a,b,size){this.items.push({x,y,size,alpha:this.globalAlpha,angle});},createLinearGradient(){return{addColorStop(){}};},beginPath(){},moveTo(){},bezierCurveTo(){},lineTo(){},fill(){},stroke(){},quadraticCurveTo(){},rect(){},clip(){}};c.getContext=()=>ctx;c.ctx=ctx;return c;}
  const field=canvas(),tools=element(),toggle=element(),gust=element();
  const root={dataset:{visualTheme:theme},classList:{contains:()=>false}};
  const hero={getBoundingClientRect:()=>({bottom:heroHeight})};
@@ -86,7 +86,7 @@ test('click creates visible petals in the OLD scene, and NEW document consumes t
  old.fire('sakura-navigation-handoff',{detail:'https://example.com/blog'});old.fire('pagehide');
  const saved=JSON.parse(storage.get(transferKey));assert.ok(saved.releaseAge>.25);
  const next=fixture({storage,wall,href:'https://example.com/blog/'});
- assert.equal(next.field.dataset.sakuraSceneSource,'continued');assert.equal(next.field.dataset.sakuraEpisode,saved.episode);
+ assert.equal(next.field.dataset.sakuraSceneSource,'continued');assert.equal(next.root.dataset.sakuraContinuing,'true');assert.equal(next.field.dataset.sakuraEpisode,saved.episode);
  assert.ok(+next.field.dataset.sakuraReleaseAge>=saved.releaseAge-.001);
  assert.deepEqual(next.field.ctx.items.map(p=>({x:p.x,y:p.y,size:p.size})),positions);
  assert.equal(storage.size,0);next.advance(4500);assert.equal(extra(next),0);
@@ -126,4 +126,21 @@ test('hide then re-show updates the eventual snapshot instead of replaying the h
  const storage=new Map(),wall={now:0},old=fixture({storage,wall});old.advance(5000);begin(old);old.advance(400);
  old.document.hidden=true;old.fire('visibilitychange');old.advance(300);old.document.hidden=false;old.fire('visibilitychange');old.advance(200);old.fire('pagehide');
  assert.equal(JSON.parse(storage.get(transferKey)).temporary.length,0);
+});
+
+test('the existing field deflects together before departure, then settles without stronger speed or density',()=>{
+ const calm=fixture(),wind=fixture();calm.advance(5000);wind.advance(5000);begin(wind);
+ calm.advance(240);wind.advance(240);
+ assert.ok(+wind.field.dataset.sakuraWindResponse>.99);assert.ok(+wind.field.dataset.sakuraWindShift>=23.9);
+ const still=calm.field.ctx.items.slice(0,+calm.field.dataset.sakuraBaseCount),bent=wind.field.ctx.items.slice(0,+wind.field.dataset.sakuraBaseCount);
+ const pairs=bent.map(p=>[p,still.find(q=>q.size===p.size)]).filter(([,q])=>q);
+ assert.ok(pairs.length>=10);assert.ok(pairs.every(([p,q])=>p.x-q.x>18),'Existing petals must bend in a common direction, not just new petals appearing');
+ assert.ok(pairs.every(([p,q])=>p.y-q.y< -5));assert.ok(pairs.every(([p,q])=>Math.abs(p.angle-q.angle-.18)<1e-8));
+ wind.advance(1500);assert.equal(+wind.field.dataset.sakuraWindShift,0);assert.ok(extra(wind)<=12);wind.advance(3000);assert.equal(extra(wind),0);
+});
+
+test('fresh openings retain the original homepage intro; only a carried scene suppresses its replay',()=>{
+ const fresh=fixture();assert.equal(fresh.root.dataset.sakuraContinuing,undefined);
+ const css=readFileSync(new URL('../src/styles/sakura.css',import.meta.url),'utf8');
+ assert.match(css,/data-sakura-continuing='true'.*\.hero-wrap \.animate-in \{ animation: none; opacity: 1; transform: none;/);
 });

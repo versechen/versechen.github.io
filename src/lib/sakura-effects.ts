@@ -75,6 +75,9 @@ export function initSakura() {
   };
   const paint = (step: number, lifetimeStep: number) => {
     ctx.clearRect(0, 0, width, height);
+    // A small shared bend makes the onset read as one gust, before independent flutter resumes.
+    const windResponse = releaseAge < 0 ? 0 : releaseAge < .22 ? smooth(releaseAge / .22) : 1 - smooth((releaseAge - .28) / 1.1);
+    const windShift = windResponse * 24, windLift = windResponse * 6, windTilt = windResponse * .18;
     const arrivalWind = releaseAge >= 0 && releaseAge < 1.5 ? Math.sin(Math.PI * releaseAge / 1.5) ** 2 * .6 : 0;
     const wind = 12 + Math.sin(elapsed * .36) * 15 + Math.sin(elapsed * .81) * 8 + gust * 170 + arrivalWind * 85 + pointerWind;
     let visibleBase = 0, visibleExtra = 0;
@@ -91,25 +94,29 @@ export function initSakura() {
         if (p.x > width + 35) p.x = -30;
         if (p.x < -35) p.x = width + 30;
       }
+      const responseDepth = .9 + p.depth * .2;
+      const x = p.x + windShift * responseDepth, y = p.y - windLift * responseDepth;
       // Fade smoothly at the text boundary; never paint over article text or mobile body.
-      const inArticle = p.y > articleTop && p.y < articleBottom;
-      const inHero = p.y < heroBottom;
+      const inArticle = y > articleTop && y < articleBottom;
+      const inHero = y < heroBottom;
       const left = inArticle ? safeLeft : width * (inHero ? .24 : .15);
       const right = inArticle ? safeRight : width * (inHero ? .76 : .85);
-      const edge = Math.max(0, Math.min(1, Math.max(left - p.x, p.x - right) / 55));
+      const edge = Math.max(0, Math.min(1, Math.max(left - x, x - right) / 55));
       const lifespan = extra ? smooth(p.age / .25) * (1 - smooth((p.age - p.lifetime * .45) / (p.lifetime * .55))) : 1;
       let alpha = (inArticle ? edge : extra ? .62 + edge * .38 : inHero ? .28 + edge * .72 : edge * .7) * lifespan;
       // Temporary petals may drift past a page heading, but soften before protected reading space.
-      if (extra && article && p.y < articleTop) alpha *= edge + (1 - edge) * smooth((articleTop - p.y - p.size) / 60);
-      if (extra && small) alpha *= smooth((Math.max(heroBottom, article ? 0 : 160) - p.y - p.size) / 60);
-      if (alpha < .01 || p.x + p.size < 0 || p.x - p.size > width || p.y + p.size < 0 || p.y - p.size > height || (small && p.y > Math.max(heroBottom, article ? 0 : 160))) continue;
+      if (extra && article && y < articleTop) alpha *= edge + (1 - edge) * smooth((articleTop - y - p.size) / 60);
+      if (extra && small) alpha *= smooth((Math.max(heroBottom, article ? 0 : 160) - y - p.size) / 60);
+      if (alpha < .01 || x + p.size < 0 || x - p.size > width || y + p.size < 0 || y - p.size > height || (small && y > Math.max(heroBottom, article ? 0 : 160))) continue;
       if (extra) visibleExtra++; else visibleBase++;
-      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.turn + Math.sin(p.phase) * .45);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(p.turn + Math.sin(p.phase) * .45 + windTilt);
       ctx.scale(1, .55 + Math.abs(Math.cos(p.phase * .7)) * .45);
       ctx.globalAlpha = alpha * (.4 + p.depth * .45) * (dark ? .86 : 1);
       ctx.drawImage(sprites[p.sprite], -p.size / 2, -p.size / 2, p.size, p.size); ctx.restore();
     }
     for (let i = temporary.length - 1; i >= 0; i--) if (temporary[i].age >= temporary[i].lifetime) temporary.splice(i, 1);
+    canvas.dataset.sakuraWindResponse = windResponse.toFixed(3);
+    canvas.dataset.sakuraWindShift = windShift.toFixed(2);
     canvas.dataset.sakuraEpisode = episode;
     canvas.dataset.sakuraReleaseAge = releaseAge.toFixed(3);
     canvas.dataset.sakuraBasePool = String(petals.length);
@@ -275,6 +282,7 @@ export function initSakura() {
       elapsed = saved.elapsed + gap; gust = saved.gust * Math.exp(-gap * 1.6); pointerWind = saved.pointerWind * Math.exp(-gap * 2.5);
       releaseAge = saved.releaseAge < 0 ? -1 : saved.releaseAge + gap; episode = saved.episode;
       canvas.dataset.sakuraSceneSource = 'continued';
+      root.dataset.sakuraContinuing = 'true';
       return true;
     } catch { return false; }
   };

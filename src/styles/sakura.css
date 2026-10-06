@@ -13,6 +13,8 @@
 /* Animate headings, not the main container: fixed TOC coordinates and scroll restoration stay intact. */
 html[data-sakura-arrival='active'] :is(.page-hero-title, .post-title, .blog-head h1, .projects-hero h1) { animation: sakura-page-in .48s ease-out both; }
 @keyframes sakura-page-in { from { opacity: .55; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
+/* A carried scene must not replay the homepage's unrelated, initially invisible intro. */
+html:not([data-visual-theme='poetize'])[data-sakura-continuing='true'] .hero-wrap .animate-in { animation: none; opacity: 1; transform: none; }
 /* Pause also settles the existing Sakura hero decorations, leaving content visible. */
 html:not([data-visual-theme='poetize'])[data-sakura-motion='off'] :is(.sp, .hero-blob, .scroll-hint, .hero-eyebrow, .hero-title, .hero-subtitle) { animation: none !important; }
 @media (max-width: 767px) {
