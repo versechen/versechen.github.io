@@ -45,3 +45,43 @@ test('normal pageshow does not replay; storage changes are respected', () => {
   assert.equal(f.root.dataset.sakuraArrival,undefined);
   f.storage.set('sakura-effects','off');f.fire('storage');f.fire('pageshow',{persisted:true});assert.equal(f.root.dataset.sakuraArrival,undefined);
 });
+
+// The refinement stays on the existing transition and automatic entry wind.
+const effectsSource = readFileSync(new URL('../src/lib/sakura-effects.ts', import.meta.url), 'utf8');
+function windFixture({ small = false, allowed = true } = {}) {
+  const breeze = effectsSource.match(/const breeze = \(\) => \{([\s\S]*?)\n  \};/)[0];
+  const arrival = effectsSource.match(/const arrivalBreeze = \(\) => \{([\s\S]*?)\n  \};/)[0];
+  const petals = Array.from({length:6},(_,i)=>({x:300+i*20,y:150+i*30}));
+  const api = {};
+  runInNewContext(`let gust=0,lastGust=-5000;${breeze};${arrival};api.arrive=arrivalBreeze;api.wind=breeze;api.gust=()=>gust;`,
+    {api,small,active:()=>allowed,petals,width:1200,height:800,performance:{now:()=>1000}});
+  return {api,petals};
+}
+test('automatic arrival is gentle and never teleports the existing field',()=>{
+  for(const [small,expected] of [[false,.28],[true,.2]]){
+    const f=windFixture({small}),before=structuredClone(f.petals);f.api.arrive();
+    assert.equal(f.api.gust(),expected);assert.deepEqual(f.petals,before);
+  }
+  const blocked=windFixture({allowed:false});blocked.api.arrive();assert.equal(blocked.api.gust(),0);
+});
+test('explicit wind retains the original strength and reuses the original pool',()=>{
+  for(const [small,expected] of [[false,2.2],[true,1.6]]){
+    const f=windFixture({small});f.api.arrive();f.api.wind();assert.equal(f.api.gust(),expected);
+    assert.equal(f.petals.length,6);assert.ok(f.petals[0].x<=240);assert.equal(f.petals[1].x,320);
+    f.api.arrive();assert.equal(f.api.gust(),small?.2:.28,'History arrival must settle any earlier manual gust');
+  }
+});
+test('pink-white passage stays visible, mirrored and inside its existing cleanup window',()=>{
+  const css=readFileSync(new URL('../src/styles/sakura.css',import.meta.url),'utf8');
+  assert.match(css,/sakura-wind-in \.98s cubic-bezier\(\.4,0,\.3,1\)/);
+  assert.match(css,/animation-duration: \.82s/);
+  assert.match(css,/translate\(-28%, 8%\) rotate\(-5deg\)/);
+  assert.match(css,/translate\(28%, 8%\) rotate\(5deg\)/);
+  assert.match(css,/translate\(32%, -8%\) rotate\(5deg\)/);
+  assert.match(css,/translate\(-32%, -8%\) rotate\(-5deg\)/);
+  assert.match(css,/38%, 66% \{ opacity: \.74; \}/);
+  assert.match(source,/, 1100\)/);assert.doesNotMatch(source,/preventDefault|location\.assign/);
+  const svg=readFileSync(new URL('../src/assets/images/sakura-wind.svg',import.meta.url),'utf8');
+  assert.equal((svg.match(/<use /g)||[]).length,34);
+  assert.deepEqual([...svg.matchAll(/stop-color="(#[a-f0-9]+)"/g)].map(m=>m[1]),['#fffdfd','#ffe8ee','#f1bfcd']);
+});

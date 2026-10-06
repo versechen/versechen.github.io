@@ -140,6 +140,10 @@ export function initSakura() {
     // Reuse the same pool: rapid clicks cannot accumulate particles or timers.
     petals.forEach((p, i) => { if (i % 3 === 0) { p.x = Math.random() * width * .2; p.y = Math.random() * height; } });
   };
+  const arrivalBreeze = () => {
+    // A quiet arrival uses the existing field; only an explicit wind click scatters it.
+    if (active()) gust = small ? .2 : .28;
+  };
   toggle.addEventListener('click', () => {
     enabled = !enabled;
     try { localStorage.setItem('sakura-effects', enabled ? 'on' : 'off'); } catch {}
@@ -174,7 +178,10 @@ export function initSakura() {
   });
   window.addEventListener('pageshow', event => {
     if (!event.persisted) return;
-    departed = false; readPreference(); resize(); observe(); observeSize(); sync(); breeze();
+    departed = false; readPreference();
+    // Keep the same field on history restore instead of scattering it a second time.
+    if (width !== innerWidth || height !== innerHeight) resize(); else measure();
+    observe(); observeSize(); sync(); arrivalBreeze();
   });
-  resize(); observe(); observeSize(); sync(); breeze();
+  resize(); observe(); observeSize(); sync(); arrivalBreeze();
 }
