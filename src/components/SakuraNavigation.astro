@@ -1,5 +1,5 @@
 ---
-// An MPA arrival, not a client router: links, downloads and history remain browser-owned.
+// A short, optional Canvas handoff; the browser still loads documents and owns history.
 const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astro.url.pathname.includes('/docs');
 ---
 <meta id="sakura-navigation" data-quiet={String(quiet)} />
@@ -8,22 +8,27 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
     const root = document.documentElement;
     const quiet = document.getElementById('sakura-navigation').dataset.quiet === 'true';
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
-    let enabled = true, timer = 0, generation = 0;
+    let enabled = true, arrivalTimer = 0, departureTimer = 0, recoveryTimer = 0;
+    let generation = 0, destination = '', deadline = 0, inFlight = false, pageLeaving = false;
     const readPreference = () => { try { enabled = localStorage.getItem('sakura-effects') !== 'off'; } catch {} };
     const allowed = () => !quiet && root.dataset.visualTheme !== 'poetize' && !motion.matches && enabled;
-    const clear = () => {
-      generation++; clearTimeout(timer);
+    const clearArrival = () => {
+      clearTimeout(arrivalTimer);
       delete root.dataset.sakuraArrival; delete root.dataset.sakuraDirection;
     };
+    const cancelDeparture = (cancelScene = true) => {
+      generation++; clearTimeout(departureTimer); clearTimeout(recoveryTimer);
+      destination = ''; deadline = 0; delete root.dataset.sakuraDeparture;
+      if (cancelScene) window.dispatchEvent(new Event('sakura-navigation-cancel'));
+    };
+    const clear = () => { clearArrival(); cancelDeparture(); };
+    const abort = () => { if (inFlight) { window.stop(); inFlight = false; } clear(); };
     const finishLater = () => {
-      clearTimeout(timer);
-      if (root.dataset.sakuraArrival !== 'active') return;
-      const current = generation;
-      // Finite fallback for missing animationend; never gates navigation or hides content.
-      timer = setTimeout(() => { if (current === generation) clear(); }, 4500);
+      clearTimeout(arrivalTimer);
+      if (root.dataset.sakuraArrival === 'active') arrivalTimer = setTimeout(clearArrival, 4500);
     };
     const arrive = () => {
-      clear();
+      clearArrival();
       if (!allowed()) return;
       const activation = window.navigation?.activation;
       root.dataset.sakuraDirection = activation?.entry?.index < activation?.from?.index ? 'back' : 'forward';
@@ -33,16 +38,64 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
     const sync = () => { if (!allowed()) clear(); };
     readPreference(); arrive();
     document.addEventListener('DOMContentLoaded', finishLater, { once: true });
-    document.addEventListener('animationend', event => { if (event.target.id === 'sakura-passage') clear(); });
-    window.addEventListener('sakura-arrival-end', clear);
+    window.addEventListener('sakura-arrival-end', clearArrival);
+    document.addEventListener('click', event => {
+      const link = event.target.closest?.('a[href]');
+      if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (link.hasAttribute('download')) return;
+      if (link.target && link.target !== '_self') {
+        if (link.target === '_top' || link.target === '_parent') cancelDeparture();
+        return;
+      }
+      if (event.defaultPrevented || link.hasAttribute('data-no-sakura')) { cancelDeparture(); return; }
+      let url;
+      try { url = new URL(link.href, location.href); } catch { cancelDeparture(); return; }
+      const samePath = url.pathname.replace(/\/$/, '') === location.pathname.replace(/\/$/, '');
+      const navItem = link.matches('.nav-link, .logo');
+      // Active top-navigation returns to the top without reloading or replaying petals.
+      if (url.origin === location.origin && samePath && navItem && !url.hash && !location.hash && (!url.search || url.search === location.search)) {
+        abort(); event.preventDefault(); window.scrollTo({ top: 0, behavior: 'auto' }); return;
+      }
+      if (url.origin !== location.origin || !/^https?:$/.test(url.protocol) || url.hash || (samePath && url.search === location.search) || /\.[a-z0-9]+$/i.test(url.pathname) || /^\/(notes|editor-preview)(\/|$)/.test(url.pathname) || url.pathname.includes('/docs')) { cancelDeparture(); return; }
+      // No renderer/storage, paused/quiet reading, or failed script: use the link immediately.
+      if (!allowed() || root.dataset.sakuraReady !== 'true' || root.dataset.sakuraMotion !== 'on') { cancelDeparture(); return; }
+      const request = new CustomEvent('sakura-navigation-start', { detail: { href: url.href, accepted: false } });
+      window.dispatchEvent(request);
+      if (!request.detail.accepted) { cancelDeparture(); return; }
+      event.preventDefault(); clearArrival();
+      generation++; clearTimeout(departureTimer); clearTimeout(recoveryTimer);
+      destination = url.href; root.dataset.sakuraDeparture = 'active';
+      if (!deadline) deadline = performance.now() + 340;
+      const current = generation;
+      const navigate = () => {
+        if (current !== generation || !destination) return;
+        const target = destination;
+        window.dispatchEvent(new CustomEvent('sakura-navigation-handoff', { detail: target }));
+        inFlight = true;
+        // Failed/cancelled network navigation must not leave a pending scene forever.
+        recoveryTimer = setTimeout(() => {
+          if (current !== generation) return;
+          window.dispatchEvent(new CustomEvent('sakura-navigation-abandon', { detail: target }));
+          cancelDeparture(false);
+        }, 5000);
+        location.assign(target);
+      };
+      // A newer choice supersedes an in-flight request immediately; no second holding delay.
+      if (inFlight) navigate(); else departureTimer = setTimeout(navigate, Math.max(0, deadline - performance.now()));
+    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') abort(); });
     new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-visual-theme'] });
     motion.addEventListener('change', sync);
     window.addEventListener('sakura-preference', event => { enabled = event.detail; sync(); });
     window.addEventListener('storage', () => { readPreference(); sync(); });
-    document.addEventListener('visibilitychange', () => { if (document.hidden) clear(); });
-    window.addEventListener('pagehide', clear);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { clearArrival(); if (!inFlight && !pageLeaving) cancelDeparture(); }
+    });
+    // Do not cancel the Canvas scene here: its pagehide handler saves the last live frame.
+    window.addEventListener('pagehide', () => { pageLeaving = true; clearArrival(); cancelDeparture(false); inFlight = false; });
+    window.addEventListener('popstate', () => { if (destination) clear(); });
     window.addEventListener('pageshow', event => {
-      if (event.persisted) { readPreference(); arrive(); }
+      if (event.persisted) { pageLeaving = false; inFlight = false; cancelDeparture(false); readPreference(); arrive(); }
     });
   })();
 </script>

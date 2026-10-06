@@ -17,7 +17,7 @@ async function setup(options={}) {
  });
  const page=await context.newPage();page.on('pageerror',e=>{if(/^Failed to fetch dynamically imported module: https:\/\/cdn\.jsdelivr\.net\/npm\/mermaid@/.test(e.message))externalErrors.add(e.message);else errors.push(e.message)});return {context,page};
 }
-const state=p=>p.evaluate(()=>({motion:document.documentElement.dataset.sakuraMotion,arrival:document.documentElement.dataset.sakuraArrival,hidden:document.querySelector('#sakura-petals').hidden,frames:window.sakuraProbe.frames,maxDraws:window.sakuraProbe.maxDraws,shows:window.sakuraProbe.shows,id:window.sakuraProbe.id,overflow:document.documentElement.scrollWidth>innerWidth,basePool:+document.querySelector('#sakura-petals').dataset.sakuraBasePool,extra:+document.querySelector('#sakura-petals').dataset.sakuraBurstCount,burst:document.querySelector('#sakura-petals').dataset.sakuraBurstState}));
+const state=p=>p.evaluate(()=>({motion:document.documentElement.dataset.sakuraMotion,arrival:document.documentElement.dataset.sakuraArrival,hidden:document.querySelector('#sakura-petals').hidden,frames:window.sakuraProbe.frames,maxDraws:window.sakuraProbe.maxDraws,shows:window.sakuraProbe.shows,id:window.sakuraProbe.id,overflow:document.documentElement.scrollWidth>innerWidth,basePool:+document.querySelector('#sakura-petals').dataset.sakuraBasePool,extra:+document.querySelector('#sakura-petals').dataset.sakuraBurstCount,burst:document.querySelector('#sakura-petals').dataset.sakuraBurstState,episode:document.querySelector('#sakura-petals').dataset.sakuraEpisode,sceneSource:document.querySelector('#sakura-petals').dataset.sakuraSceneSource,age:+document.querySelector('#sakura-petals').dataset.sakuraReleaseAge}));
 async function settled(p){await p.waitForFunction(()=>document.documentElement.dataset.sakuraArrival!=='active',null,{timeout:6000});assert.equal((await state(p)).arrival,undefined);}
 async function screenshot(p,name){await p.screenshot({path:`${out}/${name}.png`});}
 try {
@@ -28,7 +28,15 @@ try {
  await p.locator('#sakura-gust').click();await p.waitForTimeout(140);await screenshot(p,'desktop-wind');
  results.push('Desktop: live shaded petals, base pool 14 plus at most 12 temporary petals, light/dark and wind button; no overflow');
  // Capture real arrival mid-animation on a normal link navigation.
- await p.locator('.nav-link[href="/blog"]').click();await p.waitForTimeout(90);
+ const oldDocument=await state(p);
+ const crossing=p.locator('.nav-link[href="/blog"]').click();
+ await p.waitForFunction(()=>document.documentElement.dataset.sakuraDeparture==='active'&&+document.querySelector('#sakura-petals').dataset.sakuraBurstCount>0);
+ assert.equal(new URL(p.url()).pathname,'/','Petals must become visible while the OLD page is still present');
+ const leaving=await state(p);await screenshot(p,'old-page-wind');
+ await crossing;await p.waitForURL(/\/blog\/?$/);
+ const continued=await state(p);
+ assert.notEqual(continued.id,oldDocument.id);assert.equal(continued.sceneSource,'continued');
+ assert.equal(continued.episode,leaving.episode);assert.ok(continued.age>=leaving.age);
  assert.equal((await state(p)).arrival,'active');
  assert.equal(await p.locator('#sakura-passage').isVisible(),false,'No competing SVG layer');
  const burstTimelinePromise=p.evaluate(()=>new Promise(resolve=>{

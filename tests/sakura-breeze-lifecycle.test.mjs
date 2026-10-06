@@ -4,7 +4,7 @@ import {runInNewContext} from 'node:vm';
 import {test} from 'node:test';
 import ts from 'typescript';
 const source=ts.transpile(readFileSync(new URL('../src/lib/sakura-effects.ts',import.meta.url),'utf8'),{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS});
-function fixture({width=1174,height=753,reading=false,reduced=false,paused=false,theme,saveData=false,heroHeight=height}={}){
+function fixture({width=1174,height=753,reading=false,reduced=false,paused=false,theme,saveData=false,heroHeight=height,storage=new Map(),storageBlocked=false,href='https://example.com/',wall={now:0}}={}){
  let time=0,id=0,seed=12345;const frames=new Map(),events=new Map(),signals=[];
  function element(){return {hidden:true,disabled:false,title:'',dataset:{},attrs:{},events:{},setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,f){this.events[k]=f;}};}
  function canvas(){const c=element();let x=0,y=0;const ctx={items:[],globalAlpha:1,clearRect(){this.items=[];},setTransform(){},save(){},restore(){},translate(a,b){x=a;y=b;},rotate(){},scale(){},drawImage(_,a,b,size){this.items.push({x,y,size,alpha:this.globalAlpha});},createLinearGradient(){return{addColorStop(){}};},beginPath(){},moveTo(){},bezierCurveTo(){},lineTo(){},fill(){},stroke(){},quadraticCurveTo(){},rect(){},clip(){}};c.getContext=()=>ctx;c.ctx=ctx;return c;}
@@ -21,10 +21,10 @@ function fixture({width=1174,height=753,reading=false,reduced=false,paused=false
  const local=new Map([['sakura-effects',paused?'off':'on']]);
  const seededMath=Object.create(Math);seededMath.random=()=>((seed=Math.imul(seed,1664525)+1013904223)>>>0)/2**32;
  const exported={};
- const environment={exports:exported,document,window,Math:seededMath,innerWidth:width,innerHeight:height,devicePixelRatio:1,scrollY:0,navigator:{connection:{saveData}},matchMedia:q=>q.includes('reduced')?motion:{matches:width<768,addEventListener(){}},performance:{now:()=>time},requestAnimationFrame:fn=>{frames.set(++id,fn);return id;},cancelAnimationFrame:key=>frames.delete(key),localStorage:{getItem:k=>local.get(k),setItem:(k,v)=>local.set(k,v)},Event:class{constructor(type){this.type=type;}},CustomEvent:class{constructor(type,{detail}){this.type=type;this.detail=detail;}},MutationObserver:class{observe(){}disconnect(){}},ResizeObserver:class{observe(){}disconnect(){}}};
+ const environment={exports:exported,document,window,URL,location:{href,...Object.fromEntries(['origin','pathname','search','hash'].map(k=>[k,new URL(href)[k]]))},Date:{now:()=>wall.now},sessionStorage:{getItem(k){if(storageBlocked)throw Error('blocked');return storage.get(k);},setItem(k,v){if(storageBlocked)throw Error('blocked');storage.set(k,v);},removeItem(k){if(storageBlocked)throw Error('blocked');storage.delete(k);}},Math:seededMath,innerWidth:width,innerHeight:height,devicePixelRatio:1,scrollY:0,navigator:{connection:{saveData}},matchMedia:q=>q.includes('reduced')?motion:{matches:width<768,addEventListener(){}},performance:{now:()=>time},requestAnimationFrame:fn=>{frames.set(++id,fn);return id;},cancelAnimationFrame:key=>frames.delete(key),localStorage:{getItem:k=>local.get(k),setItem:(k,v)=>local.set(k,v)},Event:class{constructor(type){this.type=type;}},CustomEvent:class{constructor(type,{detail}){this.type=type;this.detail=detail;}},MutationObserver:class{observe(){}disconnect(){}},ResizeObserver:class{observe(){}disconnect(){}}};
  runInNewContext(source,environment);exported.initSakura();
- function advance(ms,interval=1000/60){for(let end=time+ms;time<end;){time+=interval;const work=[...frames.values()];frames.clear();for(const fn of work)fn(time);}}
- return{field,tools,toggle,gust,root,frames,document,motion,fire,advance,signals,resize(w,h){width=w;height=h;environment.innerWidth=w;environment.innerHeight=h;fire('resize');}};
+ function advance(ms,interval=1000/60){for(let end=time+ms;time<end;){time+=interval;wall.now+=interval;const work=[...frames.values()];frames.clear();for(const fn of work)fn(time);}}
+ return{field,tools,toggle,gust,root,frames,document,motion,fire,advance,signals,storage,wall,resize(w,h){width=w;height=h;environment.innerWidth=w;environment.innerHeight=h;fire('resize');}};
 }
 const extra=f=>+f.field.dataset.sakuraBurstCount;
 const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
@@ -75,4 +75,55 @@ test('an active burst respects the smaller pool after resizing across the mobile
  const f=fixture({width:800});f.advance(800);assert.equal(extra(f),12);
  f.resize(767,753);f.advance(80);assert.equal(f.field.dataset.sakuraBasePool,'6');assert.ok(extra(f)<=6);
  f.advance(4500);assert.equal(extra(f),0);
+});
+
+const transferKey='sakura-navigation-scene-v1';
+const begin=(f,href='https://example.com/blog')=>{const detail={href,accepted:false};f.fire('sakura-navigation-start',{detail});return detail;};
+test('click creates visible petals in the OLD scene, and NEW document consumes the same positions/ages',()=>{
+ const storage=new Map(),wall={now:0},old=fixture({storage,wall});old.advance(5000);assert.equal(extra(old),0);
+ assert.equal(begin(old).accepted,true);old.advance(340);assert.ok(extra(old)>0);assert.equal(old.field.dataset.sakuraSceneSource,'departure');
+ const positions=old.field.ctx.items.map(p=>({x:p.x,y:p.y,size:p.size}));
+ old.fire('sakura-navigation-handoff',{detail:'https://example.com/blog'});old.fire('pagehide');
+ const saved=JSON.parse(storage.get(transferKey));assert.ok(saved.releaseAge>.25);
+ const next=fixture({storage,wall,href:'https://example.com/blog/'});
+ assert.equal(next.field.dataset.sakuraSceneSource,'continued');assert.equal(next.field.dataset.sakuraEpisode,saved.episode);
+ assert.ok(+next.field.dataset.sakuraReleaseAge>=saved.releaseAge-.001);
+ assert.deepEqual(next.field.ctx.items.map(p=>({x:p.x,y:p.y,size:p.size})),positions);
+ assert.equal(storage.size,0);next.advance(4500);assert.equal(extra(next),0);
+});
+test('slow native loading captures the final OLD frame and accounts for the unobserved gap',()=>{
+ const storage=new Map(),wall={now:0},old=fixture({storage,wall});old.advance(5000);begin(old);old.advance(340);old.fire('sakura-navigation-handoff',{detail:'https://example.com/blog'});
+ old.advance(1500);old.fire('pagehide');const saved=JSON.parse(storage.get(transferKey));assert.ok(saved.releaseAge>1.7);
+ wall.now+=120;const next=fixture({storage,wall,href:'https://example.com/blog/'});assert.equal(next.field.dataset.sakuraEpisode,saved.episode);
+ assert.ok(+next.field.dataset.sakuraReleaseAge>=saved.releaseAge+.119);assert.equal(next.field.dataset.sakuraBurstState,'fading');
+ next.advance(3000);assert.equal(extra(next),0);
+});
+test('an episode finished while loading does not restart on the destination',()=>{
+ const storage=new Map(),wall={now:0},old=fixture({storage,wall});old.advance(5000);begin(old);old.advance(5000);old.fire('pagehide');
+ const next=fixture({storage,wall,href:'https://example.com/blog/'});assert.equal(next.field.dataset.sakuraSceneSource,'continued');assert.equal(extra(next),0);
+ next.advance(800);assert.equal(extra(next),0);
+});
+test('visibility-before-pagehide retains the last non-cleared snapshot',()=>{
+ const storage=new Map(),wall={now:0},old=fixture({storage,wall});old.advance(5000);begin(old);old.advance(400);old.document.hidden=true;old.fire('visibilitychange');old.fire('pagehide');
+ assert.ok(JSON.parse(storage.get(transferKey)).temporary.length>0);
+ const next=fixture({storage,wall,href:'https://example.com/blog/'});assert.equal(next.field.dataset.sakuraSceneSource,'continued');assert.ok(extra(next)>0);
+});
+test('retargeting preserves the episode while cancellation removes its handoff',()=>{
+ const f=fixture();f.advance(5000);begin(f);f.advance(150);const id=f.field.dataset.sakuraEpisode;
+ begin(f,'https://example.com/reading');f.advance(100);assert.equal(f.field.dataset.sakuraEpisode,id);assert.equal(JSON.parse(f.storage.get(transferKey)).target,'https://example.com/reading');
+ f.fire('sakura-navigation-cancel');assert.equal(extra(f),0);assert.equal(f.storage.size,0);f.fire('pagehide');assert.equal(f.storage.size,0);
+});
+test('blocked storage declines handoff; stale/wrong/invalid snapshots cannot restore a scene',()=>{
+ const f=fixture({storageBlocked:true});f.advance(5000);assert.equal(begin(f).accepted,false);
+ const storage=new Map(),wall={now:0},old=fixture({storage,wall});old.advance(5000);begin(old);old.advance(340);old.fire('pagehide');const valid=JSON.parse(storage.get(transferKey));
+ for(const patch of [s=>s.target='https://elsewhere.test/blog',s=>s.target='https://example.com/reading',s=>s.at-=11000,s=>s.temporary[0].age=-999,s=>s.temporary[0].sprite=99]){
+  const saved=structuredClone(valid);patch(saved);const one=new Map([[transferKey,JSON.stringify(saved)]]);const next=fixture({storage:one,wall,href:'https://example.com/blog/'});
+  assert.notEqual(next.field.dataset.sakuraSceneSource,'continued');assert.equal(one.size,0);
+ }
+});
+
+test('hide then re-show updates the eventual snapshot instead of replaying the hidden burst',()=>{
+ const storage=new Map(),wall={now:0},old=fixture({storage,wall});old.advance(5000);begin(old);old.advance(400);
+ old.document.hidden=true;old.fire('visibilitychange');old.advance(300);old.document.hidden=false;old.fire('visibilitychange');old.advance(200);old.fire('pagehide');
+ assert.equal(JSON.parse(storage.get(transferKey)).temporary.length,0);
 });

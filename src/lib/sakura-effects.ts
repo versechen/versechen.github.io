@@ -24,6 +24,8 @@ export function initSakura() {
   type Petal = { x: number; y: number; depth: number; size: number; phase: number; turn: number; speed: number; sprite: number; age: number; lifetime: number };
   let petals: Petal[] = [];
   let temporary: Petal[] = [];
+  let pendingTarget = '', capturedOnHide = false, episode = '';
+  const handoffKey = 'sakura-navigation-scene-v1';
   const smooth = (value: number) => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
   // Cache three shaded, notched petals. No gradients / paths / DOM allocations per frame.
   const sprites = ['#ffe8ee', '#f9dae3', '#fff4f6'].map(color => {
@@ -108,6 +110,8 @@ export function initSakura() {
       ctx.drawImage(sprites[p.sprite], -p.size / 2, -p.size / 2, p.size, p.size); ctx.restore();
     }
     for (let i = temporary.length - 1; i >= 0; i--) if (temporary[i].age >= temporary[i].lifetime) temporary.splice(i, 1);
+    canvas.dataset.sakuraEpisode = episode;
+    canvas.dataset.sakuraReleaseAge = releaseAge.toFixed(3);
     canvas.dataset.sakuraBasePool = String(petals.length);
     canvas.dataset.sakuraBaseCount = String(visibleBase);
     canvas.dataset.sakuraBurstCount = String(visibleExtra);
@@ -171,6 +175,8 @@ export function initSakura() {
     if (!active()) return;
     // One bounded episode in the same field: add small petals, then retire each one.
     gust = 0; releaseAge = 0;
+    episode = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    canvas.dataset.sakuraSceneSource = 'fresh';
     const count = connection?.saveData ? 4 : small ? 6 : 12;
     temporary = Array.from({ length: count }, (_, i) => {
       const p = makePetal();
@@ -201,22 +207,81 @@ export function initSakura() {
   window.addEventListener('resize', () => { resize(); sync(); }, { passive: true });
   motion.addEventListener('change', sync);
   coarse.addEventListener('change', () => { resize(); sync(); });
-  document.addEventListener('visibilitychange', sync);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && pendingTarget) { saveScene(pendingTarget); capturedOnHide = true; }
+    if (!document.hidden) capturedOnHide = false;
+    sync();
+  });
   const observer = new MutationObserver(() => { measure(); sync(); });
   const observe = () => observer.observe(root, { attributes: true, attributeFilter: ['data-visual-theme', 'class'] });
   const sizing = new ResizeObserver(() => { measure(); sync(); });
   const observeSize = () => { if (hero) sizing.observe(hero); if (article) sizing.observe(article); };
   window.addEventListener('storage', event => { if (event.key === 'sakura-effects' || event.key === null) { readPreference(); sync(); } });
   window.addEventListener('pagehide', () => {
+    if (pendingTarget && !capturedOnHide) saveScene(pendingTarget);
     departed = true; cancelAnimationFrame(raf); raf = 0; cancelAnimationFrame(scrollFrame); scrollFrame = 0;
     observer.disconnect(); sizing.disconnect();
   });
   window.addEventListener('pageshow', event => {
     if (!event.persisted) return;
-    departed = false; readPreference();
+    departed = false; pendingTarget = ''; capturedOnHide = false; readPreference();
     // Keep the same field on history restore instead of scattering it a second time.
     if (width !== innerWidth || height !== innerHeight) resize(); else measure();
     observe(); observeSize(); sync(); arrivalBreeze();
   });
-  resize(); observe(); observeSize(); sync(); arrivalBreeze();
+  const saveScene = (target: string) => {
+    if (!allowed()) return false;
+    try {
+      sessionStorage.setItem(handoffKey, JSON.stringify({ target, at: Date.now(), width, height, elapsed, gust, pointerWind, releaseAge, episode, petals, temporary }));
+      return true;
+    } catch { try { sessionStorage.removeItem(handoffKey); } catch {} return false; }
+  };
+  window.addEventListener('sakura-navigation-start', event => {
+    const request = (event as CustomEvent<{ href: string; accepted: boolean }>).detail;
+    if (!active()) return;
+    if (!pendingTarget) arrivalBreeze();
+    pendingTarget = request.href; capturedOnHide = false;
+    canvas.dataset.sakuraSceneSource = 'departure';
+    request.accepted = saveScene(pendingTarget);
+  });
+  window.addEventListener('sakura-navigation-handoff', event => {
+    pendingTarget = (event as CustomEvent<string>).detail;
+    saveScene(pendingTarget);
+  });
+  window.addEventListener('sakura-navigation-abandon', event => {
+    if (pendingTarget !== (event as CustomEvent<string>).detail) return;
+    saveScene(pendingTarget); pendingTarget = ''; capturedOnHide = false;
+  });
+  window.addEventListener('sakura-navigation-cancel', () => {
+    pendingTarget = ''; capturedOnHide = false; temporary = []; releaseAge = -1; gust = 0;
+    try { sessionStorage.removeItem(handoffKey); } catch {}
+    sync(); if (active()) paint(0, 0);
+  });
+  const restoreScene = () => {
+    try {
+      const raw = sessionStorage.getItem(handoffKey); sessionStorage.removeItem(handoffKey);
+      if (!raw || raw.length > 30000 || !allowed()) return false;
+      const saved = JSON.parse(raw), target = new URL(saved.target);
+      target.searchParams.delete('visual-theme');
+      const current = new URL(location.href); current.searchParams.delete('visual-theme');
+      const gap = (Date.now() - saved.at) / 1000;
+      const validPetal = (p: Petal) => ['x', 'y', 'depth', 'size', 'phase', 'turn', 'speed', 'sprite', 'age', 'lifetime'].every(key => Number.isFinite(p[key as keyof Petal])) && p.depth >= 0 && p.depth <= 1 && p.size >= 1 && p.size <= 20 && Number.isInteger(p.sprite) && p.sprite >= 0 && p.sprite < 3 && p.lifetime >= 0 && p.lifetime <= 4 && p.age >= -1 && p.age <= 5 && p.speed >= 0 && p.speed <= 100;
+      if (target.origin !== current.origin || target.pathname.replace(/\/$/, '') !== current.pathname.replace(/\/$/, '') || target.search !== current.search || gap < 0 || gap > 10 || !Number.isFinite(saved.at) || !Number.isFinite(saved.width) || !Number.isFinite(saved.height) || saved.width <= 0 || saved.height <= 0 || ![saved.elapsed, saved.gust, saved.pointerWind, saved.releaseAge].every(Number.isFinite) || saved.releaseAge < -1 || saved.releaseAge > 5 || typeof saved.episode !== 'string' || saved.episode.length > 80 || !Array.isArray(saved.petals) || saved.petals.length > 14 || !saved.petals.every(validPetal) || !Array.isArray(saved.temporary) || saved.temporary.length > 12 || !saved.temporary.every(validPetal)) return false;
+      const scale = (p: Petal): Petal => ({ ...p, x: width === saved.width ? p.x : p.x * width / saved.width, y: height === saved.height ? p.y : p.y * height / saved.height });
+      const count = petals.length;
+      petals = saved.petals.slice(0, count).map(scale);
+      while (petals.length < count) petals.push(makePetal());
+      temporary = saved.temporary.slice(0, connection?.saveData ? 4 : small ? 6 : 12).map((p: Petal) => ({ ...scale(p), age: p.age + gap })).filter((p: Petal) => p.lifetime > 0 && p.age < p.lifetime);
+      elapsed = saved.elapsed + gap; gust = saved.gust * Math.exp(-gap * 1.6); pointerWind = saved.pointerWind * Math.exp(-gap * 2.5);
+      releaseAge = saved.releaseAge < 0 ? -1 : saved.releaseAge + gap; episode = saved.episode;
+      canvas.dataset.sakuraSceneSource = 'continued';
+      return true;
+    } catch { return false; }
+  };
+  resize();
+  const restored = restoreScene();
+  observe(); observeSize(); sync();
+  root.dataset.sakuraReady = 'true';
+  if (restored) { if (active()) paint(0, 0); }
+  else arrivalBreeze();
 }
