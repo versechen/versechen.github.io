@@ -134,6 +134,7 @@ try {
  await screenshot(m,'mobile-reading');results.push(`Mobile: <=4 petals, DPR <=1.25, ${mobileFps} frames/s; stops below hero; TOC/hash stays native`);
  await m.setViewportSize({width:320,height:844});await m.goto(base+'/?visual-theme=original');await m.waitForTimeout(6000);
  if(await m.evaluate(()=>document.documentElement.classList.contains('dark')))await m.locator('#theme-btn').tap();
+ await m.waitForTimeout(650); // Capture the settled light theme, after the existing theme transition.
  assert.equal((await state(m)).overflow,false);assert.equal(await heroInk(m),0);assert.ok((await state(m)).maxDraws<=4);await screenshot(m,'compact-light');
  results.push('320px phone keeps the original layout without overflow and zero petal ink over the title, copy or buttons');
  await mc.close();
