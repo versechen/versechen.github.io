@@ -1,75 +1,24 @@
-/* The tree, typography and movement belong only to Sakura. No coastal selectors are changed. */
-.sakura-tree, .sakura-verse, .sakura-tools { display: none; }
-html:not([data-visual-theme='poetize']) {
-  --tree-wood: #795e66; --tree-wood-light: #aa8a88; --tree-halo: #edd6ce;
-  --tree-petal: #efc1cb; --tree-petal-light: #fff4ed; --tree-petal-edge: #c990a0; --tree-stamen: #bd7d8d;
-}
-html.dark:not([data-visual-theme='poetize']) {
-  --tree-wood: #c4a1a5; --tree-wood-light: #8e717b; --tree-halo: #594154;
-  --tree-petal: #d9a2b5; --tree-petal-light: #f2dce1; --tree-petal-edge: #b98b9d; --tree-stamen: #96687e;
-}
-html:not([data-visual-theme='poetize']) #main-content .sakura-home { height: min(900px, 94svh); min-height: 690px; justify-content: flex-start; text-align: left; isolation: isolate; }
-html:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-gradient { background: radial-gradient(ellipse at 67% 43%, #f6e6e080, transparent 56%), #fcf9f7; }
-html.dark:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-gradient { background: radial-gradient(ellipse at 68% 42%, #38253888, transparent 60%), #17131f; }
-html:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-body { align-items: flex-start; width: 49%; max-width: 660px; margin-left: max(7vw, calc((100vw - 1280px) / 2)); padding: 0 28px 30px; gap: 0; }
-html:not([data-visual-theme='poetize']) #main-content .sakura-home :is(.sp, .eyebrow-dot, .hero-typewriter-row, .scroll-hint, .sakura-hide) { display: none; }
-html:not([data-visual-theme='poetize']) #main-content .sakura-home .animate-in { animation: none; opacity: 1; transform: none; }
-html:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-eyebrow { border: 0; padding: 0; background: none; backdrop-filter: none; font-size: 11px; letter-spacing: .25em; color: #987b80; margin-bottom: 28px; }
-html:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-site-name { font-family: 'Songti SC','STSong','Noto Serif CJK SC','SimSun',serif; font-size: clamp(48px,5.7vw,82px); font-weight: 500; letter-spacing: .025em; line-height: 1.22; color: #523d4a; }
-html:not([data-visual-theme='poetize']) #main-content .sakura-home .name-accent { color: inherit; background: none; -webkit-text-fill-color: currentColor; animation: none; }
-html.dark:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-site-name { color: #ecdae0; }
-html:not([data-visual-theme='poetize']) .sakura-verse { display: block; font-family: 'Songti SC','STSong','Noto Serif CJK SC','SimSun',serif; font-size: clamp(18px,1.8vw,25px); font-weight: 400; letter-spacing: .12em; color: #98717e; margin: 28px 0 42px; line-height: 1.9; }
-html.dark:not([data-visual-theme='poetize']) .sakura-verse { color: #c5a4b2; }
-html:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-ctas { flex-direction: row; gap: 18px; align-items: center; justify-content: flex-start; margin: 0; }
-html:not([data-visual-theme='poetize']) #main-content .sakura-home .cta-btn { padding: 10px 0; min-height: 44px; font-size: 12px; font-weight: 400; letter-spacing: .07em; border-radius: 0; color: #876772; background: none; border: 0; box-shadow: none; backdrop-filter: none; transform: none; }
-html:not([data-visual-theme='poetize']) #main-content .sakura-home .cta-primary { padding: 10px 18px; margin-right: 4px; border: 1px solid #b993a24d; border-radius: 3px; background: #f1e4e433; }
-html:not([data-visual-theme='poetize']) #main-content .sakura-home .cta-btn:hover { color: #a05f79; border-color: #a05f7999; }
-html.dark:not([data-visual-theme='poetize']) #main-content .sakura-home .cta-btn { color: #c8a9b8; }
-html:not([data-visual-theme='poetize']) .sakura-tree { display: block; position: absolute; width: min(60vw, 850px); aspect-ratio: 1; right: max(0px, calc((100vw - 1540px) / 2)); bottom: 25px; z-index: 1; pointer-events: none; }
-.sakura-tree-art { display: block; width: 100%; height: 100%; overflow: visible; }
-.sakura-tree-breathe, #sakura-tree-wind { transform-origin: 385px 650px; }
-.sakura-tree-breathe { animation: sakura-tree-breathe 16s ease-in-out infinite; animation-play-state: paused; }
-html[data-sakura-motion='on']:not([data-visual-theme='poetize']) :is(.sakura-tree-breathe, .sakura-crown-side) { animation-play-state: running; }
-.sakura-crown-left { transform-origin: 379px 455px; animation: sakura-bough-left 13s ease-in-out infinite; animation-play-state: paused; }
-.sakura-crown-right { transform-origin: 388px 393px; animation: sakura-bough-right 17s ease-in-out infinite; animation-play-state: paused; }
-@keyframes sakura-bough-left { 0%,100% { transform: rotate(-.2deg); } 50% { transform: rotate(.3deg); } }
-@keyframes sakura-bough-right { 0%,100% { transform: rotate(.25deg); } 50% { transform: rotate(-.25deg); } }
-@keyframes sakura-tree-breathe { 0%,100% { transform: rotate(-.12deg); } 50% { transform: rotate(.2deg); } }
-.sakura-loose-petal { opacity: 0; transform-origin: 0 0; }
-html:not([data-visual-theme='poetize']) .sakura-tools:not([hidden]) { display: flex; align-items: center; gap: 5px; margin-top: 40px; color: #98717e; }
-html.dark:not([data-visual-theme='poetize']) .sakura-tools { color: #c5a4b2; }
-.sakura-tools button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-width: 44px; min-height: 44px; padding: 0 10px; border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; font-size: 12px; letter-spacing: .18em; border-radius: 3px; transition: color .4s, background .4s; }
-.sakura-tools button:first-child { padding-left: 0; padding-right: 12px; }
-.sakura-tools button:hover:not(:disabled) { color: #a05f79; background: #b993a210; }
+/* Sakura-only enhancement. The coastal layout and article / TOC geometry are untouched. */
+#sakura-petals { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; contain: strict; }
+#sakura-petals[hidden], .sakura-tools[hidden], html[data-visual-theme='poetize'] :is(#sakura-petals, .sakura-tools) { display: none; }
+.sakura-tools { position: fixed; right: max(20px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom)); z-index: 90; display: flex; padding: 3px; border: 1px solid var(--border); border-radius: 28px; background: var(--glass-bg, #fff8fbe6); backdrop-filter: blur(12px); box-shadow: 0 5px 25px #a7517d15; }
+.sakura-tools button { display: flex; gap: 7px; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 24px; color: var(--text-2); background: transparent; cursor: pointer; font: inherit; font-size: 12px; letter-spacing: .08em; transition: color .2s, background .2s; }
+.sakura-tools button + button { padding: 0; }
+.sakura-tools button:hover:not(:disabled) { color: var(--primary); background: #e879a416; }
 .sakura-tools button:disabled { opacity: .5; cursor: default; }
-.sakura-tools svg { width: 19px; height: 19px; }
-.sakura-tool-divider { display: block; height: 15px; width: 1px; background: #b993a24d; }
+.sakura-tools svg { width: 20px; height: 20px; }
 #sakura-effects-toggle[aria-pressed='true'] .sakura-play, #sakura-effects-toggle[aria-pressed='false'] .sakura-pause { display: none; }
-/* A slight opacity settle, with no overlay, sweep, translation, zoom or navigation interception. */
+/* Soft arrival only: no sweep, mask or transform on the fixed-TOC containing block. */
 html:not([data-visual-theme='poetize'])[data-sakura-arrival='active'] #main-content { animation: sakura-page-fade .85s ease-out both; }
 @keyframes sakura-page-fade { from { opacity: .88; } to { opacity: 1; } }
-@media (max-width: 900px) {
-  html:not([data-visual-theme='poetize']) #main-content .sakura-home { height: 950px; min-height: 0; align-items: flex-start; }
-  html:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-body { width: 100%; margin: 130px 0 0; padding: 0 8vw; }
-  html:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-site-name { font-size: 54px; }
-  html:not([data-visual-theme='poetize']) .sakura-verse { margin: 16px 0 22px; font-size: 21px; }
-  html:not([data-visual-theme='poetize']) .sakura-tree { width: 560px; right: -15px; bottom: -2px; }
-  html:not([data-visual-theme='poetize']) .sakura-tools:not([hidden]) { margin-top: 20px; }
-}
-@media (max-width: 520px) {
-  html:not([data-visual-theme='poetize']) #main-content .sakura-home { height: 800px; }
-  html:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-body { margin-top: 80px; padding: 0 8vw; }
-  html:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-eyebrow { font-size: 10px; margin-bottom: 22px; letter-spacing: .15em; }
-  html:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-site-name { font-size: 48px; }
-  html:not([data-visual-theme='poetize']) .sakura-verse { font-size: 19px; letter-spacing: .09em; }
-  html:not([data-visual-theme='poetize']) #main-content .sakura-home .hero-ctas { gap: 12px; }
-  html:not([data-visual-theme='poetize']) #main-content .sakura-home .cta-btn { font-size: 11px; }
-  html:not([data-visual-theme='poetize']) #main-content .sakura-home .cta-primary { padding: 9px 12px; margin-right: 0; }
-  html:not([data-visual-theme='poetize']) .sakura-tree { width: min(470px, 120vw); right: -8vw; bottom: 2px; }
+/* Pause also settles the existing Sakura hero decorations, leaving content visible. */
+html:not([data-visual-theme='poetize'])[data-sakura-motion='off'] :is(.sp, .hero-blob, .scroll-hint, .eyebrow-dot, .name-accent, .typewriter-cursor) { animation: none !important; }
+html:not([data-visual-theme='poetize'])[data-sakura-motion='off'] .hero-wrap .animate-in { animation: none !important; opacity: 1; transform: none; }
+@media (max-width: 767px) {
+  .sakura-tools { right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  :is(.sakura-tree-breathe, .sakura-crown-side) { animation: none !important; }
-  .sakura-loose-petal { display: none; }
-  html:not([data-visual-theme='poetize'])[data-sakura-arrival='active'] #main-content { animation: none; }
+  #sakura-petals { display: none !important; }
+  html[data-sakura-arrival='active'] #main-content { animation: none; }
 }
-@media print { .sakura-tools { display: none !important; } :is(.sakura-tree-breathe, .sakura-crown-side) { animation: none; } }
+@media print { #sakura-petals, .sakura-tools { display: none !important; } }

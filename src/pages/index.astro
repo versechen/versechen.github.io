@@ -1,6 +1,4 @@
 ---
-import SakuraTree from '../components/SakuraTree.astro';
-import SakuraEffects from '../components/SakuraEffects.astro';
 import CoastalScene from '../components/CoastalScene.astro';
 import { AUTHOR, AUTHOR_BIO, GITHUB_URL } from '../consts';
 import BaseLayout from '../layouts/BaseLayout.astro';
@@ -102,13 +100,11 @@ function timeAgo(date: Date): string {
 
 <BaseLayout title="首页">
   <!-- ===== HERO ===== -->
-  <section class="hero-wrap sakura-home">
+  <section class="hero-wrap">
     <!-- Gradient background -->
     <div class="hero-gradient"><CoastalScene /></div>
 
-    <SakuraTree />
-
-    <!-- Existing coastal layout retains its own presentation. -->
+    <!-- Anime floating sparkles -->
     <div class="sp sp1" aria-hidden="true">✦</div>
     <div class="sp sp2" aria-hidden="true">✧</div>
     <div class="sp sp3" aria-hidden="true">✦</div>
@@ -127,8 +123,6 @@ function timeAgo(date: Date): string {
         代码<span class="name-accent">陈诗</span>
       </h1>
 
-      <p class="sakura-verse">樱花短暂，技术长久</p>
-
       <p class="hero-typewriter-row animate-in" style="--delay:.2s">
         <span class="sr-only">像诗一样写代码，用技术探索世界</span>
         <span id="typewriter-text" aria-hidden="true">像诗一样写代码</span><span class="typewriter-cursor" aria-hidden="true"></span>
@@ -139,10 +133,9 @@ function timeAgo(date: Date): string {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14"/><path d="m5 12 7 7 7-7"/></svg>
           开始阅读
         </a>
-        <a href="/reading" class="cta-btn cta-glass"><span class="sakura-hide" aria-hidden="true">📚</span> 读书笔记</a>
-        <a href="/projects" class="cta-btn cta-glass"><span class="sakura-hide" aria-hidden="true">🚀</span> 开源项目</a>
+        <a href="/reading" class="cta-btn cta-glass">📚 读书笔记</a>
+        <a href="/projects" class="cta-btn cta-glass">🚀 开源项目</a>
       </div>
-      <SakuraEffects />
     </div>
 
     <!-- Theme-specific exploration link leaves the original decoration intact. -->
@@ -784,7 +777,7 @@ function timeAgo(date: Date): string {
 <script>
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// The home-only SakuraTree scene owns its motion and page lifecycle.
+// Sakura atmosphere is managed by the shared layout, including theme and page lifecycle.
 
 /* ── 2. Typewriter Effect ── */
 (function initTypewriter() {
