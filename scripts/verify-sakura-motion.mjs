@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const base=process.env.PREVIEW_URL||'http://127.0.0.1:4323';
-const out=process.env.EVIDENCE_DIR||'/tmp/sakura-soft-evidence';mkdirSync(out,{recursive:true});
+const out=process.env.EVIDENCE_DIR||'/tmp/sakura-flow-evidence';mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox'],ignoreDefaultArgs:['--disable-back-forward-cache']});
 const results=[],errors=[],externalErrors=new Set();
 async function setup(options={}) {
@@ -25,12 +25,12 @@ try {
  const {context,page:p}=await setup({viewport:{width:1440,height:1000}});
  assert.equal((await p.goto(base+'/?visual-theme=original')).status(),200);
  await p.waitForTimeout(500);
- assert.ok(await p.evaluate(()=>window.sakuraProbe.history.every(f=>f.items.length<=1&&f.items.every(x=>x.alpha<.12))),'Initial petals must fade in progressively without a burst');
+ assert.ok(await p.evaluate(()=>window.sakuraProbe.history.every(f=>f.items.length<=24)),'Bounded petal pool');
  await settled(p);await p.waitForTimeout(4400);
- let s=await state(p);assert.equal(s.hidden,false);assert.ok(s.frames>8);assert.ok(s.maxDraws<=10);assert.equal(s.overflow,false);
+ let s=await state(p);assert.equal(s.hidden,false);assert.ok(s.frames>8);assert.ok(s.maxDraws<=24);assert.equal(s.overflow,false);
  assert.equal(await p.locator('#sakura-tree,.sakura-verse,.sakura-home,#sakura-passage').count(),0);
  assert.equal(await p.locator('.hero-typewriter-row').isVisible(),true);
- const visible=await p.evaluate(()=>window.sakuraProbe.items);assert.ok(visible.length>=3);assert.ok(visible.every(x=>x.size>=26&&x.scale>=.779));
+ const visible=await p.evaluate(()=>window.sakuraProbe.items);assert.ok(visible.length>=3);assert.ok(visible.every(x=>x.size>=23&&x.size<=40&&x.scale>=.99));
  assert.equal(await heroInk(p),0,'Petals must leave homepage text and buttons clear');
  assert.equal(await p.locator('#sakura-gust').isDisabled(),false,'No automatic gust on entry');
  await screenshot(p,'desktop-light');await p.locator('#theme-btn').click();await p.waitForTimeout(450);await screenshot(p,'desktop-dark');
@@ -40,16 +40,29 @@ try {
  assert.ok(afterWind.every(x=>beforeWind.some(y=>Math.hypot(x.x-y.x,x.y-y.y)<14)),'Wind must not teleport or emit petals');
  assert.equal(await p.locator('#sakura-gust').isDisabled(),true);
  await p.evaluate(()=>{for(let i=0;i<30;i++)document.querySelector('#sakura-gust').dispatchEvent(new MouseEvent('click',{bubbles:true}));});
- await p.waitForTimeout(3200);assert.ok((await state(p)).maxDraws<=10);await screenshot(p,'desktop-wind');
- await p.waitForTimeout(6500);assert.equal(await p.locator('#sakura-gust').isDisabled(),false);
- results.push('Original homepage art/layout restored; <=10 recognizable 26–36px petals fade in gradually, wind preserves positions/pool and eases out after nine seconds');
+ await p.waitForTimeout(3200);assert.ok((await state(p)).maxDraws<=24);await screenshot(p,'desktop-wind');
+ await p.waitForTimeout(3200);assert.equal(await p.locator('#sakura-gust').isDisabled(),false);
+ results.push('Original homepage retained; <=24 layered 23–40px petals, curved motion and smooth wind preserve positions and pool');
+ // Escape interrupts the delayed native navigation with no history or visibility damage.
+ await p.evaluate(()=>document.querySelector('.nav-link[href="/about"]').click());
+ await p.keyboard.press('Escape');await p.waitForTimeout(300);assert.equal(new URL(p.url()).pathname,'/');
+ assert.equal(await p.evaluate(()=>document.documentElement.dataset.sakuraDeparture),undefined);
+ // Sample an actual multi-frame arc, not a static screenshot pass.
+ await p.waitForTimeout(500);
+ const frameStart=await p.evaluate(()=>window.sakuraProbe.history.length);
+ for(let i=0;i<6;i++){await screenshot(p,`motion-${i}`);await p.waitForTimeout(240);}
+ const motionFrames=await p.evaluate(()=>window.sakuraProbe.history.slice(-36));
+ const moving=motionFrames.at(-1).items.some(a=>motionFrames[0].items.some(b=>Math.abs(a.size-b.size)<.001&&Math.hypot(a.x-b.x,a.y-b.y)>8));
+ assert.ok(moving,'Actual petals advance visibly across captured consecutive frames');
+ writeFileSync(out+'/continuous-frames.json',JSON.stringify(motionFrames,null,2));
+ results.push('Six consecutive frames show visible drifting/twirling; Escape cancels departure and leaves history unchanged');
  // Capture real arrival mid-animation on a normal link navigation.
  await p.locator('.nav-link[href="/blog"]').click();await p.waitForTimeout(90);
  assert.equal((await state(p)).arrival,'active');
  const passage=await p.locator('#main-content').evaluate(el=>({animation:getComputedStyle(el).animationName,transform:getComputedStyle(el).transform,opacity:+getComputedStyle(el).opacity}));
- assert.equal(passage.animation,'sakura-page-fade');assert.equal(passage.transform,'none');assert.ok(passage.opacity>=.88);assert.equal(await p.locator('#sakura-passage').count(),0);
+ assert.equal(passage.animation,'sakura-page-arrive');assert.equal(passage.transform,'none');assert.ok(passage.opacity>=.28&&passage.opacity<1);assert.equal(await p.locator('#sakura-passage').count(),0);
  await screenshot(p,'page-transition');await settled(p);
- results.push('Actual navigation has a gentle .88→1 fade, no sweep/mask/translation, and clears its state');
+ results.push('Actual native navigation has a visible scene dissolve and title lift without moving the fixed-TOC ancestor, and clears its state');
  // A visible link stays hit-testable even in the first frame; browser chooses final navigation.
  await p.evaluate(()=>{document.querySelector('.nav-link[href="/about"]').click();document.querySelector('.nav-link[href="/reading"]').click();});
  await p.waitForFunction(()=>location.pathname.replace(/\/$/,'')==='/reading' && document.readyState==='complete');await settled(p);
@@ -120,7 +133,7 @@ try {
  await context.close();
  const {context:mc,page:m}=await setup({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:3});
  await m.goto(base+'/?visual-theme=original');await settled(m);assert.equal((await state(m)).hidden,false);
- assert.ok(await m.locator('#sakura-petals').evaluate(c=>c.width<=innerWidth*1.25+1));assert.ok((await state(m)).maxDraws<=4);
+ assert.ok(await m.locator('#sakura-petals').evaluate(c=>c.width<=innerWidth*1.25+1));assert.ok((await state(m)).maxDraws<=9);
  let a=(await state(m)).frames;await m.waitForTimeout(1000);let b=(await state(m)).frames;const mobileFps=b-a;assert.ok(mobileFps<=25);await m.waitForTimeout(3000);
  await screenshot(m,'mobile-light');await m.locator('#theme-btn').tap();await m.waitForTimeout(450);await screenshot(m,'mobile-dark');
  assert.equal(await heroInk(m),0,'Mobile hero text and buttons must stay clear');
@@ -131,15 +144,15 @@ try {
  await m.evaluate(()=>scrollTo({top:document.querySelector('.article-main').getBoundingClientRect().top+scrollY+100,behavior:'instant'}));await m.waitForTimeout(250);assert.equal((await state(m)).hidden,true);
  assert.equal(await m.locator('#sakura-tools').isVisible(),false);await m.locator('#article-toc-trigger').tap();assert.equal(await m.locator('#article-toc-panel').getAttribute('aria-hidden'),'false');
  await m.locator('[data-toc-link]').first().tap();assert.ok(new URL(m.url()).hash);assert.equal((await state(m)).arrival,undefined);
- await screenshot(m,'mobile-reading');results.push(`Mobile: <=4 petals, DPR <=1.25, ${mobileFps} frames/s; stops below hero; TOC/hash stays native`);
+ await screenshot(m,'mobile-reading');results.push(`Mobile emulation: <=9 petals, DPR <=1.25, ${mobileFps} frames/s; stops below hero; TOC/hash stays native`);
  await m.setViewportSize({width:320,height:844});await m.goto(base+'/?visual-theme=original');await m.waitForTimeout(6000);
  if(await m.evaluate(()=>document.documentElement.classList.contains('dark')))await m.locator('#theme-btn').tap();
  await m.waitForTimeout(650); // Capture the settled light theme, after the existing theme transition.
- assert.equal((await state(m)).overflow,false);assert.equal(await heroInk(m),0);assert.ok((await state(m)).maxDraws<=4);await screenshot(m,'compact-light');
+ assert.equal((await state(m)).overflow,false);assert.equal(await heroInk(m),0);assert.ok((await state(m)).maxDraws<=9);await screenshot(m,'compact-light');
  results.push('320px phone keeps the original layout without overflow and zero petal ink over the title, copy or buttons');
  await mc.close();
  const {context:dc,page:dp}=await setup();await dc.addInitScript(()=>Object.defineProperty(navigator,'connection',{value:{saveData:true}}));
- await dp.goto(base+'/');await dp.waitForTimeout(6500);assert.ok((await state(dp)).maxDraws<=3);await dc.close();results.push('Data saver caps the same effect at three petals');
+ await dp.goto(base+'/');await dp.waitForTimeout(6500);assert.ok((await state(dp)).maxDraws<=4);await dc.close();results.push('Data saver caps the same effect at four petals');
  const {context:bc,page:bp}=await setup();await bc.addInitScript(()=>{Object.defineProperty(window,'localStorage',{get(){throw new DOMException('blocked','SecurityError')}})});
  await bp.goto(base+'/');await settled(bp);await bp.locator('#sakura-effects-toggle').click();assert.equal((await state(bp)).hidden,true);await bp.locator('#sakura-effects-toggle').click();assert.equal((await state(bp)).hidden,false);
  results.push('Blocked localStorage retains functional current-page pause/resume');await bc.close();

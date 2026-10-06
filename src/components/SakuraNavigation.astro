@@ -1,5 +1,5 @@
 ---
-// An MPA arrival, not a client router: links, downloads and history remain browser-owned.
+// Short visual hand-off between native documents. No client router or history rewriting.
 const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astro.url.pathname.includes('/docs');
 ---
 <meta id="sakura-navigation" data-quiet={String(quiet)} />
@@ -8,19 +8,18 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
     const root = document.documentElement;
     const quiet = document.getElementById('sakura-navigation').dataset.quiet === 'true';
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
-    let enabled = true, timer = 0, generation = 0;
+    let enabled = true, timer = 0, departure = 0, generation = 0, destination = '';
     const readPreference = () => { try { enabled = localStorage.getItem('sakura-effects') !== 'off'; } catch {} };
-    const allowed = () => !quiet && root.dataset.visualTheme !== 'poetize' && !motion.matches && enabled;
+    const allowed = () => !quiet && root.dataset.visualTheme !== 'poetize' && root.dataset.sakuraMotion !== 'off' && !motion.matches && enabled;
     const clear = () => {
-      generation++; clearTimeout(timer);
-      delete root.dataset.sakuraArrival;
+      generation++; clearTimeout(timer); clearTimeout(departure); destination = '';
+      delete root.dataset.sakuraArrival; delete root.dataset.sakuraDeparture;
     };
     const finishLater = () => {
       clearTimeout(timer);
       if (root.dataset.sakuraArrival !== 'active') return;
       const current = generation;
-      // Finite fallback for missing animationend; never gates navigation or hides content.
-      timer = setTimeout(() => { if (current === generation) clear(); }, 1200);
+      timer = setTimeout(() => { if (current === generation) clear(); }, 1100);
     };
     const arrive = () => {
       clear();
@@ -31,15 +30,45 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
     const sync = () => { if (!allowed()) clear(); };
     readPreference(); arrive();
     document.addEventListener('DOMContentLoaded', finishLater, { once: true });
-    document.addEventListener('animationend', event => { if (event.target.id === 'main-content' && event.animationName === 'sakura-page-fade') clear(); });
-    new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-visual-theme'] });
+    document.addEventListener('animationend', event => {
+      if (event.target.id === 'main-content' && event.animationName === 'sakura-page-arrive' && !destination) clear();
+    });
+    document.addEventListener('click', event => {
+      const link = event.target.closest?.('a[href]');
+      if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
+      if (event.defaultPrevented || link.hasAttribute('data-no-sakura')) { clear(); return; }
+      const url = new URL(link.href, location.href);
+      // Only actual public HTML routes. Hashes, external URLs and utility pages stay native.
+      if (url.origin !== location.origin || !/^https?:$/.test(url.protocol)) { clear(); return; }
+      if (url.pathname === location.pathname && url.search === location.search) { clear(); return; }
+      if (/\.[a-z0-9]+$/i.test(url.pathname) || /^\/(notes|editor-preview)(\/|$)/.test(url.pathname) || url.pathname.includes('/docs')) { clear(); return; }
+      if (!allowed()) return;
+      event.preventDefault();
+      clear(); destination = url.href;
+      root.dataset.sakuraDeparture = 'active';
+      window.dispatchEvent(new CustomEvent('sakura-departure', { detail: destination }));
+      const current = generation;
+      departure = setTimeout(() => {
+        if (current !== generation || !destination) return;
+        const target = destination;
+        window.dispatchEvent(new CustomEvent('sakura-handoff', { detail: target }));
+        location.assign(target);
+        // A cancelled/failed browser navigation must never leave a dimmed page behind.
+        timer = setTimeout(clear, 900);
+      }, 180);
+    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') { clear(); window.dispatchEvent(new Event('sakura-cancel')); } });
+    new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-visual-theme', 'data-sakura-motion'] });
     motion.addEventListener('change', sync);
     window.addEventListener('sakura-preference', event => { enabled = event.detail; sync(); });
     window.addEventListener('storage', () => { readPreference(); sync(); });
     document.addEventListener('visibilitychange', () => { if (document.hidden) clear(); });
     window.addEventListener('pagehide', clear);
+    window.addEventListener('popstate', clear);
     window.addEventListener('pageshow', event => {
-      if (event.persisted) { readPreference(); arrive(); }
+      // Restored history is already a complete scene; preserve native scroll, no replay.
+      if (event.persisted) { readPreference(); clear(); }
     });
   })();
 </script>
