@@ -12,11 +12,12 @@
     "covers:check": "node scripts/assign-blog-covers.mjs --check",
     "prebuild": "npm run covers:check",
     "build": "astro build",
-    "verify": "npm run sync:projects && npm run test:toc && npm run test:covers && npm run check && npm run build",
+    "verify": "npm run sync:projects && npm run test:sakura && npm run test:toc && npm run test:covers && npm run check && npm run build",
     "preview": "astro preview",
     "astro": "astro",
     "test:toc": "node --test tests/toc-bounds.test.mjs",
-    "test:covers": "node --test tests/blog-covers.test.mjs"
+    "test:covers": "node --test tests/blog-covers.test.mjs",
+    "test:sakura": "node --test tests/sakura-navigation.test.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

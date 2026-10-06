@@ -101,9 +101,6 @@ function timeAgo(date: Date): string {
 <BaseLayout title="首页">
   <!-- ===== HERO ===== -->
   <section class="hero-wrap">
-    <!-- Canvas: sakura petals -->
-    <canvas id="petal-canvas" aria-hidden="true"></canvas>
-
     <!-- Gradient background -->
     <div class="hero-gradient"><CoastalScene /></div>
 
@@ -244,15 +241,6 @@ function timeAgo(date: Date): string {
     justify-content: center;
     overflow: hidden;
     text-align: center;
-  }
-
-  #petal-canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1;
   }
 
   .hero-gradient {
@@ -789,114 +777,7 @@ function timeAgo(date: Date): string {
 <script>
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ── 1. Sakura Petal Canvas ── */
-(function initPetals() {
-  const canvas = document.getElementById('petal-canvas') as HTMLCanvasElement | null;
-  if (!canvas) return;
-  if (reduceMotion) {
-    canvas.hidden = true;
-    return;
-  }
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  let W = 0, H = 0;
-  function resize() {
-    // 按设备像素比放大位图，否则高分屏上花瓣是糊的。
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = canvas!.offsetWidth;
-    H = canvas!.offsetHeight;
-    canvas!.width = Math.round(W * dpr);
-    canvas!.height = Math.round(H * dpr);
-    ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-  resize();
-  window.addEventListener('resize', resize, { passive: true });
-
-  const isDark = () => document.documentElement.classList.contains('dark');
-
-  class Petal {
-    x!: number; y!: number;
-    size!: number; speedY!: number; speedX!: number;
-    rotation!: number; rotSpeed!: number;
-    opacity!: number; wobble!: number; wobbleSpeed!: number;
-
-    constructor() { this.init(true); }
-
-    init(scatter = false) {
-      this.x = Math.random() * W;
-      this.y = scatter ? Math.random() * H : -20;
-      this.size = Math.random() * 7 + 4;
-      this.speedY = Math.random() * 0.8 + 0.4;
-      this.speedX = (Math.random() - 0.5) * 0.5;
-      this.rotation = Math.random() * Math.PI * 2;
-      this.rotSpeed = (Math.random() - 0.5) * 0.04;
-      this.opacity = Math.random() * 0.45 + 0.2;
-      this.wobble = Math.random() * Math.PI * 2;
-      this.wobbleSpeed = Math.random() * 0.015 + 0.008;
-    }
-
-    update() {
-      this.y += this.speedY;
-      this.wobble += this.wobbleSpeed;
-      this.x += this.speedX + Math.sin(this.wobble) * 0.6;
-      this.rotation += this.rotSpeed;
-      if (this.y > H + 20 || this.x < -30 || this.x > W + 30) this.init();
-    }
-
-    draw(ctx: CanvasRenderingContext2D) {
-      ctx.save();
-      ctx.translate(this.x, this.y);
-      ctx.rotate(this.rotation);
-      ctx.globalAlpha = this.opacity;
-
-      const s = this.size;
-      const dark = isDark();
-      ctx.beginPath();
-      ctx.moveTo(0, -s);
-      ctx.bezierCurveTo(s * 0.9, -s * 0.5, s * 0.9, s * 0.5, 0, s);
-      ctx.bezierCurveTo(-s * 0.9, s * 0.5, -s * 0.9, -s * 0.5, 0, -s);
-
-      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, s);
-      if (dark) {
-        grad.addColorStop(0, 'rgba(249,168,212,.9)');
-        grad.addColorStop(1, 'rgba(216,180,254,.4)');
-      } else {
-        grad.addColorStop(0, 'rgba(249,168,212,.8)');
-        grad.addColorStop(1, 'rgba(232,121,164,.3)');
-      }
-      ctx.fillStyle = grad;
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-
-  // 布局未完成时 W 可能为 0，兜底保证至少有花瓣。
-  const COUNT = Math.max(12, Math.min(50, Math.floor(W / 20)));
-  const petals = Array.from({ length: COUNT }, () => new Petal());
-
-  let raf = 0;
-  function loop() {
-    if (document.hidden || document.documentElement.dataset.visualTheme === 'poetize') { raf = 0; return; }
-    ctx!.clearRect(0, 0, W, H);
-    petals.forEach(p => { p.update(); p.draw(ctx!); });
-    raf = requestAnimationFrame(loop);
-  }
-  loop();
-
-  const syncPetals = () => {
-    if (document.hidden || document.documentElement.dataset.visualTheme === 'poetize') {
-      cancelAnimationFrame(raf);
-      raf = 0;
-    } else if (raf === 0) {
-      // 只有在确实停止后才重启，避免重复事件叠加出多条动画循环。
-      resize();
-      loop();
-    }
-  };
-  document.addEventListener('visibilitychange', syncPetals);
-  new MutationObserver(syncPetals).observe(document.documentElement, { attributes: true, attributeFilter: ['data-visual-theme'] });
-})();
+// Sakura atmosphere is managed by the shared layout, including theme and page lifecycle.
 
 /* ── 2. Typewriter Effect ── */
 (function initTypewriter() {

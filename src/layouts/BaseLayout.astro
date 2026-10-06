@@ -1,4 +1,7 @@
 ---
+import SakuraNavigation from '../components/SakuraNavigation.astro';
+import SakuraEffects from '../components/SakuraEffects.astro';
+import '../styles/sakura.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import PoetizeEffects from '../components/PoetizeEffects.astro';
@@ -95,12 +98,14 @@ const socialImageURL = image ? new URL(image, Astro.site ?? SITE_URL) : undefine
         }
       })();
     </script>
+    <SakuraNavigation />
   </head>
   <body>
     <a class="skip-link" href="#main-content">跳到正文</a>
     <Header />
     <PoetizeWorld />
     <PoetizeEffects />
+    <SakuraEffects />
     <main id="main-content" tabindex="-1">
       <slot />
     </main>

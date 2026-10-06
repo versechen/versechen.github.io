@@ -1,0 +1,16 @@
+<div id="sakura-passage" aria-hidden="true"></div>
+<canvas id="sakura-petals" aria-hidden="true" hidden></canvas>
+<div class="sakura-tools" id="sakura-tools" aria-label="樱花动效" hidden>
+  <button type="button" id="sakura-gust" title="唤起一阵花风" aria-label="唤起一阵花风">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 8h12a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h5a3 3 0 1 1-3 3" stroke-linecap="round"/></svg>
+    <span>风起</span>
+  </button>
+  <button type="button" id="sakura-effects-toggle" aria-label="暂停樱花动效" aria-pressed="true" title="暂停樱花动效">
+    <svg class="sakura-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M9 6v12M15 6v12" stroke-linecap="round"/></svg>
+    <svg class="sakura-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m9 5 10 7-10 7Z" stroke-linejoin="round"/></svg>
+  </button>
+</div>
+<script>
+  import { initSakura } from '../lib/sakura-effects';
+  initSakura();
+</script>

@@ -38,7 +38,7 @@ jobs:
         run: npm run sync:projects
 
       - name: Build with Astro
-        run: npm run test:toc && npm run test:covers && npm run check && npm run build
+        run: npm run test:sakura && npm run test:toc && npm run test:covers && npm run check && npm run build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
