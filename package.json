@@ -17,7 +17,7 @@
     "astro": "astro",
     "test:toc": "node --test tests/toc-bounds.test.mjs",
     "test:covers": "node --test tests/blog-covers.test.mjs",
-    "test:sakura": "node --test tests/sakura-navigation.test.mjs"
+    "test:sakura": "node --test tests/sakura-navigation.test.mjs tests/sakura-breeze-lifecycle.test.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

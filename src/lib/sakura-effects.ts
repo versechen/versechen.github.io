@@ -19,16 +19,18 @@ export function initSakura() {
   let width = 0, height = 0, small = false, dark = false, departed = false;
   let raf = 0, scrollFrame = 0, previous = 0, elapsed = 0, gust = 0, lastGust = -5000;
   let pointerWind = 0, lastPointer = 0, previousX = 0;
-  let heroBottom = 0, articleTop = Infinity, articleBottom = -Infinity;
+  let heroBottom = 0, articleTop = Infinity, articleBottom = -Infinity, releaseAge = -1;
   let safeLeft = 0, safeRight = 0;
-  type Petal = { x: number; y: number; depth: number; size: number; phase: number; turn: number; speed: number; sprite: number };
+  type Petal = { x: number; y: number; depth: number; size: number; phase: number; turn: number; speed: number; sprite: number; age: number; lifetime: number };
   let petals: Petal[] = [];
+  let temporary: Petal[] = [];
+  const smooth = (value: number) => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
   // Cache three shaded, notched petals. No gradients / paths / DOM allocations per frame.
-  const sprites = ['#f8b7cf', '#e991b7', '#ffe0ed'].map(color => {
+  const sprites = ['#ffe8ee', '#f9dae3', '#fff4f6'].map(color => {
     const tile = document.createElement('canvas'); tile.width = tile.height = 64;
     const c = tile.getContext('2d')!;
     const fill = c.createLinearGradient(12, 10, 48, 54);
-    fill.addColorStop(0, '#fff5f9'); fill.addColorStop(.48, color); fill.addColorStop(1, '#d8669e');
+    fill.addColorStop(0, '#fff5f9'); fill.addColorStop(.48, color); fill.addColorStop(1, '#efbacb');
     c.fillStyle = fill;
     c.beginPath(); c.moveTo(32, 58); c.bezierCurveTo(4, 40, 6, 3, 27, 8);
     c.lineTo(32, 15); c.lineTo(37, 8); c.bezierCurveTo(59, 4, 59, 39, 32, 58); c.fill();
@@ -39,8 +41,8 @@ export function initSakura() {
   const makePetal = (scatter = true): Petal => {
     const depth = Math.random();
     return { x: Math.random() * width, y: scatter ? Math.random() * height : -28,
-      depth, size: 8 + depth * 19, phase: Math.random() * Math.PI * 2,
-      turn: Math.random() * Math.PI * 2, speed: 15 + depth * 23, sprite: Math.floor(Math.random() * 3) };
+      depth, size: 8 + depth * 10, phase: Math.random() * Math.PI * 2,
+      turn: Math.random() * Math.PI * 2, speed: 15 + depth * 23, sprite: Math.floor(Math.random() * 3), age: 0, lifetime: 0 };
   };
   const allowed = () => !quiet && root.dataset.visualTheme !== 'poetize' && enabled && !motion.matches;
   const narrowReading = () => !!article && articleTop < height && articleBottom > 80 && width - safeRight < 138;
@@ -56,39 +58,63 @@ export function initSakura() {
     safeRight = box ? Math.min(width, box.right + 28) : width * .85;
   };
   const resize = () => {
+    const oldWidth = width, oldHeight = height;
     width = innerWidth; height = innerHeight;
     small = width < 768 || coarse.matches;
     // Also cap total backing pixels on ultrawide / 4K displays (about 12MB).
     const dpr = Math.min(devicePixelRatio || 1, small ? 1.25 : 1.5, Math.sqrt(3_000_000 / (width * height)));
     canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const count = connection?.saveData ? 14 : small ? 24 : Math.min(60, Math.round(width / 28));
+    const count = connection?.saveData ? 4 : small ? 6 : 14;
     petals = Array.from({ length: count }, () => makePetal());
+    temporary = temporary.slice(0, connection?.saveData ? 4 : small ? 6 : 12);
+    if (oldWidth && oldHeight) for (const p of temporary) { p.x *= width / oldWidth; p.y *= height / oldHeight; }
     measure();
   };
-  const paint = (step: number) => {
+  const paint = (step: number, lifetimeStep: number) => {
     ctx.clearRect(0, 0, width, height);
-    const wind = 12 + Math.sin(elapsed * .36) * 15 + Math.sin(elapsed * .81) * 8 + gust * 170 + pointerWind;
-    for (const p of petals) {
+    const arrivalWind = releaseAge >= 0 && releaseAge < 1.5 ? Math.sin(Math.PI * releaseAge / 1.5) ** 2 * .6 : 0;
+    const wind = 12 + Math.sin(elapsed * .36) * 15 + Math.sin(elapsed * .81) * 8 + gust * 170 + arrivalWind * 85 + pointerWind;
+    let visibleBase = 0, visibleExtra = 0;
+    for (let index = 0; index < petals.length + temporary.length; index++) {
+      const p = index < petals.length ? petals[index] : temporary[index - petals.length];
+      const extra = p.lifetime > 0;
+      if (extra) { p.age += lifetimeStep; if (p.age < 0 || p.age >= p.lifetime) continue; }
       p.phase += step * (1 + p.depth); p.turn += step * (.45 + p.depth + gust * 1.2);
       p.x += step * (wind * (.35 + p.depth) + Math.sin(p.phase) * 19);
       p.y += step * (p.speed + Math.cos(p.phase * .8) * 9 - gust * (12 + p.depth * 34));
-      if (p.y > height + 35) { p.y = -30; p.x = Math.random() * width; }
-      if (p.y < -60) p.y = height + 28;
-      if (p.x > width + 35) p.x = -30;
-      if (p.x < -35) p.x = width + 30;
+      if (!extra) {
+        if (p.y > height + 35) { p.y = -30; p.x = Math.random() * width; }
+        if (p.y < -60) p.y = height + 28;
+        if (p.x > width + 35) p.x = -30;
+        if (p.x < -35) p.x = width + 30;
+      }
       // Fade smoothly at the text boundary; never paint over article text or mobile body.
       const inArticle = p.y > articleTop && p.y < articleBottom;
       const inHero = p.y < heroBottom;
       const left = inArticle ? safeLeft : width * (inHero ? .24 : .15);
       const right = inArticle ? safeRight : width * (inHero ? .76 : .85);
       const edge = Math.max(0, Math.min(1, Math.max(left - p.x, p.x - right) / 55));
-      const alpha = inArticle ? edge : inHero ? .28 + edge * .72 : edge * .7;
-      if (alpha < .01 || (small && p.y > Math.max(heroBottom, article ? 0 : 160))) continue;
+      const lifespan = extra ? smooth(p.age / .25) * (1 - smooth((p.age - p.lifetime * .45) / (p.lifetime * .55))) : 1;
+      let alpha = (inArticle ? edge : extra ? .62 + edge * .38 : inHero ? .28 + edge * .72 : edge * .7) * lifespan;
+      // Temporary petals may drift past a page heading, but soften before protected reading space.
+      if (extra && article && p.y < articleTop) alpha *= edge + (1 - edge) * smooth((articleTop - p.y - p.size) / 60);
+      if (extra && small) alpha *= smooth((Math.max(heroBottom, article ? 0 : 160) - p.y - p.size) / 60);
+      if (alpha < .01 || p.x + p.size < 0 || p.x - p.size > width || p.y + p.size < 0 || p.y - p.size > height || (small && p.y > Math.max(heroBottom, article ? 0 : 160))) continue;
+      if (extra) visibleExtra++; else visibleBase++;
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.turn + Math.sin(p.phase) * .45);
-      ctx.scale(1, .28 + Math.abs(Math.cos(p.phase * .7)) * .72);
+      ctx.scale(1, .55 + Math.abs(Math.cos(p.phase * .7)) * .45);
       ctx.globalAlpha = alpha * (.4 + p.depth * .45) * (dark ? .86 : 1);
       ctx.drawImage(sprites[p.sprite], -p.size / 2, -p.size / 2, p.size, p.size); ctx.restore();
+    }
+    for (let i = temporary.length - 1; i >= 0; i--) if (temporary[i].age >= temporary[i].lifetime) temporary.splice(i, 1);
+    canvas.dataset.sakuraBasePool = String(petals.length);
+    canvas.dataset.sakuraBaseCount = String(visibleBase);
+    canvas.dataset.sakuraBurstCount = String(visibleExtra);
+    canvas.dataset.sakuraBurstState = releaseAge < 0 ? 'idle' : releaseAge < 1.5 ? 'wind' : 'fading';
+    if (releaseAge >= 0 && !temporary.length) {
+      releaseAge = -1; canvas.dataset.sakuraBurstState = 'idle';
+      window.dispatchEvent(new Event('sakura-arrival-end'));
     }
     // A few fine arcs trace the wind, confined to the edge of the scene.
     if (gust > .12 && heroBottom > 120) {
@@ -109,10 +135,11 @@ export function initSakura() {
     const delta = time - previous;
     if (delta >= (small || connection?.saveData ? 32 : 16)) {
       const step = Math.min(delta / 1000, .05); previous = time; elapsed += step;
+      if (releaseAge >= 0) releaseAge += delta / 1000;
       gust *= Math.exp(-step * 1.6); pointerWind *= Math.exp(-step * 2.5);
       // Slow, periodic breezes give the scene life even without pointer input.
       if (Math.sin(elapsed * .24) > .98) gust = Math.max(gust, .28);
-      paint(step);
+      paint(step, delta / 1000);
     }
     raf = requestAnimationFrame(draw);
   };
@@ -132,7 +159,7 @@ export function initSakura() {
     gustButton.disabled = !allowed();
     canvas.hidden = !running;
     if (running && !raf) { previous = performance.now(); raf = requestAnimationFrame(draw); }
-    if (!running) { cancelAnimationFrame(raf); raf = 0; gust = 0; ctx.clearRect(0, 0, width, height); }
+    if (!running) { cancelAnimationFrame(raf); raf = 0; gust = 0; releaseAge = -1; temporary = []; ctx.clearRect(0, 0, width, height); canvas.dataset.sakuraBaseCount = canvas.dataset.sakuraBurstCount = '0'; canvas.dataset.sakuraBurstState = 'idle'; }
   };
   const breeze = () => {
     if (!active() || performance.now() - lastGust < 650) return;
@@ -141,8 +168,16 @@ export function initSakura() {
     petals.forEach((p, i) => { if (i % 3 === 0) { p.x = Math.random() * width * .2; p.y = Math.random() * height; } });
   };
   const arrivalBreeze = () => {
-    // A quiet arrival uses the existing field; only an explicit wind click scatters it.
-    if (active()) gust = small ? .2 : .28;
+    if (!active()) return;
+    // One bounded episode in the same field: add small petals, then retire each one.
+    gust = 0; releaseAge = 0;
+    const count = connection?.saveData ? 4 : small ? 6 : 12;
+    temporary = Array.from({ length: count }, (_, i) => {
+      const p = makePetal();
+      return { ...p, x: width * (.08 + ((i + .5) / count) * .84), y: height * (.08 + Math.random() * .26),
+        size: 10 + p.depth * 8, speed: 24 + p.depth * 14,
+        age: -(i * .045 + Math.random() * .08), lifetime: 2.8 + p.depth * .8 };
+    });
   };
   toggle.addEventListener('click', () => {
     enabled = !enabled;

@@ -20,7 +20,7 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
       if (root.dataset.sakuraArrival !== 'active') return;
       const current = generation;
       // Finite fallback for missing animationend; never gates navigation or hides content.
-      timer = setTimeout(() => { if (current === generation) clear(); }, 1800);
+      timer = setTimeout(() => { if (current === generation) clear(); }, 4500);
     };
     const arrive = () => {
       clear();
@@ -34,6 +34,7 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
     readPreference(); arrive();
     document.addEventListener('DOMContentLoaded', finishLater, { once: true });
     document.addEventListener('animationend', event => { if (event.target.id === 'sakura-passage') clear(); });
+    window.addEventListener('sakura-arrival-end', clear);
     new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-visual-theme'] });
     motion.addEventListener('change', sync);
     window.addEventListener('sakura-preference', event => { enabled = event.detail; sync(); });
