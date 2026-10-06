@@ -1,7 +1,6 @@
 /* Sakura-only enhancement. The coastal layout and article / TOC geometry are untouched. */
-#sakura-petals, #sakura-passage { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; contain: strict; }
-#sakura-passage { z-index: 80; }
-#sakura-passage[hidden], #sakura-petals[hidden], .sakura-tools[hidden], html[data-visual-theme='poetize'] :is(#sakura-petals, #sakura-passage, .sakura-tools) { display: none; }
+#sakura-petals { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; contain: strict; }
+#sakura-petals[hidden], .sakura-tools[hidden], html[data-visual-theme='poetize'] :is(#sakura-petals, #sakura-passage, .sakura-tools) { display: none; }
 .sakura-tools { position: fixed; right: max(20px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom)); z-index: 90; display: flex; padding: 3px; border: 1px solid var(--border); border-radius: 28px; background: var(--glass-bg, #fff8fbe6); backdrop-filter: blur(12px); box-shadow: 0 5px 25px #a7517d15; }
 .sakura-tools button { display: flex; gap: 7px; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 24px; color: var(--text-2); background: transparent; cursor: pointer; font: inherit; font-size: 12px; letter-spacing: .08em; transition: color .2s, background .2s; }
 .sakura-tools button + button { padding: 0; }
@@ -9,22 +8,22 @@
 .sakura-tools button:disabled { opacity: .5; cursor: default; }
 .sakura-tools svg { width: 20px; height: 20px; }
 #sakura-effects-toggle[aria-pressed='true'] .sakura-play, #sakura-effects-toggle[aria-pressed='false'] .sakura-pause { display: none; }
-/* The field stays alive while content breathes out and the next scene opens.
-   Never transform main: it is an ancestor of the article's fixed TOC. */
-html:not([data-visual-theme='poetize'])[data-sakura-arrival='active'] #main-content { animation: sakura-page-arrive .72s cubic-bezier(.16, 1, .3, 1) both; }
-html:not([data-visual-theme='poetize'])[data-sakura-departure='active'] #main-content { animation: sakura-page-leave .42s ease-out both; }
-html:not([data-visual-theme='poetize'])[data-sakura-arrival='active'] :is(.page-hero, .blog-head, .post-header, .projects-hero):not(.animate-fade-up) { animation: sakura-title-arrive .68s cubic-bezier(.16, 1, .3, 1) both; }
-@keyframes sakura-page-arrive { from { opacity: .28; } to { opacity: 1; } }
-@keyframes sakura-page-leave { from { opacity: 1; } to { opacity: .48; } }
-@keyframes sakura-title-arrive { from { opacity: .4; translate: 0 14px; } to { opacity: 1; translate: 0 0; } }
+#sakura-passage { display: none; pointer-events: none; position: fixed; inset: 0; z-index: 110; }
+html[data-sakura-arrival='active'] #sakura-passage { display: block; background: url('../assets/images/sakura-wind.svg') center / 660px 520px repeat; mask-image: linear-gradient(120deg, transparent 3%, #000 32%, #000 64%, transparent 95%); animation: sakura-wind-in .78s cubic-bezier(.16,.7,.3,1) both; }
+html[data-sakura-arrival='active'][data-sakura-direction='back'] #sakura-passage { animation-name: sakura-wind-back; }
+/* Animate headings, not the main container: fixed TOC coordinates and scroll restoration stay intact. */
+html[data-sakura-arrival='active'] :is(.page-hero-title, .post-title, .blog-head h1, .projects-hero h1) { animation: sakura-page-in .48s ease-out both; }
+@keyframes sakura-page-in { from { opacity: .55; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
+@keyframes sakura-wind-in { from { transform: translate(-45%, 18%) rotate(-12deg); opacity: 0; } 24% { opacity: .95; } to { transform: translate(55%, -18%) rotate(12deg); opacity: 0; } }
+@keyframes sakura-wind-back { from { transform: translate(45%, 18%) rotate(12deg); opacity: 0; } 24% { opacity: .95; } to { transform: translate(-55%, -18%) rotate(-12deg); opacity: 0; } }
 /* Pause also settles the existing Sakura hero decorations, leaving content visible. */
-html:not([data-visual-theme='poetize'])[data-sakura-motion='off'] :is(.sp, .hero-blob, .scroll-hint, .eyebrow-dot, .name-accent, .typewriter-cursor) { animation: none !important; }
-html:not([data-visual-theme='poetize'])[data-sakura-motion='off'] .hero-wrap .animate-in { animation: none !important; opacity: 1; transform: none; }
+html:not([data-visual-theme='poetize'])[data-sakura-motion='off'] :is(.sp, .hero-blob, .scroll-hint, .hero-eyebrow, .hero-title, .hero-subtitle) { animation: none !important; }
 @media (max-width: 767px) {
   .sakura-tools { right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); }
+  html[data-sakura-arrival='active'] #sakura-passage { background-size: 490px 400px; animation-duration: .6s; }
 }
 @media (prefers-reduced-motion: reduce) {
   #sakura-petals, #sakura-passage { display: none !important; }
-  html[data-sakura-arrival='active'] #main-content, html[data-sakura-departure='active'] #main-content, html[data-sakura-arrival='active'] :is(.page-hero, .blog-head, .post-header, .projects-hero) { animation: none; }
+
 }
-@media print { #sakura-passage, #sakura-petals, .sakura-tools { display: none !important; } }
+@media print { #sakura-petals, #sakura-passage, .sakura-tools { display: none !important; } }
