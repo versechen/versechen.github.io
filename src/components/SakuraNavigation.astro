@@ -13,27 +13,25 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
     const allowed = () => !quiet && root.dataset.visualTheme !== 'poetize' && !motion.matches && enabled;
     const clear = () => {
       generation++; clearTimeout(timer);
-      delete root.dataset.sakuraArrival; delete root.dataset.sakuraDirection;
+      delete root.dataset.sakuraArrival;
     };
     const finishLater = () => {
       clearTimeout(timer);
       if (root.dataset.sakuraArrival !== 'active') return;
       const current = generation;
       // Finite fallback for missing animationend; never gates navigation or hides content.
-      timer = setTimeout(() => { if (current === generation) clear(); }, 1100);
+      timer = setTimeout(() => { if (current === generation) clear(); }, 1200);
     };
     const arrive = () => {
       clear();
       if (!allowed()) return;
-      const activation = window.navigation?.activation;
-      root.dataset.sakuraDirection = activation?.entry?.index < activation?.from?.index ? 'back' : 'forward';
       root.dataset.sakuraArrival = 'active';
       if (document.readyState !== 'loading') finishLater();
     };
     const sync = () => { if (!allowed()) clear(); };
     readPreference(); arrive();
     document.addEventListener('DOMContentLoaded', finishLater, { once: true });
-    document.addEventListener('animationend', event => { if (event.target.id === 'sakura-passage') clear(); });
+    document.addEventListener('animationend', event => { if (event.target.id === 'main-content' && event.animationName === 'sakura-page-fade') clear(); });
     new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-visual-theme'] });
     motion.addEventListener('change', sync);
     window.addEventListener('sakura-preference', event => { enabled = event.detail; sync(); });
