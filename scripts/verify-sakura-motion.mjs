@@ -71,6 +71,28 @@ try {
  await p.locator('#visual-theme-btn').click();assert.equal((await state(p)).hidden,true);assert.equal(await p.locator('#sakura-tools').isVisible(),false);
  await p.locator('.nav-link[href="/blog"]').click();await settled(p);assert.equal((await state(p)).arrival,undefined);assert.equal((await state(p)).hidden,true);
  await screenshot(p,'coastal-unchanged');await p.locator('#visual-theme-btn').click();assert.equal((await state(p)).hidden,false);
+ // Regression: a narrow article must not hide the only pause control while petals keep running.
+ for(const width of [1024,1174,1440]) {
+  await p.setViewportSize({width,height:900});await p.goto(base+'/blog/ddp-basics-two-cpu-processes/');await settled(p);
+  await p.evaluate(()=>scrollTo({top:document.querySelector('.article-main').getBoundingClientRect().top+scrollY+200,behavior:'instant'}));await p.waitForTimeout(200);
+  const reading=await state(p),controls=await p.locator('#sakura-tools').isVisible();
+  assert.ok(reading.hidden||controls,`${width}px: moving petals must have a pause control`);
+  assert.equal(reading.hidden,width<1440);assert.equal(reading.motion,width<1440?'off':'on');
+  const frames=reading.frames;await p.waitForTimeout(250);
+  if(width<1440)assert.equal((await state(p)).frames,frames,`${width}px: hidden controls require zero draw frames`);
+  else {
+   assert.ok((await state(p)).frames>frames);await p.locator('#sakura-effects-toggle').click();
+   assert.equal((await state(p)).hidden,true);await p.locator('#sakura-effects-toggle').click();assert.equal((await state(p)).hidden,false);
+  }
+  if(width===1174) {
+   await p.locator('.nav-link[href="/about"]').click();await settled(p);
+   await p.evaluate(()=>history.back());await p.waitForFunction(()=>location.pathname.includes('ddp-basics-two-cpu-processes'));
+   await p.waitForTimeout(100);assert.equal((await state(p)).arrival,undefined);assert.equal((await state(p)).hidden,true);
+  }
+  await p.evaluate(()=>scrollTo({top:0,behavior:'instant'}));await p.waitForTimeout(250);
+  assert.equal(await p.locator('#sakura-tools').isVisible(),true);assert.equal((await state(p)).hidden,false);
+ }
+ results.push('DDP article at 1024/1174px stops and clears motion with hidden controls; 1440px retains working pause/resume; return to hero resumes safely');
  for(const route of ['/notes/','/editor-preview/','/projects/codeverse/docs/']){
   await p.goto(base+route);await settled(p);assert.equal((await state(p)).hidden,true,route);assert.equal(await p.locator('#sakura-tools').isVisible(),false,route);
  }

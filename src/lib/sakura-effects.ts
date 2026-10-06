@@ -43,7 +43,9 @@ export function initSakura() {
       turn: Math.random() * Math.PI * 2, speed: 15 + depth * 23, sprite: Math.floor(Math.random() * 3) };
   };
   const allowed = () => !quiet && root.dataset.visualTheme !== 'poetize' && enabled && !motion.matches;
-  const visibleArea = () => !small || heroBottom > 80 || (!article && scrollY < 180);
+  const narrowReading = () => !!article && articleTop < height && articleBottom > 80 && width - safeRight < 138;
+  // Hiding the controls to protect text must also stop the motion they control.
+  const visibleArea = () => !narrowReading() && (!small || heroBottom > 80 || (!article && scrollY < 180));
   const active = () => allowed() && !departed && !document.hidden && visibleArea();
   const measure = () => {
     heroBottom = hero?.getBoundingClientRect().bottom ?? 0;
@@ -117,9 +119,12 @@ export function initSakura() {
   const sync = () => {
     dark = root.classList.contains('dark');
     const running = active();
-    root.dataset.sakuraMotion = allowed() ? 'on' : 'off';
-    const narrowReading = !!article && articleTop < height && articleBottom > 80 && width - safeRight < 138;
-    tools.hidden = quiet || root.dataset.visualTheme === 'poetize' || (small && !visibleArea()) || narrowReading;
+    root.dataset.sakuraMotion = running ? 'on' : 'off';
+    tools.hidden = quiet || root.dataset.visualTheme === 'poetize' || (small && !visibleArea()) || narrowReading();
+    if (tools.hidden && !running) {
+      // History restoration into a quiet reading area must also cancel the brief petal sweep.
+      delete root.dataset.sakuraArrival; delete root.dataset.sakuraDirection;
+    }
     toggle.disabled = motion.matches;
     toggle.setAttribute('aria-pressed', String(enabled && !motion.matches));
     const label = motion.matches ? '已遵循系统减少动态效果设置' : enabled ? '暂停樱花动效' : '开启樱花动效';
