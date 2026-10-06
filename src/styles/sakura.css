@@ -9,18 +9,29 @@
 .sakura-tools svg { width: 20px; height: 20px; }
 #sakura-effects-toggle[aria-pressed='true'] .sakura-play, #sakura-effects-toggle[aria-pressed='false'] .sakura-pause { display: none; }
 #sakura-passage { display: none; pointer-events: none; position: fixed; inset: 0; z-index: 110; }
-html[data-sakura-arrival='active'] #sakura-passage { display: block; background: url('../assets/images/sakura-wind.svg') center / 660px 520px repeat; mask-image: linear-gradient(120deg, transparent 3%, #000 32%, #000 64%, transparent 95%); animation: sakura-wind-in .98s cubic-bezier(.4,0,.3,1) both; }
+/* A single sparse field: a brief sideways breeze, then a slow downward fade. */
+html[data-sakura-arrival='active'] #sakura-passage { display: block; background: url('../assets/images/sakura-wind.svg') center top / clamp(760px, 100vw, 1200px) auto no-repeat; animation: sakura-wind-in 1.5s cubic-bezier(.25,.6,.35,1) both; }
 html[data-sakura-arrival='active'][data-sakura-direction='back'] #sakura-passage { animation-name: sakura-wind-back; }
 /* Animate headings, not the main container: fixed TOC coordinates and scroll restoration stay intact. */
 html[data-sakura-arrival='active'] :is(.page-hero-title, .post-title, .blog-head h1, .projects-hero h1) { animation: sakura-page-in .48s ease-out both; }
 @keyframes sakura-page-in { from { opacity: .55; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
-@keyframes sakura-wind-in { from { transform: translate(-28%, 8%) rotate(-5deg); opacity: 0; } 38%, 66% { opacity: .74; } to { transform: translate(32%, -8%) rotate(5deg); opacity: 0; } }
-@keyframes sakura-wind-back { from { transform: translate(28%, 8%) rotate(5deg); opacity: 0; } 38%, 66% { opacity: .74; } to { transform: translate(-32%, -8%) rotate(-5deg); opacity: 0; } }
+@keyframes sakura-wind-in {
+  from { transform: translate(-5%, -8%) rotate(-2deg); opacity: 0; }
+  20% { transform: translate(1%, -6%) rotate(-1deg); opacity: .66; animation-timing-function: cubic-bezier(.4,0,.6,1); }
+  48% { opacity: .5; }
+  to { transform: translate(7%, 14%) rotate(3deg); opacity: 0; }
+}
+@keyframes sakura-wind-back {
+  from { transform: translate(5%, -8%) rotate(2deg); opacity: 0; }
+  20% { transform: translate(-1%, -6%) rotate(1deg); opacity: .66; animation-timing-function: cubic-bezier(.4,0,.6,1); }
+  48% { opacity: .5; }
+  to { transform: translate(-7%, 14%) rotate(-3deg); opacity: 0; }
+}
 /* Pause also settles the existing Sakura hero decorations, leaving content visible. */
 html:not([data-visual-theme='poetize'])[data-sakura-motion='off'] :is(.sp, .hero-blob, .scroll-hint, .hero-eyebrow, .hero-title, .hero-subtitle) { animation: none !important; }
 @media (max-width: 767px) {
   .sakura-tools { right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); }
-  html[data-sakura-arrival='active'] #sakura-passage { background-size: 490px 400px; animation-duration: .82s; }
+  html[data-sakura-arrival='active'] #sakura-passage { animation-duration: 1.35s; }
 }
 @media (prefers-reduced-motion: reduce) {
   #sakura-petals, #sakura-passage { display: none !important; }

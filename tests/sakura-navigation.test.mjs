@@ -71,17 +71,18 @@ test('explicit wind retains the original strength and reuses the original pool',
     f.api.arrive();assert.equal(f.api.gust(),small?.2:.28,'History arrival must settle any earlier manual gust');
   }
 });
-test('pink-white passage stays visible, mirrored and inside its existing cleanup window',()=>{
+test('sparse pink-white passage stays visible, falls downward and fades before cleanup',()=>{
   const css=readFileSync(new URL('../src/styles/sakura.css',import.meta.url),'utf8');
-  assert.match(css,/sakura-wind-in \.98s cubic-bezier\(\.4,0,\.3,1\)/);
-  assert.match(css,/animation-duration: \.82s/);
-  assert.match(css,/translate\(-28%, 8%\) rotate\(-5deg\)/);
-  assert.match(css,/translate\(28%, 8%\) rotate\(5deg\)/);
-  assert.match(css,/translate\(32%, -8%\) rotate\(5deg\)/);
-  assert.match(css,/translate\(-32%, -8%\) rotate\(-5deg\)/);
-  assert.match(css,/38%, 66% \{ opacity: \.74; \}/);
-  assert.match(source,/, 1100\)/);assert.doesNotMatch(source,/preventDefault|location\.assign/);
+  assert.match(css,/sakura-wind-in 1\.5s/);assert.match(css,/animation-duration: 1\.35s/);
+  assert.match(css,/clamp\(760px, 100vw, 1200px\) auto no-repeat/);
+  assert.match(css,/translate\(-5%, -8%\) rotate\(-2deg\)/);
+  assert.match(css,/translate\(5%, -8%\) rotate\(2deg\)/);
+  assert.match(css,/translate\(7%, 14%\) rotate\(3deg\); opacity: 0/);
+  assert.match(css,/translate\(-7%, 14%\) rotate\(-3deg\); opacity: 0/);
+  assert.equal((css.match(/48% \{ opacity: \.5; \}/g)||[]).length,2);
+  assert.match(source,/, 1800\)/);assert.doesNotMatch(source,/preventDefault|location\.assign/);
   const svg=readFileSync(new URL('../src/assets/images/sakura-wind.svg',import.meta.url),'utf8');
-  assert.equal((svg.match(/<use /g)||[]).length,34);
+  assert.equal((svg.match(/<use /g)||[]).length,10);
+  assert.ok([...svg.matchAll(/scale\(([.0-9]+)\)/g)].every(m=>+m[1]<=.3));
   assert.deepEqual([...svg.matchAll(/stop-color="(#[a-f0-9]+)"/g)].map(m=>m[1]),['#fffdfd','#ffe8ee','#f1bfcd']);
 });

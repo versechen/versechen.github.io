@@ -18,7 +18,7 @@ async function setup(options={}) {
  const page=await context.newPage();page.on('pageerror',e=>{if(/^Failed to fetch dynamically imported module: https:\/\/cdn\.jsdelivr\.net\/npm\/mermaid@/.test(e.message))externalErrors.add(e.message);else errors.push(e.message)});return {context,page};
 }
 const state=p=>p.evaluate(()=>({motion:document.documentElement.dataset.sakuraMotion,arrival:document.documentElement.dataset.sakuraArrival,hidden:document.querySelector('#sakura-petals').hidden,frames:window.sakuraProbe.frames,maxDraws:window.sakuraProbe.maxDraws,shows:window.sakuraProbe.shows,id:window.sakuraProbe.id,overflow:document.documentElement.scrollWidth>innerWidth}));
-async function settled(p){await p.waitForTimeout(1200);assert.equal((await state(p)).arrival,undefined);}
+async function settled(p){await p.waitForFunction(()=>document.documentElement.dataset.sakuraArrival!=='active',null,{timeout:2500});assert.equal((await state(p)).arrival,undefined);}
 async function screenshot(p,name){await p.screenshot({path:`${out}/${name}.png`});}
 try {
  const {context,page:p}=await setup({viewport:{width:1440,height:1000}});
@@ -32,8 +32,23 @@ try {
  assert.equal((await state(p)).arrival,'active');
  const passage=await p.locator('#sakura-passage').evaluate(el=>({animation:getComputedStyle(el).animationName,pointer:getComputedStyle(el).pointerEvents,opacity:+getComputedStyle(el).opacity}));
  assert.equal(passage.animation,'sakura-wind-in');assert.equal(passage.pointer,'none');assert.ok(passage.opacity>0);
- await screenshot(p,'page-transition');await settled(p);
- results.push('Actual navigation shows finite, non-blocking petal sweep and clears its state');
+ const fadeTimelinePromise=p.evaluate(()=>new Promise(resolve=>{
+  const samples=[],start=performance.now();
+  const sample=()=>{
+   const el=document.querySelector('#sakura-passage'),style=getComputedStyle(el);
+   samples.push({time:performance.now()-start,opacity:+style.opacity,display:style.display});
+   if(document.documentElement.dataset.sakuraArrival!=='active'||performance.now()-start>2100)resolve(samples);
+   else requestAnimationFrame(sample);
+  };sample();
+ }));
+ await screenshot(p,'page-transition');
+ const fadeTimeline=await fadeTimelinePromise;
+ const visibleFade=fadeTimeline.filter(x=>x.display!=='none');
+ assert.ok(visibleFade.length>8&&Math.max(...visibleFade.map(x=>x.opacity))>.1);
+ assert.ok(visibleFade.at(-1).opacity<.05,'Petals become nearly transparent before the layer is removed');
+ writeFileSync(out+'/transition-fade-timeline.json',JSON.stringify(fadeTimeline,null,2));
+ await settled(p);
+ results.push('Actual navigation shows a sparse downward breeze, gradually fades its petals, and clears without blocking links');
  // A visible link stays hit-testable even in the first frame; browser chooses final navigation.
  await p.evaluate(()=>{document.querySelector('.nav-link[href="/about"]').click();document.querySelector('.nav-link[href="/reading"]').click();});
  await p.waitForFunction(()=>location.pathname.replace(/\/$/,'')==='/reading' && document.readyState==='complete');await settled(p);

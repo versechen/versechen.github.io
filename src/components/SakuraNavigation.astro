@@ -20,7 +20,7 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
       if (root.dataset.sakuraArrival !== 'active') return;
       const current = generation;
       // Finite fallback for missing animationend; never gates navigation or hides content.
-      timer = setTimeout(() => { if (current === generation) clear(); }, 1100);
+      timer = setTimeout(() => { if (current === generation) clear(); }, 1800);
     };
     const arrive = () => {
       clear();
