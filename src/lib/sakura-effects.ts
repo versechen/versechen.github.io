@@ -1,11 +1,13 @@
 /** Layered, continuous Sakura motion; native document navigation still owns history. */
 export function initSakura() {
   const canvas = document.querySelector<HTMLCanvasElement>('#sakura-petals');
+  const passageCanvas = document.querySelector<HTMLCanvasElement>('#sakura-passage');
+  const passageCtx = passageCanvas?.getContext('2d');
   const tools = document.querySelector<HTMLElement>('#sakura-tools');
   const toggle = document.querySelector<HTMLButtonElement>('#sakura-effects-toggle');
   const gustButton = document.querySelector<HTMLButtonElement>('#sakura-gust');
   const ctx = canvas?.getContext('2d');
-  if (!canvas || !ctx || !tools || !toggle || !gustButton) return;
+  if (!canvas || !ctx || !passageCanvas || !passageCtx || !tools || !toggle || !gustButton) return;
   const root = document.documentElement;
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const coarse = matchMedia('(pointer: coarse)');
@@ -20,12 +22,15 @@ export function initSakura() {
   let width = 0, height = 0, small = false, dark = false, departed = false;
   let raf = 0, scrollFrame = 0, previous = 0, elapsed = 0, sceneAge = 0, gustAge = -1, passageAge = -1;
   let pointerWind = 0, pointerTarget = 0, lastPointer = 0, previousX: number | undefined;
-  let wasRunning = false, restored = false;
+  let wasRunning = false, restored = false, pendingTarget = '';
   let heroBottom = 0, articleTop = Infinity, articleBottom = -Infinity;
   let heroCopy: DOMRect | undefined;
   let safeLeft = 0, safeRight = 0;
   type Petal = { x: number; y: number; depth: number; size: number; phase: number; turn: number; speed: number; sprite: number; delay: number };
   let petals: Petal[] = [];
+  type Release = { x: number; y: number; depth: number; phase: number; delay: number; drift: number; size: number; sprite: number };
+  let releases: Release[] = [];
+  const passageDuration = 1.25;
   // Cache three shaded, notched petals. No gradients / paths / DOM allocations per frame.
   const sprites = ['#f8b7cf', '#e991b7', '#ffe0ed'].map(color => {
     const tile = document.createElement('canvas'); tile.width = tile.height = 64;
@@ -53,6 +58,9 @@ export function initSakura() {
   // Hiding the controls to protect text must also stop the motion they control.
   const visibleArea = () => !narrowReading() && (!small || heroBottom > 80 || (!article && scrollY < 180));
   const active = () => allowed() && !departed && !document.hidden && visibleArea();
+  // A short deliberate page passage is separate from ambient reading protection.
+  const passageActive = () => allowed() && !departed && !document.hidden && passageAge >= 0;
+  const needsFrame = () => active() || passageActive();
   const measure = () => {
     heroBottom = hero?.getBoundingClientRect().bottom ?? 0;
     heroCopy = heroBody?.getBoundingClientRect();
@@ -70,6 +78,9 @@ export function initSakura() {
     const dpr = Math.min(devicePixelRatio || 1, small ? 1.25 : 1.5, Math.sqrt(3_000_000 / (width * height)));
     canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    passageCanvas.width = canvas.width; passageCanvas.height = canvas.height;
+    passageCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (oldWidth && oldHeight) for (const p of releases) { p.x *= width / oldWidth; p.y *= height / oldHeight; }
     const count = connection?.saveData ? 4 : small ? 9 : Math.min(24, Math.max(16, Math.round(width / 64)));
     petals = Array.from({ length: count }, (_, i) => {
       const p = petals[i];
@@ -81,9 +92,8 @@ export function initSakura() {
     ctx.clearRect(0, 0, width, height);
     // Different rhythms produce curved trajectories rather than a uniform particle sheet.
     const gust = gustAge < 0 ? 0 : Math.sin(Math.PI * Math.min(1, gustAge / 5.8)) ** 2;
-    const passage = passageAge < 0 ? 0 : Math.sin(Math.PI * Math.min(1, passageAge / 2.2)) ** 2;
     const ambient = Math.sin(elapsed * .32) * 9 + Math.sin(elapsed * .71) * 5;
-    const wind = 12 + ambient + gust * 75 + passage * 38 + pointerWind;
+    const wind = 12 + ambient + gust * 75 + pointerWind;
     for (const [index, p] of petals.entries()) {
       p.phase += step * (.8 + p.depth * .35); p.turn += step * (.2 + p.depth * .24 + gust * .35);
       p.x += step * (wind * (.4 + p.depth * .7) + Math.sin(p.phase) * (18 + p.depth * 20));
@@ -109,9 +119,42 @@ export function initSakura() {
       ctx.drawImage(sprites[p.sprite], -p.size / 2, -p.size / 2, p.size, p.size); ctx.restore();
     }
   };
+  const paintPassage = () => {
+    passageCtx.clearRect(0, 0, width, height);
+    if (!passageActive()) return;
+    for (const p of releases) {
+      // First a small branch-like shiver, then staggered gravity-driven release.
+      const fall = Math.max(0, passageAge - p.delay);
+      const shake = Math.sin(passageAge * 64 + p.phase) * 3 * (1 - smooth(fall / .12));
+      const x = p.x + shake + p.drift * fall + Math.sin(p.phase + fall * 5) * 24 * fall;
+      const y = p.y + 65 * fall + (.5 * (760 + p.depth * 380)) * fall * fall;
+      const alpha = smooth(passageAge / .09) * (1 - smooth((passageAge - .82) / .43));
+      passageCtx.save(); passageCtx.translate(x, y);
+      passageCtx.rotate(p.phase + fall * (1.5 + p.depth * 2.3));
+      passageCtx.scale(.58 + Math.abs(Math.cos(p.phase + fall * 4)) * .42, 1);
+      passageCtx.globalAlpha = alpha * (.58 + p.depth * .25) * (dark ? .88 : 1);
+      passageCtx.drawImage(sprites[p.sprite], -p.size / 2, -p.size / 2, p.size, p.size);
+      passageCtx.restore();
+    }
+  };
+  const beginPassage = () => {
+    if (!allowed() || document.hidden) return;
+    if (passageAge < 0) {
+      passageAge = 0;
+      const count = connection?.saveData ? 5 : small ? 7 : 12;
+      releases = Array.from({ length: count }, (_, i) => {
+        const depth = Math.random();
+        return { x: width * (.12 + (i % 3) * .34 + (Math.random() - .5) * .13),
+          y: 48 + height * (.025 + Math.random() * .105), depth,
+          phase: Math.random() * Math.PI * 2, delay: .06 + (i % 4) * .05 + Math.random() * .025,
+          drift: (Math.random() - .5) * 95, size: (small ? 27 : 32) + depth * (small ? 13 : 22), sprite: i % 3 };
+      });
+    }
+    sync();
+  };
   const draw = (time: number) => {
     raf = 0;
-    if (!active()) return;
+    if (!needsFrame()) return;
     // Slow motion only needs 30fps; mobile / data-saver is capped at 24fps.
     const delta = time - previous;
     if (delta >= (small || connection?.saveData ? 41 : 33)) {
@@ -122,20 +165,20 @@ export function initSakura() {
         gustAge += step;
         if (gustAge >= 5.8) { gustAge = -1; gustButton.disabled = false; gustButton.title = '让花瓣随微风缓缓飘动'; }
       }
-      if (passageAge >= 0) { passageAge += step; if (passageAge >= 2.2) passageAge = -1; }
-      paint(step);
+      if (passageAge >= 0) {
+        passageAge += step;
+        if (passageAge >= passageDuration) { passageAge = -1; releases = []; passageCanvas.hidden = true; }
+      }
+      if (active()) paint(step);
+      paintPassage();
     }
-    raf = requestAnimationFrame(draw);
+    if (needsFrame()) raf = requestAnimationFrame(draw);
   };
   const sync = () => {
     dark = root.classList.contains('dark');
     const running = active();
     root.dataset.sakuraMotion = running ? 'on' : 'off';
     tools.hidden = quiet || root.dataset.visualTheme === 'poetize' || (small && !visibleArea()) || narrowReading();
-    if (tools.hidden && !running) {
-      // History restoration into a quiet reading area must also cancel arrival motion.
-      delete root.dataset.sakuraArrival;
-    }
     toggle.disabled = motion.matches;
     toggle.setAttribute('aria-pressed', String(enabled && !motion.matches));
     const label = motion.matches ? '已遵循系统减少动态效果设置' : enabled ? '暂停樱花动效' : '开启樱花动效';
@@ -144,8 +187,12 @@ export function initSakura() {
     gustButton.title = running && gustAge >= 0 ? '微风正缓缓经过' : '让花瓣随微风缓缓飘动';
     canvas.hidden = !running;
     if (running && !wasRunning) { if (!restored) sceneAge = 0; restored = false; }
-    if (running && !raf) { previous = performance.now(); raf = requestAnimationFrame(draw); }
-    if (!running) { cancelAnimationFrame(raf); raf = 0; gustAge = passageAge = -1; pointerWind = pointerTarget = 0; previousX = undefined; ctx.clearRect(0, 0, width, height); }
+    if (!allowed() || document.hidden || departed) { passageAge = -1; releases = []; }
+    passageCanvas.hidden = !passageActive();
+    if (needsFrame() && !raf) { previous = performance.now(); raf = requestAnimationFrame(draw); }
+    if (!running) { gustAge = -1; pointerWind = pointerTarget = 0; previousX = undefined; ctx.clearRect(0, 0, width, height); }
+    if (!passageActive()) passageCtx.clearRect(0, 0, width, height);
+    if (!needsFrame()) { cancelAnimationFrame(raf); raf = 0; }
     wasRunning = running;
   };
   const breeze = () => {
@@ -182,6 +229,8 @@ export function initSakura() {
   const observeSize = () => { if (hero) sizing.observe(hero); if (article) sizing.observe(article); };
   window.addEventListener('storage', event => { if (event.key === 'sakura-effects' || event.key === null) { readPreference(); sync(); } });
   window.addEventListener('pagehide', () => {
+    // A slow document request must not restore the stale frame from the initial click.
+    if (pendingTarget) saveScene(pendingTarget);
     departed = true; sync(); cancelAnimationFrame(scrollFrame); scrollFrame = 0;
     observer.disconnect(); sizing.disconnect();
   });
@@ -191,12 +240,16 @@ export function initSakura() {
   });
   // A bounded same-tab handoff preserves the moving field across native documents.
   // Coordinates are normalized only when the viewport size changes; history is untouched.
-  const handoffKey = 'sakura-scene-v2';
-  window.addEventListener('sakura-departure', () => { if (active() && passageAge < 0) passageAge = 0; });
-  window.addEventListener('sakura-cancel', () => { passageAge = -1; try { sessionStorage.removeItem(handoffKey); } catch {} });
+  const handoffKey = 'sakura-scene-v3';
+  window.addEventListener('sakura-departure', () => { pendingTarget = ''; beginPassage(); });
+  window.addEventListener('sakura-cancel', () => { pendingTarget = ''; passageAge = -1; releases = []; sync(); try { sessionStorage.removeItem(handoffKey); } catch {} });
+  const saveScene = (target: string) => {
+    if (!allowed()) return;
+    try { sessionStorage.setItem(handoffKey, JSON.stringify({ target, at: Date.now(), width, height, elapsed, sceneAge, gustAge, passageAge, petals, releases })); } catch {}
+  };
   window.addEventListener('sakura-handoff', event => {
-    if (!active()) return;
-    try { sessionStorage.setItem(handoffKey, JSON.stringify({ target: (event as CustomEvent<string>).detail, at: Date.now(), width, height, elapsed, sceneAge, gustAge, passageAge, petals })); } catch {}
+    pendingTarget = (event as CustomEvent<string>).detail;
+    saveScene(pendingTarget);
   });
   resize();
   try {
@@ -206,7 +259,11 @@ export function initSakura() {
     const validPetal = (p: Petal) => ['x', 'y', 'depth', 'size', 'phase', 'turn', 'speed', 'sprite', 'delay'].every(key => Number.isFinite(p[key as keyof Petal])) && p.depth >= 0 && p.depth <= 1 && Number.isInteger(p.sprite) && p.sprite >= 0 && p.sprite < 3;
     if (saved && target.origin === location.origin && target.pathname.replace(/\/$/, '') === location.pathname.replace(/\/$/, '') && target.search === location.search && Date.now() - saved.at < 2500 && Date.now() >= saved.at && saved.width > 0 && saved.height > 0 && Array.isArray(saved.petals) && saved.petals.length === petals.length && saved.petals.every(validPetal) && [saved.elapsed, saved.sceneAge, saved.gustAge, saved.passageAge].every(Number.isFinite)) {
       petals = saved.petals.map((p: Petal) => ({ ...p, x: p.x * width / saved.width, y: p.y * height / saved.height }));
-      elapsed = saved.elapsed; sceneAge = saved.sceneAge; gustAge = saved.gustAge; passageAge = saved.passageAge; restored = true;
+      elapsed = saved.elapsed; sceneAge = saved.sceneAge; gustAge = saved.gustAge; restored = true;
+      if (saved.passageAge >= 0 && saved.passageAge < passageDuration && Array.isArray(saved.releases) && saved.releases.length <= 12 && saved.releases.every((p: Release) => ['x', 'y', 'depth', 'phase', 'delay', 'drift', 'size', 'sprite'].every(key => Number.isFinite(p[key as keyof Release])) && p.sprite >= 0 && p.sprite < 3 && Number.isInteger(p.sprite))) {
+        passageAge = saved.passageAge;
+        releases = saved.releases.map((p: Release) => ({ ...p, x: p.x * width / saved.width, y: p.y * height / saved.height }));
+      }
     }
   } catch {}
   observe(); observeSize(); sync();

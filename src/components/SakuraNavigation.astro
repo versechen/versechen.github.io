@@ -8,9 +8,9 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
     const root = document.documentElement;
     const quiet = document.getElementById('sakura-navigation').dataset.quiet === 'true';
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
-    let enabled = true, timer = 0, departure = 0, generation = 0, destination = '';
+    let enabled = true, timer = 0, departure = 0, generation = 0, destination = '', handedOff = false;
     const readPreference = () => { try { enabled = localStorage.getItem('sakura-effects') !== 'off'; } catch {} };
-    const allowed = () => !quiet && root.dataset.visualTheme !== 'poetize' && root.dataset.sakuraMotion !== 'off' && !motion.matches && enabled;
+    const allowed = () => !quiet && root.dataset.visualTheme !== 'poetize' && !motion.matches && enabled;
     const clear = () => {
       generation++; clearTimeout(timer); clearTimeout(departure); destination = '';
       delete root.dataset.sakuraArrival; delete root.dataset.sakuraDeparture;
@@ -28,8 +28,15 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
       if (document.readyState !== 'loading') finishLater();
     };
     const sync = () => { if (!allowed()) clear(); };
-    readPreference(); arrive();
-    document.addEventListener('DOMContentLoaded', finishLater, { once: true });
+    readPreference();
+    const initialGeneration = generation;
+    const startArrival = () => {
+      if (destination || generation !== initialGeneration) return;
+      const current = generation;
+      requestAnimationFrame(() => requestAnimationFrame(() => { if (current === generation && !document.hidden) arrive(); }));
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startArrival, { once: true });
+    else startArrival();
     document.addEventListener('animationend', event => {
       if (event.target.id === 'main-content' && event.animationName === 'sakura-page-arrive' && !destination) clear();
     });
@@ -49,22 +56,25 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
       root.dataset.sakuraDeparture = 'active';
       window.dispatchEvent(new CustomEvent('sakura-departure', { detail: destination }));
       const current = generation;
-      departure = setTimeout(() => {
+      const navigate = () => {
         if (current !== generation || !destination) return;
         const target = destination;
         window.dispatchEvent(new CustomEvent('sakura-handoff', { detail: target }));
-        location.assign(target);
+        handedOff = true;
         // A cancelled/failed browser navigation must never leave a dimmed page behind.
         timer = setTimeout(clear, 900);
-      }, 180);
+        location.assign(target);
+      };
+      // A newer choice must supersede an in-flight native request immediately.
+      if (handedOff) navigate(); else departure = setTimeout(navigate, 320);
     });
     document.addEventListener('keydown', event => { if (event.key === 'Escape') { clear(); window.dispatchEvent(new Event('sakura-cancel')); } });
-    new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-visual-theme', 'data-sakura-motion'] });
+    new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-visual-theme'] });
     motion.addEventListener('change', sync);
     window.addEventListener('sakura-preference', event => { enabled = event.detail; sync(); });
     window.addEventListener('storage', () => { readPreference(); sync(); });
     document.addEventListener('visibilitychange', () => { if (document.hidden) clear(); });
-    window.addEventListener('pagehide', clear);
+    window.addEventListener('pagehide', () => { handedOff = false; clear(); });
     window.addEventListener('popstate', clear);
     window.addEventListener('pageshow', event => {
       // Restored history is already a complete scene; preserve native scroll, no replay.

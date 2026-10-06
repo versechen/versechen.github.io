@@ -10,10 +10,11 @@ async function setup(options={}) {
  const context=await browser.newContext(options);
  await context.addInitScript(()=>{
   window.sakuraProbe={frames:0,draws:0,maxDraws:0,items:[],history:[],shows:[],id:Math.random()};
+  window.sakuraReleaseProbe={frames:0,draws:0,maxDraws:0,items:[],history:[]};
   window.addEventListener('pageshow',e=>window.sakuraProbe.shows.push(e.persisted));
   const proto=CanvasRenderingContext2D.prototype,clear=proto.clearRect,draw=proto.drawImage;
-  proto.clearRect=function(...args){if(this.canvas.id==='sakura-petals'){const p=window.sakuraProbe;p.frames++;p.maxDraws=Math.max(p.maxDraws,p.draws);p.history.push({time:performance.now(),items:p.items});if(p.history.length>240)p.history.shift();p.draws=0;p.items=[];}return clear.apply(this,args)};
-  proto.drawImage=function(...args){if(this.canvas.id==='sakura-petals'){const p=window.sakuraProbe,t=this.getTransform(),dpr=this.canvas.width/innerWidth;p.draws++;p.items.push({x:t.e/dpr,y:t.f/dpr,size:args[3],scale:Math.hypot(t.c,t.d)/dpr,alpha:this.globalAlpha});}return draw.apply(this,args)};
+  proto.clearRect=function(...args){if(['sakura-petals','sakura-passage'].includes(this.canvas.id)){const p=this.canvas.id==='sakura-petals'?window.sakuraProbe:window.sakuraReleaseProbe;p.frames++;p.maxDraws=Math.max(p.maxDraws,p.draws);p.history.push({time:performance.now(),items:p.items});if(p.history.length>240)p.history.shift();p.draws=0;p.items=[];}return clear.apply(this,args)};
+  proto.drawImage=function(...args){if(['sakura-petals','sakura-passage'].includes(this.canvas.id)){const p=this.canvas.id==='sakura-petals'?window.sakuraProbe:window.sakuraReleaseProbe,t=this.getTransform(),dpr=this.canvas.width/innerWidth;p.draws++;p.items.push({x:t.e/dpr,y:t.f/dpr,size:args[3],scale:Math.hypot(t.c,t.d)/dpr,alpha:this.globalAlpha});}return draw.apply(this,args)};
  });
  const page=await context.newPage();page.on('pageerror',e=>{if(/^Failed to fetch dynamically imported module: https:\/\/cdn\.jsdelivr\.net\/npm\/mermaid@/.test(e.message))externalErrors.add(e.message);else errors.push(e.message)});return {context,page};
 }
@@ -28,7 +29,7 @@ try {
  assert.ok(await p.evaluate(()=>window.sakuraProbe.history.every(f=>f.items.length<=24)),'Bounded petal pool');
  await settled(p);await p.waitForTimeout(4400);
  let s=await state(p);assert.equal(s.hidden,false);assert.ok(s.frames>8);assert.ok(s.maxDraws<=24);assert.equal(s.overflow,false);
- assert.equal(await p.locator('#sakura-tree,.sakura-verse,.sakura-home,#sakura-passage').count(),0);
+ assert.equal(await p.locator('#sakura-tree,.sakura-verse,.sakura-home').count(),0);
  assert.equal(await p.locator('.hero-typewriter-row').isVisible(),true);
  const visible=await p.evaluate(()=>window.sakuraProbe.items);assert.ok(visible.length>=3);assert.ok(visible.every(x=>x.size>=23&&x.size<=40&&x.scale>=.99));
  assert.equal(await heroInk(p),0,'Petals must leave homepage text and buttons clear');
@@ -45,7 +46,7 @@ try {
  results.push('Original homepage retained; <=24 layered 23–40px petals, curved motion and smooth wind preserve positions and pool');
  // Escape interrupts the delayed native navigation with no history or visibility damage.
  await p.evaluate(()=>document.querySelector('.nav-link[href="/about"]').click());
- await p.keyboard.press('Escape');await p.waitForTimeout(300);assert.equal(new URL(p.url()).pathname,'/');
+ await p.keyboard.press('Escape');await p.waitForTimeout(450);assert.equal(new URL(p.url()).pathname,'/');
  assert.equal(await p.evaluate(()=>document.documentElement.dataset.sakuraDeparture),undefined);
  // Sample an actual multi-frame arc, not a static screenshot pass.
  await p.waitForTimeout(500);
@@ -60,9 +61,11 @@ try {
  await p.locator('.nav-link[href="/blog"]').click();await p.waitForTimeout(90);
  assert.equal((await state(p)).arrival,'active');
  const passage=await p.locator('#main-content').evaluate(el=>({animation:getComputedStyle(el).animationName,transform:getComputedStyle(el).transform,opacity:+getComputedStyle(el).opacity}));
- assert.equal(passage.animation,'sakura-page-arrive');assert.equal(passage.transform,'none');assert.ok(passage.opacity>=.28&&passage.opacity<1);assert.equal(await p.locator('#sakura-passage').count(),0);
- await screenshot(p,'page-transition');await settled(p);
- results.push('Actual native navigation has a visible scene dissolve and title lift without moving the fixed-TOC ancestor, and clears its state');
+ assert.equal(passage.animation,'sakura-page-arrive');assert.equal(passage.transform,'none');assert.ok(passage.opacity>=.28&&passage.opacity<1);assert.equal(await p.locator('#sakura-passage').count(),1);
+ assert.equal(await p.locator('#sakura-passage').isVisible(),true);
+ const released=await p.evaluate(()=>window.sakuraReleaseProbe.items);assert.ok(released.length>0&&released.length<=12);assert.ok(released.every(x=>x.size>=32&&x.size<=54));
+ await screenshot(p,'page-transition');await settled(p);assert.equal(await p.locator('#sakura-passage').isVisible(),false);
+ results.push('Actual native navigation shows the separate large-petal release across documents, completes naturally, and leaves the fixed-TOC ancestor untransformed');
  // A visible link stays hit-testable even in the first frame; browser chooses final navigation.
  await p.evaluate(()=>{document.querySelector('.nav-link[href="/about"]').click();document.querySelector('.nav-link[href="/reading"]').click();});
  await p.waitForFunction(()=>location.pathname.replace(/\/$/,'')==='/reading' && document.readyState==='complete');await settled(p);
