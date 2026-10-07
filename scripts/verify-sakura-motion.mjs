@@ -23,10 +23,10 @@ async function screenshot(p,name){await p.screenshot({path:`${out}/${name}.png`}
 try {
  const {context,page:p}=await setup({viewport:{width:1440,height:1000}});
  assert.equal((await p.goto(base+'/?visual-theme=original')).status(),200);await settled(p);
- let s=await state(p);assert.equal(s.hidden,false);assert.ok(s.frames>8);assert.ok(s.maxDraws<=26);assert.equal(s.overflow,false);
+ let s=await state(p);assert.equal(s.hidden,false);assert.ok(s.frames>8);assert.ok(s.maxDraws<=42);assert.equal(s.overflow,false);
  await screenshot(p,'desktop-light');await p.locator('#theme-btn').click();await p.waitForTimeout(450);await screenshot(p,'desktop-dark');
  await p.locator('#sakura-gust').click();await p.waitForTimeout(140);await screenshot(p,'desktop-wind');
- results.push('Desktop: live shaded petals, base pool 14 plus at most 12 temporary petals, light/dark and wind button; no overflow');
+ results.push('Desktop: live shaded petals, base pool 14 plus at most 28 temporary petals, light/dark and wind button; no overflow');
  // Capture real arrival mid-animation on a normal link navigation.
  const oldDocument=await state(p);
  const crossing=p.locator('.nav-link[href="/blog"]').click();
@@ -52,14 +52,14 @@ try {
  }));
  await screenshot(p,'page-breeze');
  const burstTimeline=await burstTimelinePromise;
- assert.ok(Math.max(...burstTimeline.map(x=>x.extra))>=10,'The new breeze adds a clearly countable temporary field');
- assert.ok(burstTimeline.every(x=>x.basePool===14&&x.base+x.extra<=26));
+ assert.ok(Math.max(...burstTimeline.map(x=>x.extra))>=20,'The gust scatters a clearly countable temporary field');
+ assert.ok(burstTimeline.every(x=>x.basePool===14&&x.base+x.extra<=42));
  assert.equal(burstTimeline.at(-1).extra,0);assert.equal(burstTimeline.at(-1).phase,'idle');
  const visibleTail=burstTimeline.filter(x=>x.extra>0);
  assert.ok(visibleTail.at(-1).alpha<.08,'Temporary petals fade before retirement');
  writeFileSync(out+'/breeze-lifecycle-timeline.json',JSON.stringify(burstTimeline,null,2));
  await screenshot(p,'page-breeze-settled');await settled(p);
- results.push('Same field: baseline 14, temporary peak at least +10 (cap +12), gradual opacity fade, then baseline only; no competing SVG');
+ results.push('Same field: baseline 14, temporary peak at least +20 (cap +28), gradual opacity fade, then baseline only; no competing SVG');
  // A visible link stays hit-testable even in the first frame; browser chooses final navigation.
  await p.evaluate(()=>{document.querySelector('.nav-link[href="/about"]').click();document.querySelector('.nav-link[href="/reading"]').click();});
  await p.waitForFunction(()=>location.pathname.replace(/\/$/,'')==='/reading' && document.readyState==='complete');await settled(p);
@@ -126,7 +126,7 @@ try {
  await context.close();
  const {context:mc,page:m}=await setup({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:3});
  await m.goto(base+'/?visual-theme=original');await settled(m);assert.equal((await state(m)).hidden,false);
- assert.ok(await m.locator('#sakura-petals').evaluate(c=>c.width<=innerWidth*1.25+1));assert.ok((await state(m)).maxDraws<=12);
+ assert.ok(await m.locator('#sakura-petals').evaluate(c=>c.width<=innerWidth*1.25+1));assert.ok((await state(m)).maxDraws<=18);
  let a=(await state(m)).frames;await m.waitForTimeout(1000);let b=(await state(m)).frames;const mobileFps=b-a;assert.ok(mobileFps<=33);
  await screenshot(m,'mobile-light');await m.locator('#theme-btn').tap();await m.waitForTimeout(450);await screenshot(m,'mobile-dark');
  await m.locator('#sakura-gust').tap();assert.equal((await state(m)).overflow,false);
@@ -136,7 +136,7 @@ try {
  await m.evaluate(()=>scrollTo({top:document.querySelector('.article-main').getBoundingClientRect().top+scrollY+100,behavior:'instant'}));await m.waitForTimeout(250);assert.equal((await state(m)).hidden,true);
  assert.equal(await m.locator('#sakura-tools').isVisible(),false);await m.locator('#article-toc-trigger').tap();assert.equal(await m.locator('#article-toc-panel').getAttribute('aria-hidden'),'false');
  await m.locator('[data-toc-link]').first().tap();assert.ok(new URL(m.url()).hash);assert.equal((await state(m)).arrival,undefined);
- await screenshot(m,'mobile-reading');results.push(`Mobile: baseline 6 plus <=6 temporary petals, DPR <=1.25, ${mobileFps} frames/s; stops below hero; TOC/hash stays native`);
+ await screenshot(m,'mobile-reading');results.push(`Mobile: baseline 6 plus <=12 temporary petals, DPR <=1.25, ${mobileFps} frames/s; stops below hero; TOC/hash stays native`);
  await mc.close();
  const {context:bc,page:bp}=await setup();await bc.addInitScript(()=>{Object.defineProperty(window,'localStorage',{get(){throw new DOMException('blocked','SecurityError')}})});
  await bp.goto(base+'/');await settled(bp);await bp.locator('#sakura-effects-toggle').click();assert.equal((await state(bp)).hidden,true);await bp.locator('#sakura-effects-toggle').click();assert.equal((await state(bp)).hidden,false);

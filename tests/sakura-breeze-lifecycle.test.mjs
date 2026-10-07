@@ -31,7 +31,7 @@ const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
 test('one field goes from settled baseline to a visible increment, fades and returns to baseline',()=>{
  const f=fixture();f.advance(5000);assert.equal(f.field.dataset.sakuraBasePool,'14');assert.equal(extra(f),0);
  f.fire('pageshow',{persisted:true});f.advance(800);
- assert.equal(extra(f),12);assert.equal(f.field.dataset.sakuraBurstState,'wind');
+ assert.equal(extra(f),28);assert.equal(f.field.dataset.sakuraBurstState,'wind');
  const peak=f.field.ctx.items.slice(+f.field.dataset.sakuraBaseCount).map(p=>p.alpha);
  assert.ok(f.field.ctx.items.every(p=>p.size<=18));
  f.advance(1900);assert.equal(f.field.dataset.sakuraBurstState,'fading');assert.ok(extra(f)>0);
@@ -41,11 +41,23 @@ test('one field goes from settled baseline to a visible increment, fades and ret
  assert.ok(f.signals.includes('sakura-arrival-end'));
 });
 test('the increment appears in stages, never as an instantaneous dense sheet',()=>{
- const f=fixture();f.advance(100);const early=extra(f);f.advance(600);assert.ok(early<extra(f));assert.ok(extra(f)<=12);
+ const f=fixture();f.advance(100);const early=extra(f);f.advance(600);assert.ok(early<extra(f));assert.ok(extra(f)<=28);
+});
+test('a gust strips clusters off one side, then scatters them across the page',()=>{
+ const f=fixture(),width=1174;
+ const temporary=()=>f.field.ctx.items.slice(+f.field.dataset.sakuraBaseCount);
+ const spread=items=>Math.max(...items.map(p=>p.x))-Math.min(...items.map(p=>p.x));
+ f.advance(160);const leaving=temporary();
+ assert.ok(leaving.length>=4&&leaving.length<28,'Clusters break away one after another');
+ assert.ok(leaving.every(p=>p.x<width*.4),'Every released petal starts from the canopy side');
+ f.advance(1240);const scattered=temporary();
+ assert.equal(scattered.length,28);
+ assert.ok(mean(scattered.map(p=>p.x))>mean(leaving.map(p=>p.x))+width*.25,'The gust carries the petals across the page');
+ assert.ok(spread(scattered)>width*.35&&spread(scattered)>spread(leaving)*1.8,'Uneven throws pull the clusters apart');
 });
 test('repeated lifecycle arrivals replace the bounded temporary pool rather than accumulating',()=>{
- const f=fixture();for(let i=0;i<15;i++){f.fire('pageshow',{persisted:true});f.advance(40);}f.advance(800);assert.equal(extra(f),12);assert.equal(f.field.dataset.sakuraBasePool,'14');
- const before=f.field.ctx.items;f.advance(16);assert.ok(f.field.ctx.items.length<=26);assert.ok(before.length<=26);
+ const f=fixture();for(let i=0;i<15;i++){f.fire('pageshow',{persisted:true});f.advance(40);}f.advance(800);assert.equal(extra(f),28);assert.equal(f.field.dataset.sakuraBasePool,'14');
+ const before=f.field.ctx.items;f.advance(16);assert.ok(f.field.ctx.items.length<=42);assert.ok(before.length<=42);
 });
 test('pause, reduced motion, coastal theme and narrow reading keep all temporary motion off',()=>{
  for(const options of [{paused:true},{reduced:true},{theme:'poetize'},{reading:true}]){const f=fixture(options);f.advance(800);assert.equal(f.field.hidden,true);assert.equal(extra(f),0);assert.equal(f.frames.size,0);}
@@ -56,24 +68,24 @@ test('pausing or enabling reduced motion during the breeze clears temporary peta
  }
 });
 test('mobile and data-saver have smaller base and temporary pools with the same finite lifecycle',()=>{
- for(const [options,base,burst]of [[{width:390,height:844},6,6],[{saveData:true},4,4]]){
+ for(const [options,base,burst]of [[{width:390,height:844},6,12],[{saveData:true},4,6]]){
   const f=fixture(options);f.advance(800);assert.equal(f.field.dataset.sakuraBasePool,String(base));assert.equal(extra(f),burst);f.advance(4500);assert.equal(extra(f),0);
  }
 });
 
 test('temporary petals stay visible past a short page heading and then fade by lifetime',()=>{
- const f=fixture({heroHeight:230});f.advance(800);assert.equal(extra(f),12);
+ const f=fixture({heroHeight:230});f.advance(800);assert.equal(extra(f),28);
  f.advance(1900);assert.ok(extra(f)>0);f.advance(2200);assert.equal(extra(f),0);
 });
 
 test('temporary lifetime follows elapsed time on slow frames instead of outliving cleanup',()=>{
- const f=fixture();f.advance(800);assert.equal(extra(f),12);f.advance(4000,120);
+ const f=fixture();f.advance(800);assert.equal(extra(f),28);f.advance(4000,120);
  assert.equal(extra(f),0);assert.equal(f.field.dataset.sakuraBurstState,'idle');
 });
 
 test('an active burst respects the smaller pool after resizing across the mobile breakpoint',()=>{
- const f=fixture({width:800});f.advance(800);assert.equal(extra(f),12);
- f.resize(767,753);f.advance(80);assert.equal(f.field.dataset.sakuraBasePool,'6');assert.ok(extra(f)<=6);
+ const f=fixture({width:800});f.advance(800);assert.equal(extra(f),28);
+ f.resize(767,753);f.advance(80);assert.equal(f.field.dataset.sakuraBasePool,'6');assert.ok(extra(f)<=12);
  f.advance(4500);assert.equal(extra(f),0);
 });
 
@@ -136,7 +148,7 @@ test('the existing field deflects together before departure, then settles withou
  const pairs=bent.map(p=>[p,still.find(q=>q.size===p.size)]).filter(([,q])=>q);
  assert.ok(pairs.length>=10);assert.ok(pairs.every(([p,q])=>p.x-q.x>18),'Existing petals must bend in a common direction, not just new petals appearing');
  assert.ok(pairs.every(([p,q])=>p.y-q.y< -5));assert.ok(pairs.every(([p,q])=>Math.abs(p.angle-q.angle-.18)<1e-8));
- wind.advance(1500);assert.equal(+wind.field.dataset.sakuraWindShift,0);assert.ok(extra(wind)<=12);wind.advance(3000);assert.equal(extra(wind),0);
+ wind.advance(1500);assert.equal(+wind.field.dataset.sakuraWindShift,0);assert.ok(extra(wind)<=28);wind.advance(3000);assert.equal(extra(wind),0);
 });
 
 test('fresh openings retain the original homepage intro; only a carried scene suppresses its replay',()=>{

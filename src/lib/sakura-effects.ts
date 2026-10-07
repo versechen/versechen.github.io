@@ -21,7 +21,7 @@ export function initSakura() {
   let pointerWind = 0, lastPointer = 0, previousX = 0;
   let heroBottom = 0, articleTop = Infinity, articleBottom = -Infinity, releaseAge = -1;
   let safeLeft = 0, safeRight = 0;
-  type Petal = { x: number; y: number; depth: number; size: number; phase: number; turn: number; speed: number; sprite: number; age: number; lifetime: number };
+  type Petal = { x: number; y: number; vx: number; vy: number; depth: number; size: number; phase: number; turn: number; speed: number; sprite: number; age: number; lifetime: number };
   let petals: Petal[] = [];
   let temporary: Petal[] = [];
   let pendingTarget = '', capturedOnHide = false, episode = '';
@@ -42,10 +42,11 @@ export function initSakura() {
   });
   const makePetal = (scatter = true): Petal => {
     const depth = Math.random();
-    return { x: Math.random() * width, y: scatter ? Math.random() * height : -28,
+    return { x: Math.random() * width, y: scatter ? Math.random() * height : -28, vx: 0, vy: 0,
       depth, size: 8 + depth * 10, phase: Math.random() * Math.PI * 2,
       turn: Math.random() * Math.PI * 2, speed: 15 + depth * 23, sprite: Math.floor(Math.random() * 3), age: 0, lifetime: 0 };
   };
+  const burstSize = () => connection?.saveData ? 6 : small ? 12 : 28;
   const allowed = () => !quiet && root.dataset.visualTheme !== 'poetize' && enabled && !motion.matches;
   const narrowReading = () => !!article && articleTop < height && articleBottom > 80 && width - safeRight < 138;
   // Hiding the controls to protect text must also stop the motion they control.
@@ -69,7 +70,7 @@ export function initSakura() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const count = connection?.saveData ? 4 : small ? 6 : 14;
     petals = Array.from({ length: count }, () => makePetal());
-    temporary = temporary.slice(0, connection?.saveData ? 4 : small ? 6 : 12);
+    temporary = temporary.slice(0, burstSize());
     if (oldWidth && oldHeight) for (const p of temporary) { p.x *= width / oldWidth; p.y *= height / oldHeight; }
     measure();
   };
@@ -85,9 +86,15 @@ export function initSakura() {
       const p = index < petals.length ? petals[index] : temporary[index - petals.length];
       const extra = p.lifetime > 0;
       if (extra) { p.age += lifetimeStep; if (p.age < 0 || p.age >= p.lifetime) continue; }
-      p.phase += step * (1 + p.depth); p.turn += step * (.45 + p.depth + gust * 1.2);
+      const blown = extra ? Math.min(2.4, Math.abs(p.vx) / 420) : 0;
+      p.phase += step * (1 + p.depth); p.turn += step * (.45 + p.depth + gust * 1.2 + blown);
       p.x += step * (wind * (.35 + p.depth) + Math.sin(p.phase) * 19);
       p.y += step * (p.speed + Math.cos(p.phase * .8) * 9 - gust * (12 + p.depth * 34));
+      if (extra) {
+        // Thrown off the canopy by the gust, then air drag hands each petal back to the breeze.
+        p.x += step * p.vx; p.y += step * p.vy;
+        const drag = Math.exp(-step * 1.5); p.vx *= drag; p.vy *= drag;
+      }
       if (!extra) {
         if (p.y > height + 35) { p.y = -30; p.x = Math.random() * width; }
         if (p.y < -60) p.y = height + 28;
@@ -102,7 +109,7 @@ export function initSakura() {
       const left = inArticle ? safeLeft : width * (inHero ? .24 : .15);
       const right = inArticle ? safeRight : width * (inHero ? .76 : .85);
       const edge = Math.max(0, Math.min(1, Math.max(left - x, x - right) / 55));
-      const lifespan = extra ? smooth(p.age / .25) * (1 - smooth((p.age - p.lifetime * .45) / (p.lifetime * .55))) : 1;
+      const lifespan = extra ? smooth(p.age / .18) * (1 - smooth((p.age - p.lifetime * .4) / (p.lifetime * .6))) : 1;
       let alpha = (inArticle ? edge : extra ? .62 + edge * .38 : inHero ? .28 + edge * .72 : edge * .7) * lifespan;
       // Temporary petals may drift past a page heading, but soften before protected reading space.
       if (extra && article && y < articleTop) alpha *= edge + (1 - edge) * smooth((articleTop - y - p.size) / 60);
@@ -180,16 +187,24 @@ export function initSakura() {
   };
   const arrivalBreeze = () => {
     if (!active()) return;
-    // One bounded episode in the same field: add small petals, then retire each one.
+    // One bounded episode in the same field: a gust strips clusters off an unseen tree, then each petal retires.
     gust = 0; releaseAge = 0;
     episode = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     canvas.dataset.sakuraSceneSource = 'fresh';
-    const count = connection?.saveData ? 4 : small ? 6 : 12;
+    const count = burstSize(), group = count > 12 ? 4 : 3;
+    let cluster = { x: 0, y: 0, vx: 0, vy: 0, delay: 0 };
     temporary = Array.from({ length: count }, (_, i) => {
+      if (i % group === 0) {
+        // The canopy sits at the left edge; clusters break away one after another.
+        cluster = { x: width * (-.02 + Math.random() * .14), y: height * (.12 + Math.random() * .3),
+          vx: width * (.75 + Math.random() * .35), vy: (Math.random() - .45) * 160, delay: (i / group) * .07 + Math.random() * .04 };
+      }
       const p = makePetal();
-      return { ...p, x: width * (.08 + ((i + .5) / count) * .84), y: height * (.08 + Math.random() * .26),
-        size: 10 + p.depth * 8, speed: 24 + p.depth * 14,
-        age: -(i * .045 + Math.random() * .08), lifetime: 2.8 + p.depth * .8 };
+      // Uneven throw speeds pull each cluster apart as it travels.
+      return { ...p, x: cluster.x + (Math.random() - .5) * 28, y: cluster.y + (Math.random() - .5) * 24,
+        vx: cluster.vx * (.8 + Math.random() * .4), vy: cluster.vy + (Math.random() - .5) * 140,
+        size: 8 + p.depth * 10, speed: 28 + p.depth * 22,
+        age: -(cluster.delay + (i % group) * .018), lifetime: 3 + p.depth * .9 };
     });
   };
   toggle.addEventListener('click', () => {
@@ -272,13 +287,13 @@ export function initSakura() {
       target.searchParams.delete('visual-theme');
       const current = new URL(location.href); current.searchParams.delete('visual-theme');
       const gap = (Date.now() - saved.at) / 1000;
-      const validPetal = (p: Petal) => ['x', 'y', 'depth', 'size', 'phase', 'turn', 'speed', 'sprite', 'age', 'lifetime'].every(key => Number.isFinite(p[key as keyof Petal])) && p.depth >= 0 && p.depth <= 1 && p.size >= 1 && p.size <= 20 && Number.isInteger(p.sprite) && p.sprite >= 0 && p.sprite < 3 && p.lifetime >= 0 && p.lifetime <= 4 && p.age >= -1 && p.age <= 5 && p.speed >= 0 && p.speed <= 100;
-      if (target.origin !== current.origin || target.pathname.replace(/\/$/, '') !== current.pathname.replace(/\/$/, '') || target.search !== current.search || gap < 0 || gap > 10 || !Number.isFinite(saved.at) || !Number.isFinite(saved.width) || !Number.isFinite(saved.height) || saved.width <= 0 || saved.height <= 0 || ![saved.elapsed, saved.gust, saved.pointerWind, saved.releaseAge].every(Number.isFinite) || saved.releaseAge < -1 || saved.releaseAge > 5 || typeof saved.episode !== 'string' || saved.episode.length > 80 || !Array.isArray(saved.petals) || saved.petals.length > 14 || !saved.petals.every(validPetal) || !Array.isArray(saved.temporary) || saved.temporary.length > 12 || !saved.temporary.every(validPetal)) return false;
+      const validPetal = (p: Petal) => ['x', 'y', 'vx', 'vy', 'depth', 'size', 'phase', 'turn', 'speed', 'sprite', 'age', 'lifetime'].every(key => Number.isFinite(p[key as keyof Petal])) && Math.abs(p.vx) <= 5000 && Math.abs(p.vy) <= 1000 && p.depth >= 0 && p.depth <= 1 && p.size >= 1 && p.size <= 20 && Number.isInteger(p.sprite) && p.sprite >= 0 && p.sprite < 3 && p.lifetime >= 0 && p.lifetime <= 4 && p.age >= -1 && p.age <= 5 && p.speed >= 0 && p.speed <= 100;
+      if (target.origin !== current.origin || target.pathname.replace(/\/$/, '') !== current.pathname.replace(/\/$/, '') || target.search !== current.search || gap < 0 || gap > 10 || !Number.isFinite(saved.at) || !Number.isFinite(saved.width) || !Number.isFinite(saved.height) || saved.width <= 0 || saved.height <= 0 || ![saved.elapsed, saved.gust, saved.pointerWind, saved.releaseAge].every(Number.isFinite) || saved.releaseAge < -1 || saved.releaseAge > 5 || typeof saved.episode !== 'string' || saved.episode.length > 80 || !Array.isArray(saved.petals) || saved.petals.length > 14 || !saved.petals.every(validPetal) || !Array.isArray(saved.temporary) || saved.temporary.length > 28 || !saved.temporary.every(validPetal)) return false;
       const scale = (p: Petal): Petal => ({ ...p, x: width === saved.width ? p.x : p.x * width / saved.width, y: height === saved.height ? p.y : p.y * height / saved.height });
       const count = petals.length;
       petals = saved.petals.slice(0, count).map(scale);
       while (petals.length < count) petals.push(makePetal());
-      temporary = saved.temporary.slice(0, connection?.saveData ? 4 : small ? 6 : 12).map((p: Petal) => ({ ...scale(p), age: p.age + gap })).filter((p: Petal) => p.lifetime > 0 && p.age < p.lifetime);
+      temporary = saved.temporary.slice(0, burstSize()).map((p: Petal) => ({ ...scale(p), age: p.age + gap })).filter((p: Petal) => p.lifetime > 0 && p.age < p.lifetime);
       elapsed = saved.elapsed + gap; gust = saved.gust * Math.exp(-gap * 1.6); pointerWind = saved.pointerWind * Math.exp(-gap * 2.5);
       releaseAge = saved.releaseAge < 0 ? -1 : saved.releaseAge + gap; episode = saved.episode;
       canvas.dataset.sakuraSceneSource = 'continued';
