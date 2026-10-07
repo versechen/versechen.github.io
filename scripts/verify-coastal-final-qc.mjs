@@ -17,13 +17,13 @@ for(const width of [2048,1440,390,360])for(const dark of [false,true]){
    }
    if(width<500){assert.equal(await p.locator('.poetize-companion').isVisible(),false);assert.ok((await p.locator('.wall-card').first().boundingBox()).y<670);}
   }
-  if(route==='/blog/')assert.equal(await p.locator('#poetize-petals').isVisible(),false);
+  if(route==='/blog/')assert.equal(await p.locator('#coastal-sea').isVisible(),false);
   else assert.notEqual(await p.locator(route==='/'?'.hero-site-name':'.page-hero-title').evaluate(el=>getComputedStyle(el,'::before').backgroundImage),'none');
   await p.screenshot({path:`${out}/${scene}-${width}-${dark?'dark':'light'}.png`});
  }
  await p.goto(base+'/');await p.locator('#visual-theme-btn').click();
  for(const id of ['markdown-style-guide','using-mdx'])assert.match(await p.locator(`.wall-card[href="/blog/${id}"] .card-img-bg`).evaluate(el=>getComputedStyle(el).backgroundImage),/cover-markdown/);
- await p.goto(base+'/blog/markdown-style-guide/?visual-theme=poetize');assert.equal(await p.locator('#poetize-petals').isVisible(),false);assert.match(await p.locator('.poetize-article-cover').getAttribute('src'),/cover-markdown/);
+ await p.goto(base+'/blog/markdown-style-guide/?visual-theme=poetize');assert.equal(await p.locator('#coastal-sea').isVisible(),false);assert.match(await p.locator('.poetize-article-cover').getAttribute('src'),/cover-markdown/);
  await p.close();
 }
 console.log('PASS 32 final layout/color/viewport states; local title scrims, coastal-only template thumbnails, original article covers, quiet forms/prose, compact mobile first card and Sakura preservation');await b.close();

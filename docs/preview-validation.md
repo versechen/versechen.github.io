@@ -41,7 +41,7 @@
 
 ### 新增验证
 
-- `scripts/verify-poetize-interactions.mjs`：读取实际 computed style，确认绘画 WebP、两个波浪动画；读取 Canvas alpha 确认真正绘制；点击下行入口后 scrollY 改变；卡片标题实际颜色非白色；hover 后图片 background-size=120%；关闭效果后动画暂停、Canvas 隐藏且刷新偏好保留。
+- `scripts/verify-poetize-interactions.mjs`：读取实际 computed style，确认绘画 WebP、两层波浪的漂移与起伏动画、头图缓慢推近；读取 Canvas alpha 与 `data-gulls/glints/bubbles` 确认海鸥、波光和气泡真正绘制；点击下行入口后 scrollY 改变；卡片标题实际颜色非白色；hover 后图片 background-size=120%；关闭效果后动画暂停、Canvas 隐藏且刷新偏好保留。
 - 文章封面灯箱打开、Escape 关闭、焦点返回；专注阅读可逆，正文保留；进度条随正文滚动，返回顶部到 scrollY=0；减少动态效果令动画按钮禁用、Canvas 隐藏。
 - `scripts/verify-live-editor.mjs`：在本地开发模式验证标题/强调/链接/列表/引用/代码/图片/表格、原位编辑、工具栏选区、真实剪贴板粘贴、空行后新标题排版、即时/源码正文逐字一致、跨模式撤销重做、composition 事件期间控件不替换、Markdown 导出与刷新保存、390px 无横向溢出。
 - 编辑器没有新增依赖，也没有修改鉴权与发布入口。生产预览未登录时仍显示原站长登录门槛；因此生产站长登录后的编辑链路、真实 GitHub 写操作没有测试。真实系统输入法候选窗口没有自动化，只验证了 composition 事件与正文保留。

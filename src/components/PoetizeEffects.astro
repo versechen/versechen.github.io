@@ -1,7 +1,7 @@
-<canvas id="poetize-petals" aria-hidden="true"></canvas>
+<canvas id="coastal-sea" aria-hidden="true"></canvas>
 <div class="poetize-reading-progress" aria-hidden="true"></div>
 <div class="poetize-tools" aria-label="阅读工具">
-  <button id="poetize-effects-toggle" aria-label="关闭花瓣与波浪动画" aria-pressed="true" title="花瓣与波浪动画">✿</button>
+  <button id="poetize-effects-toggle" aria-label="关闭海浪与海鸥动画" aria-pressed="true" title="海浪、海鸥与波光动画"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 9.5c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/><path d="m16.5 4 1.5-1 1.5 1" /></svg></button>
   <button id="poetize-focus-toggle" aria-label="开启专注阅读" aria-pressed="false" title="专注阅读"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h7a2 2 0 0 1 2 2v14a3 3 0 0 0-3-3H3Zm18 0h-7a2 2 0 0 0-2 2v14a3 3 0 0 1 3-3h6Z"/></svg></button>
   <button id="poetize-top" aria-label="返回顶部" title="返回顶部"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7M12 5v15"/></svg></button>
 </div>
@@ -10,54 +10,28 @@
   <img alt="" />
 </dialog>
 <script>
+  import { initCoastalSea } from '../lib/coastal-sea';
+
   const root = document.documentElement;
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const effectsButton = document.querySelector<HTMLButtonElement>('#poetize-effects-toggle');
   const focusButton = document.querySelector<HTMLButtonElement>('#poetize-focus-toggle');
   const topButton = document.querySelector<HTMLButtonElement>('#poetize-top');
-  const canvas = document.querySelector<HTMLCanvasElement>('#poetize-petals');
-  const ctx = canvas?.getContext('2d');
+  const canvas = document.querySelector<HTMLCanvasElement>('#coastal-sea');
   let enabled = true;
   try { enabled = localStorage.getItem('poetize-effects') !== 'off'; } catch {}
-  let raf = 0;
-  let width = innerWidth, height = innerHeight;
-  const petals = Array.from({ length: 17 }, () => ({ x: Math.random() * width, y: Math.random() * height, size: 3 + Math.random() * 4, angle: Math.random() * 6.28, speed: .25 + Math.random() * .4 }));
   const active = () => root.dataset.visualTheme === 'poetize' && !document.querySelector('#notes-app, .docs-shell, .editor-demo') && enabled && !motion.matches && !document.hidden && root.dataset.readingFocus !== 'true';
-  const resize = () => {
-    width = innerWidth; height = innerHeight;
-    if (!canvas || !ctx) return;
-    const dpr = Math.min(devicePixelRatio, 2);
-    canvas.width = width * dpr; canvas.height = height * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  };
-  // Reading and filtering surfaces keep decorative particles away from text/forms.
-  const petalsAllowed = !document.querySelector('.blog-sidebar, .article-main');
-  let previous = 0;
-  const draw = (time: number) => {
-    if (!ctx || !active() || !petalsAllowed) { raf = 0; return; }
-    const step = Math.min((time - previous) / 16.67 || 1, 2); previous = time;
-    ctx.clearRect(0, 0, width, height);
-    for (const petal of petals) {
-      petal.y += petal.speed * step; petal.x += (.35 + Math.sin(petal.angle) * .25) * step; petal.angle += .007 * step;
-      if (petal.y > height + 12) { petal.y = -12; petal.x = Math.random() * width; }
-      if (petal.x > width + 12) petal.x = -12;
-      ctx.save(); ctx.translate(petal.x, petal.y); ctx.rotate(petal.angle); ctx.scale(1, .5 + Math.abs(Math.cos(petal.angle)) * .5);
-      ctx.beginPath(); ctx.moveTo(0, -petal.size); ctx.bezierCurveTo(petal.size * 1.4, -petal.size, petal.size, petal.size, 0, petal.size); ctx.bezierCurveTo(-petal.size, petal.size * .3, -petal.size * .7, -petal.size * .7, 0, -petal.size);
-      ctx.fillStyle = 'rgba(248, 161, 185, .46)'; ctx.fill(); ctx.restore();
-    }
-    raf = requestAnimationFrame(draw);
-  };
+  // Reading and filtering surfaces keep drifting bubbles away from text/forms; gulls and glints stay inside the hero painting.
+  const sea = canvas ? initCoastalSea(canvas, { ambient: !document.querySelector('.blog-sidebar, .article-main') }) : null;
+  if (canvas && !sea) canvas.hidden = true;
   const sync = () => {
     const running = active();
     root.dataset.poetizeMotion = running ? 'on' : 'off';
     if (!running) document.querySelectorAll('.poetize-arriving').forEach(el => el.classList.remove('poetize-arriving'));
     effectsButton?.setAttribute('aria-pressed', String(enabled && !motion.matches));
-    effectsButton?.setAttribute('aria-label', enabled ? '关闭花瓣与波浪动画' : '开启花瓣与波浪动画');
-    if (effectsButton) { effectsButton.disabled = motion.matches; effectsButton.title = motion.matches ? '已遵循系统减少动态效果设置' : '花瓣与波浪动画'; }
-    const canvasRunning = running && petalsAllowed;
-    if (canvas) canvas.hidden = !canvasRunning;
-    if (canvasRunning && !raf) { previous = performance.now(); raf = requestAnimationFrame(draw); }
-    if (!canvasRunning && raf) { cancelAnimationFrame(raf); raf = 0; ctx?.clearRect(0, 0, width, height); }
+    effectsButton?.setAttribute('aria-label', enabled ? '关闭海浪与海鸥动画' : '开启海浪与海鸥动画');
+    if (effectsButton) { effectsButton.disabled = motion.matches; effectsButton.title = motion.matches ? '已遵循系统减少动态效果设置' : '海浪、海鸥与波光动画'; }
+    sea?.setActive(running);
   };
   effectsButton?.addEventListener('click', () => { enabled = !enabled; try { localStorage.setItem('poetize-effects', enabled ? 'on' : 'off'); } catch {} sync(); });
   focusButton?.addEventListener('click', () => {
@@ -76,7 +50,7 @@
   };
   let scrollFrame = 0;
   window.addEventListener('scroll', () => { if (!scrollFrame) scrollFrame = requestAnimationFrame(() => { updateProgress(); scrollFrame = 0; }); }, { passive:true });
-  window.addEventListener('resize', () => { resize(); updateProgress(); });
+  window.addEventListener('resize', () => { sea?.resize(); updateProgress(); });
   document.addEventListener('visibilitychange', sync); motion.addEventListener('change', sync);
   const themeObserver = new MutationObserver(sync);
   const observeTheme = () => themeObserver.observe(root, {attributes:true, attributeFilter:['data-visual-theme']});
@@ -93,14 +67,14 @@
     el.addEventListener('animationend', () => el.classList.remove('poetize-arriving'));
   });
   window.addEventListener('pagehide', () => {
-    cancelAnimationFrame(raf); raf = 0;
+    sea?.setActive(false);
     cancelAnimationFrame(scrollFrame); scrollFrame = 0;
     themeObserver.disconnect(); arrivals.disconnect();
   });
   window.addEventListener('pageshow', event => {
     if (event.persisted) { observeTheme(); sync(); updateProgress(); }
   });
-  resize(); sync(); updateProgress();
+  sync(); updateProgress();
   const dialog = document.querySelector<HTMLDialogElement>('#poetize-lightbox');
   const lightboxImage = dialog?.querySelector('img');
   document.querySelectorAll<HTMLButtonElement>('.poetize-cover-button').forEach(button => button.addEventListener('click', () => {

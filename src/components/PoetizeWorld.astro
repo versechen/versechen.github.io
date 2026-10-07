@@ -49,17 +49,30 @@
     timer = setTimeout(() => pet.classList.remove('is-happy'), 900);
   });
   // Bound the particle count and throttle pointer feedback to avoid accumulating DOM nodes.
+  const playful = () => root.dataset.visualTheme === 'poetize' && !motion.matches && root.dataset.poetizeMotion !== 'off' && !document.hidden;
+  const splash = (className: string, x: number, y: number, ttl: number) => {
+    const node = document.createElement('span');
+    node.className = className;
+    node.setAttribute('aria-hidden', 'true');
+    node.style.left = `${x}px`;
+    node.style.top = `${y}px`;
+    document.body.append(node);
+    setTimeout(() => node.remove(), ttl);
+    return node;
+  };
   let lastTrail = 0;
   document.addEventListener('pointermove', (event) => {
-    if (root.dataset.visualTheme !== 'poetize' || motion.matches || root.dataset.poetizeMotion === 'off' || document.hidden || event.pointerType !== 'mouse' || performance.now() - lastTrail < 140) return;
+    if (!playful() || event.pointerType !== 'mouse' || performance.now() - lastTrail < 140) return;
     lastTrail = performance.now();
-    const leaf = document.createElement('span');
-    leaf.className = 'poetize-pointer-leaf';
-    leaf.textContent = '✦';
-    leaf.setAttribute('aria-hidden', 'true');
-    leaf.style.left = `${event.clientX}px`;
-    leaf.style.top = `${event.clientY}px`;
-    document.body.append(leaf);
-    setTimeout(() => leaf.remove(), 850);
+    const bubble = splash('coastal-trail-bubble', event.clientX, event.clientY, 950);
+    bubble.style.setProperty('--size', `${4 + Math.random() * 5}px`);
+    bubble.style.setProperty('--drift', `${(Math.random() - .5) * 16}px`);
+  }, { passive: true });
+  let ripples = 0;
+  document.addEventListener('pointerdown', (event) => {
+    if (!playful() || !event.isPrimary || ripples >= 3 || (event.target as Element | null)?.closest?.('input, textarea, select, [contenteditable="true"], dialog')) return;
+    ripples++;
+    splash('coastal-ripple', event.clientX, event.clientY, 900);
+    setTimeout(() => { ripples--; }, 900);
   }, { passive: true });
 </script>

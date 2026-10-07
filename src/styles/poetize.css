@@ -17,7 +17,7 @@ html.dark[data-visual-theme='poetize'] {
 }
 /* Keep all additions out of the original Sakura layout. */
 .poetize-article-intro, .poetize-companion, .poetize-tools, .poetize-reading-progress,
-.poetize-profile, .poetize-explore, #poetize-petals { display: none; }
+.poetize-profile, .poetize-explore, #coastal-sea { display: none; }
 html[data-visual-theme='poetize'] main { padding-top: 0; }
 html[data-visual-theme='poetize'] header#site-header:not(.scrolled) { background: transparent; backdrop-filter: none; border-color: #ffffff24; }
 html[data-visual-theme='poetize'] #site-header:not(.scrolled) :is(.nav-link, .icon-btn) { color: #fff; }
@@ -41,12 +41,16 @@ html[data-visual-theme='poetize'] :is(.blog-wrap, .projects-page) { padding-top:
 html[data-visual-theme='poetize'] :is(.blog-head, .projects-hero) { border-radius: 0; }
 html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero, .hero-wrap)::before,
 html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero, .hero-wrap)::after {
-  content: ''; position: absolute; bottom: -1px; left: -50%; width: 200%; height: 58px; background: var(--bg);
-  mask: url('/themes/poetize-wave.svg') left bottom / 50% 100% repeat-x; pointer-events: none; z-index: 3;
-  animation: poetize-wave-drift 120s linear infinite;
+  content: ''; position: absolute; bottom: -1px; left: -100%; width: 300%; height: 58px; background: var(--bg);
+  mask: url('/themes/poetize-wave.svg') left bottom / calc(100% / 3) 100% repeat-x; pointer-events: none; z-index: 3;
+  animation: poetize-wave-drift 42s linear infinite, poetize-wave-swell 7s ease-in-out infinite;
 }
-html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero, .hero-wrap)::before { bottom: 10px; opacity: .48; height: 68px; animation-duration: 90s; animation-direction: reverse; }
-@keyframes poetize-wave-drift { to { transform: translateX(25%); } }
+html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero, .hero-wrap)::before { bottom: 10px; opacity: .48; height: 68px; animation-duration: 28s, 5.2s; animation-direction: reverse, normal; }
+/* One mask tile is exactly one hero width, so shifting a third of the 300%-wide strip loops seamlessly. */
+@keyframes poetize-wave-drift { to { transform: translateX(calc(100% / 3)); } }
+@keyframes poetize-wave-swell { 50% { translate: 0 5px; } }
+html[data-visual-theme='poetize'] .coastal-scene img { transform-origin: 50% 62%; animation: coastal-scene-drift 46s ease-in-out infinite alternate; }
+@keyframes coastal-scene-drift { to { scale: 1.045; translate: -.8% -.4%; } }
 html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero) :is(h1, p, .gradient-text, .post-meta, .post-toolbar a) { color: #fff; background: none; -webkit-text-fill-color: currentColor; text-shadow: 0 2px 14px #143d5b66; }
 html[data-visual-theme='poetize'] .post-header { min-height: 360px; padding-top: 95px; padding-bottom: 60px; }
 html[data-visual-theme='poetize'] .post-header-inner { max-width: 960px; }
@@ -132,9 +136,9 @@ html[data-visual-theme='poetize'] :is(.toc-panel, .card, .book-card, .project-ca
 html[data-visual-theme='poetize'] .tag { background: var(--bg-alt); border-color: var(--border); }
 html[data-visual-theme='poetize'] ::selection { background: #6bc7df55; }
 /* Effects stop completely when the theme is inactive, page hidden, or motion is disabled. */
-html[data-visual-theme='poetize'] #poetize-petals { display: block; position: fixed; inset: 0; width: 100%; height: 100%; z-index: 105; pointer-events: none; }
-html[data-visual-theme='poetize'] #poetize-petals[hidden] { display: none; }
-html[data-visual-theme='poetize'] .poetize-reading-progress { display: block; position: fixed; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg,#6dcbdc,#f2bfd4); transform: scaleX(var(--reading-progress,0)); transform-origin: left; z-index: 110; }
+html[data-visual-theme='poetize'] #coastal-sea { display: block; position: fixed; inset: 0; width: 100%; height: 100%; z-index: 105; pointer-events: none; }
+html[data-visual-theme='poetize'] #coastal-sea[hidden] { display: none; }
+html[data-visual-theme='poetize'] .poetize-reading-progress { display: block; position: fixed; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg,#4fb6cf,#8fdbe6 62%,#f3dcae); transform: scaleX(var(--reading-progress,0)); transform-origin: left; z-index: 110; }
 html[data-visual-theme='poetize'] .poetize-tools { display: grid; gap: 8px; position: fixed; right: 16px; bottom: 96px; z-index: 90; }
 .poetize-tools button { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 12px; background: var(--glass-bg); color: var(--primary); box-shadow: var(--shadow); backdrop-filter: blur(12px); transition: transform .25s, background .25s; }
 .poetize-tools button:hover { transform: translateY(-3px); background: var(--bg-alt); }
@@ -161,12 +165,15 @@ html[data-visual-theme='poetize'] .poetize-companion { display: flex; position: 
 .poetize-pet.is-happy .poetize-pet-body { animation: coast-hop .4s ease-in-out 2; }
 @keyframes coast-breathe { 50% { transform: scale(1.02,.98); } }
 @keyframes coast-hop { 50% { transform: translateY(-10px); } }
-.poetize-pointer-leaf { position: fixed; z-index: 103; pointer-events: none; color: #e9a9c0; animation: coast-trail .8s ease-out forwards; }
-@keyframes coast-trail { to { opacity: 0; transform: translateY(20px) scale(.3); } }
+.coastal-trail-bubble { --size: 6px; position: fixed; z-index: 103; width: var(--size); height: var(--size); margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2); border: 1.2px solid rgba(62, 160, 192, .85); border-radius: 50%; background: radial-gradient(circle at 32% 30%, #fff 0 16%, rgba(196, 240, 248, .3) 22%, transparent 72%); pointer-events: none; animation: coast-trail .9s ease-out forwards; }
+@keyframes coast-trail { to { opacity: 0; transform: translate(var(--drift, 0), -24px) scale(.55); } }
+.coastal-ripple { position: fixed; z-index: 103; width: 64px; height: 64px; margin: -32px 0 0 -32px; border: 1.6px solid rgba(62, 160, 192, .75); border-radius: 50%; box-shadow: inset 0 0 14px rgba(110, 200, 222, .22); pointer-events: none; animation: coast-ripple .85s cubic-bezier(.2, .6, .3, 1) forwards; }
+.coastal-ripple::after { content: ''; position: absolute; inset: 14px; border: 1.2px solid rgba(62, 160, 192, .55); border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, .5); animation: coast-ripple .85s .12s cubic-bezier(.2, .6, .3, 1) both; }
+@keyframes coast-ripple { from { opacity: 1; transform: scale(.1); } 40% { opacity: .85; } to { opacity: 0; transform: scale(1); } }
 /* Dense workspaces keep all original controls and compact navigation. */
 html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) main { padding-top: var(--nav-height); }
 html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) header#site-header:not(.scrolled) { background: #245970; }
-html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) :is(.poetize-tools, #poetize-petals, .poetize-companion) { display: none; }
+html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) :is(.poetize-tools, #coastal-sea, .poetize-companion) { display: none; }
 @media (max-width: 900px) {
  html[data-visual-theme='poetize'] .poetize-home-grid { grid-template-columns: 210px minmax(0,1fr); gap: 20px; }
  html[data-visual-theme='poetize'] .masonry { gap: 18px; }
@@ -202,15 +209,16 @@ html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) :is(.poetize-tool
 @media (max-width: 520px) { html[data-visual-theme='poetize'] .masonry { grid-template-columns: 1fr; } }
 html[data-poetize-motion='off'] :is(.hero-wrap, .post-header, .page-hero, .blog-head, .projects-hero)::before,
 html[data-poetize-motion='off'] :is(.hero-wrap, .post-header, .page-hero, .blog-head, .projects-hero)::after,
-html[data-poetize-motion='off'] :is(.poetize-explore svg, .poetize-pet-body) { animation-play-state: paused; }
-html[data-poetize-motion='off'] .poetize-pointer-leaf { display: none; }
+html[data-poetize-motion='off'] :is(.poetize-explore svg, .poetize-pet-body, .coastal-scene img) { animation-play-state: paused; }
+html[data-poetize-motion='off'] :is(.coastal-trail-bubble, .coastal-ripple) { display: none; }
 @media (prefers-reduced-motion: reduce) {
  html[data-visual-theme='poetize'] .animate-in { animation: none; opacity: 1; transform: none; }
+ html[data-visual-theme='poetize'] .coastal-scene img { animation: none; }
  .poetize-pet-body { animation: none !important; }
- .poetize-pointer-leaf { display: none; }
+ :is(.coastal-trail-bubble, .coastal-ripple) { display: none; }
 }
 @media print {
- .poetize-companion, .poetize-tools, #poetize-petals { display: none !important; }
+ .poetize-companion, .poetize-tools, #coastal-sea, .coastal-trail-bubble, .coastal-ripple { display: none !important; }
  html[data-visual-theme='poetize'] .post-header { background: none; padding: 20px; }
  html[data-visual-theme='poetize'] .post-header :is(h1,p,.post-meta) { color: black; text-shadow: none; }
 }
