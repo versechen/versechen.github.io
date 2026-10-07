@@ -1,4 +1,5 @@
 <canvas id="coastal-sea" aria-hidden="true"></canvas>
+<canvas id="coastal-tide" aria-hidden="true" hidden></canvas>
 <div class="poetize-reading-progress" aria-hidden="true"></div>
 <div class="poetize-tools" aria-label="阅读工具">
   <button id="poetize-effects-toggle" aria-label="关闭海浪与海鸥动画" aria-pressed="true" title="海浪、海鸥与波光动画"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 9.5c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/><path d="m16.5 4 1.5-1 1.5 1" /></svg></button>
@@ -11,6 +12,7 @@
 </dialog>
 <script>
   import { initCoastalSea } from '../lib/coastal-sea';
+  import { initCoastalTide } from '../lib/coastal-tide';
 
   const root = document.documentElement;
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -24,6 +26,9 @@
   // Reading and filtering surfaces keep drifting bubbles away from text/forms; gulls and glints stay inside the hero painting.
   const sea = canvas ? initCoastalSea(canvas, { ambient: !document.querySelector('.blog-sidebar, .article-main') }) : null;
   if (canvas && !sea) canvas.hidden = true;
+  const tideCanvas = document.querySelector<HTMLCanvasElement>('#coastal-tide');
+  const tide = tideCanvas ? initCoastalTide(tideCanvas, { active }) : null;
+  if (!tide) delete root.dataset.coastalArrival;
   const sync = () => {
     const running = active();
     root.dataset.poetizeMotion = running ? 'on' : 'off';
@@ -31,7 +36,7 @@
     effectsButton?.setAttribute('aria-pressed', String(enabled && !motion.matches));
     effectsButton?.setAttribute('aria-label', enabled ? '关闭海浪与海鸥动画' : '开启海浪与海鸥动画');
     if (effectsButton) { effectsButton.disabled = motion.matches; effectsButton.title = motion.matches ? '已遵循系统减少动态效果设置' : '海浪、海鸥与波光动画'; }
-    sea?.setActive(running);
+    sea?.setActive(running); tide?.setActive(running);
   };
   effectsButton?.addEventListener('click', () => { enabled = !enabled; try { localStorage.setItem('poetize-effects', enabled ? 'on' : 'off'); } catch {} sync(); });
   focusButton?.addEventListener('click', () => {
@@ -50,7 +55,7 @@
   };
   let scrollFrame = 0;
   window.addEventListener('scroll', () => { if (!scrollFrame) scrollFrame = requestAnimationFrame(() => { updateProgress(); scrollFrame = 0; }); }, { passive:true });
-  window.addEventListener('resize', () => { sea?.resize(); updateProgress(); });
+  window.addEventListener('resize', () => { sea?.resize(); tide?.resize(); updateProgress(); });
   document.addEventListener('visibilitychange', sync); motion.addEventListener('change', sync);
   const themeObserver = new MutationObserver(sync);
   const observeTheme = () => themeObserver.observe(root, {attributes:true, attributeFilter:['data-visual-theme']});

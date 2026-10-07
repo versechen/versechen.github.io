@@ -17,7 +17,7 @@ html.dark[data-visual-theme='poetize'] {
 }
 /* Keep all additions out of the original Sakura layout. */
 .poetize-article-intro, .poetize-companion, .poetize-tools, .poetize-reading-progress,
-.poetize-profile, .poetize-explore, #coastal-sea { display: none; }
+.poetize-profile, .poetize-explore, #coastal-sea, #coastal-tide { display: none; }
 html[data-visual-theme='poetize'] main { padding-top: 0; }
 html[data-visual-theme='poetize'] header#site-header:not(.scrolled) { background: transparent; backdrop-filter: none; border-color: #ffffff24; }
 html[data-visual-theme='poetize'] #site-header:not(.scrolled) :is(.nav-link, .icon-btn) { color: #fff; }
@@ -138,6 +138,18 @@ html[data-visual-theme='poetize'] ::selection { background: #6bc7df55; }
 /* Effects stop completely when the theme is inactive, page hidden, or motion is disabled. */
 html[data-visual-theme='poetize'] #coastal-sea { display: block; position: fixed; inset: 0; width: 100%; height: 100%; z-index: 105; pointer-events: none; }
 html[data-visual-theme='poetize'] #coastal-sea[hidden] { display: none; }
+html[data-visual-theme='poetize'] #coastal-tide { display: block; position: fixed; inset: 0; width: 100%; height: 100%; z-index: 106; pointer-events: none; }
+html[data-visual-theme='poetize'] #coastal-tide[hidden] { display: none; }
+/* The saved water line, painted before the new page's scripts run; it fades by itself if they never do. */
+html[data-visual-theme='poetize'][data-coastal-arrival]::after { content: ''; position: fixed; z-index: 106; pointer-events: none; animation: coast-tide-fallback .5s ease 1.6s forwards; }
+html[data-visual-theme='poetize'][data-coastal-arrival='rise']::after { left: 0; right: 0; bottom: 0; height: calc(var(--coastal-tide, .6) * 100%); border-top: 5px solid rgba(255, 255, 255, .9); background: linear-gradient(rgba(124, 214, 230, .6), rgba(62, 168, 204, .52) 20%, rgba(30, 110, 152, .66)); }
+html[data-visual-theme='poetize'][data-coastal-arrival^='from-']::after { top: 0; bottom: 0; width: 62%; }
+html[data-visual-theme='poetize'][data-coastal-arrival='from-left']::after { left: calc((var(--coastal-tide, .52) - .62) * 100%); border-right: 5px solid rgba(255, 255, 255, .9); background: linear-gradient(90deg, rgba(30, 110, 152, 0), rgba(62, 168, 204, .5) 68%, rgba(124, 214, 230, .62)); }
+html[data-visual-theme='poetize'][data-coastal-arrival='from-right']::after { right: calc((var(--coastal-tide, .52) - .62) * 100%); border-left: 5px solid rgba(255, 255, 255, .9); background: linear-gradient(270deg, rgba(30, 110, 152, 0), rgba(62, 168, 204, .5) 68%, rgba(124, 214, 230, .62)); }
+html.dark[data-visual-theme='poetize'][data-coastal-arrival='rise']::after { border-top-color: rgba(214, 240, 246, .9); background: linear-gradient(rgba(80, 162, 192, .6), rgba(30, 98, 134, .52) 20%, rgba(10, 50, 80, .66)); }
+html.dark[data-visual-theme='poetize'][data-coastal-arrival='from-left']::after { border-right-color: rgba(214, 240, 246, .9); background: linear-gradient(90deg, rgba(10, 50, 80, 0), rgba(30, 98, 134, .5) 68%, rgba(80, 162, 192, .62)); }
+html.dark[data-visual-theme='poetize'][data-coastal-arrival='from-right']::after { border-left-color: rgba(214, 240, 246, .9); background: linear-gradient(270deg, rgba(10, 50, 80, 0), rgba(30, 98, 134, .5) 68%, rgba(80, 162, 192, .62)); }
+@keyframes coast-tide-fallback { to { opacity: 0; } }
 html[data-visual-theme='poetize'] .poetize-reading-progress { display: block; position: fixed; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg,#4fb6cf,#8fdbe6 62%,#f3dcae); transform: scaleX(var(--reading-progress,0)); transform-origin: left; z-index: 110; }
 html[data-visual-theme='poetize'] .poetize-tools { display: grid; gap: 8px; position: fixed; right: 16px; bottom: 96px; z-index: 90; }
 .poetize-tools button { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 12px; background: var(--glass-bg); color: var(--primary); box-shadow: var(--shadow); backdrop-filter: blur(12px); transition: transform .25s, background .25s; }
@@ -173,7 +185,7 @@ html[data-visual-theme='poetize'] .poetize-companion { display: flex; position: 
 /* Dense workspaces keep all original controls and compact navigation. */
 html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) main { padding-top: var(--nav-height); }
 html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) header#site-header:not(.scrolled) { background: #245970; }
-html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) :is(.poetize-tools, #coastal-sea, .poetize-companion) { display: none; }
+html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) :is(.poetize-tools, #coastal-sea, #coastal-tide, .poetize-companion) { display: none; }
 @media (max-width: 900px) {
  html[data-visual-theme='poetize'] .poetize-home-grid { grid-template-columns: 210px minmax(0,1fr); gap: 20px; }
  html[data-visual-theme='poetize'] .masonry { gap: 18px; }
@@ -218,7 +230,8 @@ html[data-poetize-motion='off'] :is(.coastal-trail-bubble, .coastal-ripple) { di
  :is(.coastal-trail-bubble, .coastal-ripple) { display: none; }
 }
 @media print {
- .poetize-companion, .poetize-tools, #coastal-sea, .coastal-trail-bubble, .coastal-ripple { display: none !important; }
+ .poetize-companion, .poetize-tools, #coastal-sea, #coastal-tide, .coastal-trail-bubble, .coastal-ripple { display: none !important; }
+ html[data-coastal-arrival]::after { display: none !important; }
  html[data-visual-theme='poetize'] .post-header { background: none; padding: 20px; }
  html[data-visual-theme='poetize'] .post-header :is(h1,p,.post-meta) { color: black; text-shadow: none; }
 }

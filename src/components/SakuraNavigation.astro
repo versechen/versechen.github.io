@@ -9,9 +9,21 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
     const quiet = document.getElementById('sakura-navigation').dataset.quiet === 'true';
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
     let enabled = true, arrivalTimer = 0, departureTimer = 0, recoveryTimer = 0;
-    let generation = 0, destination = '', deadline = 0, inFlight = false, pageLeaving = false;
+    let generation = 0, destination = '', departing = '', deadline = 0, inFlight = false, pageLeaving = false;
     const readPreference = () => { try { enabled = localStorage.getItem('sakura-effects') !== 'off'; } catch {} };
-    const allowed = () => !quiet && root.dataset.visualTheme !== 'poetize' && !motion.matches && enabled;
+    const coastal = () => root.dataset.visualTheme === 'poetize';
+    const allowed = () => !quiet && !coastal() && !motion.matches && enabled;
+    // The coastal renderer folds its own pause, reading focus and visibility into poetizeMotion.
+    const tideAllowed = () => !quiet && coastal() && !motion.matches && root.dataset.coastalReady === 'true' && root.dataset.poetizeMotion === 'on';
+    // Paint the saved water line before first paint; the tide Canvas replaces it on its first frame.
+    try {
+      const tide = JSON.parse(sessionStorage.getItem('coastal-navigation-tide-v1') || 'null');
+      if (tide && coastal() && !quiet && !motion.matches && localStorage.getItem('poetize-effects') !== 'off' && (tide.kind === 'sweep' || tide.kind === 'rise')
+        && Math.abs(Date.now() - tide.at) < 10000 && new URL(tide.target).pathname.replace(/\/$/, '') === location.pathname.replace(/\/$/, '')) {
+        root.dataset.coastalArrival = tide.kind === 'rise' ? 'rise' : tide.dir < 0 ? 'from-right' : 'from-left';
+        root.style.setProperty('--coastal-tide', String(Math.max(0, Math.min(1, Number(tide.front) || 0))));
+      }
+    } catch {}
     const clearArrival = () => {
       clearTimeout(arrivalTimer);
       delete root.dataset.sakuraArrival; delete root.dataset.sakuraDirection;
@@ -19,7 +31,7 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
     const cancelDeparture = (cancelScene = true) => {
       generation++; clearTimeout(departureTimer); clearTimeout(recoveryTimer);
       destination = ''; deadline = 0; delete root.dataset.sakuraDeparture;
-      if (cancelScene) window.dispatchEvent(new Event('sakura-navigation-cancel'));
+      if (cancelScene) { window.dispatchEvent(new Event('sakura-navigation-cancel')); window.dispatchEvent(new Event('coastal-navigation-cancel')); }
     };
     const clear = () => { clearArrival(); cancelDeparture(); };
     const abort = () => { if (inFlight) { window.stop(); inFlight = false; } clear(); };
@@ -35,7 +47,8 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
       root.dataset.sakuraArrival = 'active';
       if (document.readyState !== 'loading') finishLater();
     };
-    const sync = () => { if (!allowed()) clear(); };
+    // A theme change mid-hold must also stop the departure owned by the other renderer.
+    const sync = () => { if ((coastal() ? !tideAllowed() : !allowed()) || (destination && departing !== (coastal() ? 'coastal' : 'sakura'))) clear(); };
     readPreference(); arrive();
     document.addEventListener('DOMContentLoaded', finishLater, { once: true });
     window.addEventListener('sakura-arrival-end', clearArrival);
@@ -58,24 +71,25 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
       }
       if (url.origin !== location.origin || !/^https?:$/.test(url.protocol) || url.hash || (samePath && url.search === location.search) || /\.[a-z0-9]+$/i.test(url.pathname) || /^\/(notes|editor-preview)(\/|$)/.test(url.pathname) || url.pathname.includes('/docs')) { cancelDeparture(); return; }
       // No renderer/storage, paused/quiet reading, or failed script: use the link immediately.
-      if (!allowed() || root.dataset.sakuraReady !== 'true' || root.dataset.sakuraMotion !== 'on') { cancelDeparture(); return; }
-      const request = new CustomEvent('sakura-navigation-start', { detail: { href: url.href, accepted: false } });
+      const scene = coastal() ? 'coastal' : 'sakura';
+      if (scene === 'coastal' ? !tideAllowed() : (!allowed() || root.dataset.sakuraReady !== 'true' || root.dataset.sakuraMotion !== 'on')) { cancelDeparture(); return; }
+      const request = new CustomEvent(`${scene}-navigation-start`, { detail: { href: url.href, accepted: false } });
       window.dispatchEvent(request);
       if (!request.detail.accepted) { cancelDeparture(); return; }
       event.preventDefault(); clearArrival();
       generation++; clearTimeout(departureTimer); clearTimeout(recoveryTimer);
-      destination = url.href; root.dataset.sakuraDeparture = 'active';
+      destination = url.href; departing = scene; root.dataset.sakuraDeparture = 'active';
       if (!deadline) deadline = performance.now() + 340;
       const current = generation;
       const navigate = () => {
         if (current !== generation || !destination) return;
         const target = destination;
-        window.dispatchEvent(new CustomEvent('sakura-navigation-handoff', { detail: target }));
+        window.dispatchEvent(new CustomEvent(`${scene}-navigation-handoff`, { detail: target }));
         inFlight = true;
         // Failed/cancelled network navigation must not leave a pending scene forever.
         recoveryTimer = setTimeout(() => {
           if (current !== generation) return;
-          window.dispatchEvent(new CustomEvent('sakura-navigation-abandon', { detail: target }));
+          window.dispatchEvent(new CustomEvent(`${scene}-navigation-abandon`, { detail: target }));
           cancelDeparture(false);
         }, 5000);
         location.assign(target);
@@ -84,7 +98,7 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
       if (inFlight) navigate(); else departureTimer = setTimeout(navigate, Math.max(0, deadline - performance.now()));
     });
     document.addEventListener('keydown', event => { if (event.key === 'Escape') abort(); });
-    new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-visual-theme'] });
+    new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-visual-theme', 'data-poetize-motion'] });
     motion.addEventListener('change', sync);
     window.addEventListener('sakura-preference', event => { enabled = event.detail; sync(); });
     window.addEventListener('storage', () => { readPreference(); sync(); });
