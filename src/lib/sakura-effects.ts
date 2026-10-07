@@ -12,6 +12,7 @@ export function initSakura() {
   const quiet = !!document.querySelector('#notes-app, .docs-shell, .editor-demo');
   const hero = document.querySelector<HTMLElement>('.hero-wrap, .page-hero, .post-header, .blog-head, .projects-hero');
   const article = document.querySelector<HTMLElement>('.article-main');
+  const siteHeader = document.querySelector<HTMLElement>('#site-header');
   const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
   let enabled = true;
   const readPreference = () => { try { enabled = localStorage.getItem('sakura-effects') !== 'off'; } catch {} };
@@ -19,7 +20,7 @@ export function initSakura() {
   let width = 0, height = 0, small = false, dark = false, departed = false;
   let raf = 0, scrollFrame = 0, previous = 0, elapsed = 0, gust = 0, lastGust = -5000;
   let pointerWind = 0, lastPointer = 0, previousX = 0;
-  let heroBottom = 0, articleTop = Infinity, articleBottom = -Infinity, releaseAge = -1;
+  let heroBottom = 0, headerBottom = 0, articleTop = Infinity, articleBottom = -Infinity, releaseAge = -1;
   let safeLeft = 0, safeRight = 0;
   type Petal = { x: number; y: number; vx: number; vy: number; sway: number; curl: number; depth: number; size: number; phase: number; turn: number; speed: number; sprite: number; age: number; lifetime: number };
   type Style = 'gust' | 'fall';
@@ -51,6 +52,8 @@ export function initSakura() {
   const burstCap = () => connection?.saveData ? 6 : small ? 12 : 28;
   // Small screens only draw temporary petals inside the page heading, so episodes start there.
   const band = () => small ? Math.min(height, Math.max(heroBottom, article ? 0 : 160)) : height;
+  // The fixed site header paints above the canvas, so episodes begin just below it.
+  const lid = () => Math.min(headerBottom, band() * .5);
   const pathOf = (href: string) => { try { return new URL(href, location.href).pathname; } catch { return '/'; } };
   const sectionOf = (path: string) => path.split('/').filter(Boolean)[0] ?? '';
   const sectionIndex = (path: string) => [...document.querySelectorAll<HTMLAnchorElement>('.nav-link[href]')]
@@ -63,6 +66,7 @@ export function initSakura() {
   const active = () => allowed() && !departed && !document.hidden && visibleArea();
   const measure = () => {
     heroBottom = hero?.getBoundingClientRect().bottom ?? 0;
+    headerBottom = Math.max(0, siteHeader?.getBoundingClientRect().bottom ?? 0);
     const box = article?.getBoundingClientRect();
     articleTop = box ? box.top - 24 : Infinity; articleBottom = box ? box.bottom + 24 : -Infinity;
     // All central reading / interaction surfaces stay clear, including open TOC panels.
@@ -91,6 +95,10 @@ export function initSakura() {
     const lean = windDir * (style === 'fall' ? .35 : 1);
     const windShift = windResponse * 24 * lean, windLift = windResponse * 6 * Math.abs(lean), windTilt = windResponse * .18 * lean;
     const arrivalWind = releaseAge >= 0 && releaseAge < 1.5 ? Math.sin(Math.PI * releaseAge / 1.5) ** 2 * .6 : 0;
+    // A falling shower stays fully visible longer before it fades, so it reads as falling, not flickering.
+    const hold = style === 'fall' ? .5 : .35;
+    // The article shower crosses the title briefly, so it may stay clearer there than the side gust.
+    const lead = style === 'fall' ? .88 : .62;
     const wind = 12 + Math.sin(elapsed * .36) * 15 + Math.sin(elapsed * .81) * 8 + gust * 170 + arrivalWind * 85 * lean + pointerWind;
     let visibleBase = 0, visibleExtra = 0;
     for (let index = 0; index < petals.length + temporary.length; index++) {
@@ -121,11 +129,11 @@ export function initSakura() {
       const left = inArticle ? safeLeft : width * (inHero ? .24 : .15);
       const right = inArticle ? safeRight : width * (inHero ? .76 : .85);
       const edge = Math.max(0, Math.min(1, Math.max(left - x, x - right) / 55));
-      const fade = extra ? smooth((p.age - p.lifetime * .35) / (p.lifetime * .65)) : 0;
+      const fade = extra ? smooth((p.age - p.lifetime * hold) / (p.lifetime * (1 - hold))) : 0;
       const lifespan = extra ? smooth(p.age / .45) * (1 - fade) : 1;
       // Retiring petals shrink a little as well, as if drifting away rather than switching off.
       const size = p.size * (1 - fade * .18);
-      let alpha = (inArticle ? edge : extra ? .62 + edge * .38 : inHero ? .28 + edge * .72 : edge * .7) * lifespan;
+      let alpha = (inArticle ? edge : extra ? lead + edge * (1 - lead) : inHero ? .28 + edge * .72 : edge * .7) * lifespan;
       // Temporary petals may drift past a page heading, but soften before protected reading space.
       if (extra && article && y < articleTop) alpha *= edge + (1 - edge) * smooth((articleTop - y - size) / 60);
       if (extra && small) alpha *= smooth((Math.max(heroBottom, article ? 0 : 160) - y - size) / 60);
@@ -204,12 +212,12 @@ export function initSakura() {
   // Switching sections: a gust strips clusters off an unseen tree at the upwind edge.
   const gustPetals = (): Petal[] => {
     const cap = burstCap(), count = cap - Math.floor(Math.random() * (cap > 12 ? 7 : cap > 6 ? 4 : 2));
-    const span = band(), strength = .85 + Math.random() * .3, curl = 16 + Math.random() * 28;
-    const crown = span * (small ? .25 + Math.random() * .3 : .16 + Math.random() * .18);
+    const top = lid(), room = band() - top, strength = .85 + Math.random() * .3, curl = 16 + Math.random() * 28;
+    const crown = top + room * (small ? .2 + Math.random() * .35 : .12 + Math.random() * .2);
     const list: Petal[] = [];
     for (let cluster = 0, release = 0; list.length < count; cluster++, release += .04 + Math.random() * .05) {
       const cx = (windDir > 0 ? 0 : width) + windDir * width * (.01 + Math.random() * .11);
-      const cy = crown + (Math.random() - .5) * span * .22;
+      const cy = crown + (Math.random() - .5) * room * .22;
       const cvx = windDir * width * (.42 + Math.random() * .24) * strength, cvy = (Math.random() - .45) * 70;
       // Each cluster has 3–5 petals; uneven speeds pull it apart as it travels.
       for (let j = 0, n = Math.min(count - list.length, 3 + Math.floor(Math.random() * 3)); j < n; j++) {
@@ -222,16 +230,20 @@ export function initSakura() {
     }
     return list;
   };
-  // Entering an article: no sweeping wind, petals drift down from a branch overhead.
+  // Entering an article: no sweeping wind; a loose curtain drops from the top edge together,
+  // then uneven speeds pull it apart as it falls through the first screen.
   const fallingPetals = (): Petal[] => {
-    const cap = burstCap(), count = Math.round(cap * (.6 + Math.random() * .2));
-    const drift = windDir * (14 + Math.random() * 24);
+    const top = lid(), room = band() - top, cap = burstCap(), count = Math.round(cap * (.85 + Math.random() * .15));
+    const drift = windDir * (10 + Math.random() * 22), rate = Math.min(190, Math.max(45, room * (.17 + Math.random() * .04)));
+    const tilt = (Math.random() - .5) * .08, stragglers = Math.floor(count * .25);
     return Array.from({ length: count }, (_, i) => {
-      const p = makePetal();
-      return { ...p, x: width * (.04 + Math.random() * .92), y: small ? band() * (-.1 + Math.random() * .5) : height * (-.03 + Math.random() * .24),
-        vx: drift * (.7 + Math.random() * .6), vy: 8 + Math.random() * 12, sway: 1.5 + Math.random() * .8,
-        size: 8 + p.depth * 10, speed: 24 + p.depth * 16,
-        age: -((i / count) * 1.1 + Math.random() * .12), lifetime: 3.3 + p.depth * .9 };
+      const p = makePetal(), depth = .35 + p.depth * .65, x = width * (.02 + Math.random() * .96), late = i >= count - stragglers;
+      return { ...p, depth, x,
+        y: late ? top - 20 - Math.random() * room * .06 : top + room * (Math.random() * .12 + tilt * (x / width - .5)),
+        vx: drift * (.6 + Math.random() * .8), vy: 0, sway: 1.2 + Math.random() * .8,
+        size: 9 + depth * 11, speed: rate * (.82 + depth * .3 + (Math.random() - .5) * .16),
+        age: late ? -(.3 + Math.random() * .6) : Math.random() * .12,
+        lifetime: 3.9 + depth * .6 };
     });
   };
   const arrivalBreeze = (target = location.href) => {
@@ -327,7 +339,7 @@ export function initSakura() {
       target.searchParams.delete('visual-theme');
       const current = new URL(location.href); current.searchParams.delete('visual-theme');
       const gap = (Date.now() - saved.at) / 1000;
-      const validPetal = (p: Petal) => ['x', 'y', 'vx', 'vy', 'sway', 'curl', 'depth', 'size', 'phase', 'turn', 'speed', 'sprite', 'age', 'lifetime'].every(key => Number.isFinite(p[key as keyof Petal])) && Math.abs(p.vx) <= 5000 && Math.abs(p.vy) <= 1000 && p.sway >= 0 && p.sway <= 3 && p.curl >= 0 && p.curl <= 200 && p.depth >= 0 && p.depth <= 1 && p.size >= 1 && p.size <= 20 && Number.isInteger(p.sprite) && p.sprite >= 0 && p.sprite < 3 && p.lifetime >= 0 && p.lifetime <= 4.5 && p.age >= -1.5 && p.age <= 6 && p.speed >= 0 && p.speed <= 100;
+      const validPetal = (p: Petal) => ['x', 'y', 'vx', 'vy', 'sway', 'curl', 'depth', 'size', 'phase', 'turn', 'speed', 'sprite', 'age', 'lifetime'].every(key => Number.isFinite(p[key as keyof Petal])) && Math.abs(p.vx) <= 5000 && Math.abs(p.vy) <= 1000 && p.sway >= 0 && p.sway <= 3 && p.curl >= 0 && p.curl <= 200 && p.depth >= 0 && p.depth <= 1 && p.size >= 1 && p.size <= 20 && Number.isInteger(p.sprite) && p.sprite >= 0 && p.sprite < 3 && p.lifetime >= 0 && p.lifetime <= 4.5 && p.age >= -1.5 && p.age <= 6 && p.speed >= 0 && p.speed <= 240;
       if (target.origin !== current.origin || target.pathname.replace(/\/$/, '') !== current.pathname.replace(/\/$/, '') || target.search !== current.search || gap < 0 || gap > 10 || !Number.isFinite(saved.at) || !Number.isFinite(saved.width) || !Number.isFinite(saved.height) || saved.width <= 0 || saved.height <= 0 || ![saved.elapsed, saved.gust, saved.pointerWind, saved.releaseAge].every(Number.isFinite) || saved.releaseAge < -1 || saved.releaseAge > 6 || typeof saved.episode !== 'string' || saved.episode.length > 80 || (saved.style !== 'gust' && saved.style !== 'fall') || (saved.windDir !== 1 && saved.windDir !== -1) || !Array.isArray(saved.petals) || saved.petals.length > 14 || !saved.petals.every(validPetal) || !Array.isArray(saved.temporary) || saved.temporary.length > 28 || !saved.temporary.every(validPetal)) return false;
       const scale = (p: Petal): Petal => ({ ...p, x: width === saved.width ? p.x : p.x * width / saved.width, y: height === saved.height ? p.y : p.y * height / saved.height });
       const count = petals.length;

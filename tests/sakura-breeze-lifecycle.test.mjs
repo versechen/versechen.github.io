@@ -4,7 +4,7 @@ import {runInNewContext} from 'node:vm';
 import {test} from 'node:test';
 import ts from 'typescript';
 const source=ts.transpile(readFileSync(new URL('../src/lib/sakura-effects.ts',import.meta.url),'utf8'),{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS});
-function fixture({width=1174,height=753,reading=false,reduced=false,paused=false,theme,saveData=false,heroHeight=height,storage=new Map(),storageBlocked=false,href='https://example.com/',wall={now:0},nav=['/','/blog','/reading','/projects','/life','/about']}={}){
+function fixture({width=1174,height=753,reading=false,reduced=false,paused=false,theme,saveData=false,heroHeight=height,storage=new Map(),storageBlocked=false,href='https://example.com/',wall={now:0},nav=['/','/blog','/reading','/projects','/life','/about'],header=0}={}){
  let time=0,id=0,seed=12345;const frames=new Map(),events=new Map(),signals=[];
  function element(){return {hidden:true,disabled:false,title:'',dataset:{},attrs:{},events:{},setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,f){this.events[k]=f;}};}
  function canvas(){const c=element();let x=0,y=0,angle=0;const ctx={items:[],globalAlpha:1,clearRect(){this.items=[];},setTransform(){},save(){},restore(){},translate(a,b){x=a;y=b;},rotate(value){angle=value;},scale(){},drawImage(_,a,b,size){this.items.push({x,y,size,alpha:this.globalAlpha,angle});},createLinearGradient(){return{addColorStop(){}};},beginPath(){},moveTo(){},bezierCurveTo(){},lineTo(){},fill(){},stroke(){},quadraticCurveTo(){},rect(){},clip(){}};c.getContext=()=>ctx;c.ctx=ctx;return c;}
@@ -13,7 +13,7 @@ function fixture({width=1174,height=753,reading=false,reduced=false,paused=false
  const hero={getBoundingClientRect:()=>({bottom:heroHeight})};
  const article=reading?{getBoundingClientRect:()=>({top:280,bottom:4000,left:220,right:width-90})}:null;
  const motion={matches:reduced,addEventListener(_,fn){this.change=fn;}};
- const nodes={'#sakura-petals':field,'#sakura-tools':tools,'#sakura-effects-toggle':toggle,'#sakura-gust':gust,'.hero-wrap, .page-hero, .post-header, .blog-head, .projects-hero':hero,'.article-main':article};
+ const nodes={'#sakura-petals':field,'#sakura-tools':tools,'#sakura-effects-toggle':toggle,'#sakura-gust':gust,'.hero-wrap, .page-hero, .post-header, .blog-head, .projects-hero':hero,'.article-main':article,'#site-header':header?{getBoundingClientRect:()=>({bottom:header})}:null};
  const listen=(name,fn)=>events.set(name,[...(events.get(name)||[]),fn]);
  const navLinks=nav.map(path=>({href:new URL(path,href).href}));
  const document={documentElement:root,hidden:false,querySelector:s=>nodes[s]||null,querySelectorAll:s=>s==='.nav-link[href]'?navLinks:[],createElement:canvas,addEventListener:listen};
@@ -69,16 +69,34 @@ test('switching sections blows along the navigation order: rightward from the le
   assert.ok(from==='left'?+f.field.dataset.sakuraWindShift>0:+f.field.dataset.sakuraWindShift<0,'The existing field leans with the same wind');
  }
 });
-test('entering an article lets petals fall softly from above instead of sweeping across',()=>{
+test('entering an article lets a soft shower fall through the first screen instead of sweeping across',()=>{
  const f=fixture({href:'https://example.com/blog/'});f.advance(5000);begin(f,'https://example.com/blog/a-quiet-post');
  assert.equal(f.field.dataset.sakuraStyle,'fall');
- f.advance(900);const early=temporary(f);assert.ok(pool(f)>=17&&pool(f)<=22);
- assert.ok(spread(early)>1174*.5,'Petals are released across the width, not from one edge');
- assert.ok(early.every(p=>p.y<753*.45),'Petals start near the top');
+ f.advance(340);const holding=temporary(f);
+ assert.ok(pool(f)>=24&&pool(f)<=28);
+ assert.ok(holding.length>=pool(f)*.3,'Part of the shower is visible while the old page still holds');
+ assert.ok(spread(holding)>1174*.5,'Petals fall across the width, not from one edge');
+ assert.ok(holding.every(p=>p.y<753*.45),'The shower starts near the top');
+ f.advance(1000);const early=temporary(f);
  f.advance(1400);const later=temporary(f);
- assert.ok(mean(later.map(p=>p.y))>mean(early.map(p=>p.y))+35,'Petals drift downward');
+ assert.ok(mean(later.map(p=>p.y))>mean(early.map(p=>p.y))+753*.15,'Petals clearly fall down the page');
  assert.ok(Math.abs(+f.field.dataset.sakuraWindShift)<9,'No strong sweeping gust');
  f.advance(4000);assert.equal(extra(f),0);assert.equal(f.field.dataset.sakuraBurstState,'idle');
+});
+test('both styles begin below the fixed site header, so the old page shows them during its short hold',()=>{
+ for(const [options,target]of[[{},'https://example.com/reading'],[{},'https://example.com/blog/a-quiet-post'],[{width:390,height:844,heroHeight:190},'https://example.com/reading'],[{width:390,height:844,heroHeight:190},'https://example.com/blog/a-quiet-post']]){
+  const f=fixture({...options,header:64,href:'https://example.com/blog/'});f.advance(5000);begin(f,target);f.advance(340);
+  const below=temporary(f).filter(p=>p.y>64+4);
+  assert.ok(below.length>=pool(f)*.3,`${f.field.dataset.sakuraStyle} ${options.width||1174}px: ${below.length}/${pool(f)} below the header`);
+ }
+});
+test('a falling shower survives the page handoff with its faster fall speed',()=>{
+ const storage=new Map(),wall={now:0};
+ const old=fixture({href:'https://example.com/blog/',storage,wall});old.advance(5000);
+ const detail=begin(old,'https://example.com/blog/a-quiet-post');assert.equal(detail.accepted,true);
+ old.advance(340);old.fire('pagehide');wall.now+=200;
+ const next=fixture({href:'https://example.com/blog/a-quiet-post',storage,wall});
+ assert.equal(next.field.dataset.sakuraSceneSource,'continued');assert.equal(next.field.dataset.sakuraStyle,'fall');
 });
 test('on small screens both styles start inside the short page heading where petals are drawn',()=>{
  for(const target of ['https://example.com/reading','https://example.com/blog/a-quiet-post']){
