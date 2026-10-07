@@ -4,7 +4,7 @@ import {runInNewContext} from 'node:vm';
 import {test} from 'node:test';
 import ts from 'typescript';
 const source=ts.transpile(readFileSync(new URL('../src/lib/sakura-effects.ts',import.meta.url),'utf8'),{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS});
-function fixture({width=1174,height=753,reading=false,reduced=false,paused=false,theme,saveData=false,heroHeight=height,storage=new Map(),storageBlocked=false,href='https://example.com/',wall={now:0}}={}){
+function fixture({width=1174,height=753,reading=false,reduced=false,paused=false,theme,saveData=false,heroHeight=height,storage=new Map(),storageBlocked=false,href='https://example.com/',wall={now:0},nav=['/','/blog','/reading','/projects','/life','/about']}={}){
  let time=0,id=0,seed=12345;const frames=new Map(),events=new Map(),signals=[];
  function element(){return {hidden:true,disabled:false,title:'',dataset:{},attrs:{},events:{},setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,f){this.events[k]=f;}};}
  function canvas(){const c=element();let x=0,y=0,angle=0;const ctx={items:[],globalAlpha:1,clearRect(){this.items=[];},setTransform(){},save(){},restore(){},translate(a,b){x=a;y=b;},rotate(value){angle=value;},scale(){},drawImage(_,a,b,size){this.items.push({x,y,size,alpha:this.globalAlpha,angle});},createLinearGradient(){return{addColorStop(){}};},beginPath(){},moveTo(){},bezierCurveTo(){},lineTo(){},fill(){},stroke(){},quadraticCurveTo(){},rect(){},clip(){}};c.getContext=()=>ctx;c.ctx=ctx;return c;}
@@ -15,7 +15,8 @@ function fixture({width=1174,height=753,reading=false,reduced=false,paused=false
  const motion={matches:reduced,addEventListener(_,fn){this.change=fn;}};
  const nodes={'#sakura-petals':field,'#sakura-tools':tools,'#sakura-effects-toggle':toggle,'#sakura-gust':gust,'.hero-wrap, .page-hero, .post-header, .blog-head, .projects-hero':hero,'.article-main':article};
  const listen=(name,fn)=>events.set(name,[...(events.get(name)||[]),fn]);
- const document={documentElement:root,hidden:false,querySelector:s=>nodes[s]||null,createElement:canvas,addEventListener:listen};
+ const navLinks=nav.map(path=>({href:new URL(path,href).href}));
+ const document={documentElement:root,hidden:false,querySelector:s=>nodes[s]||null,querySelectorAll:s=>s==='.nav-link[href]'?navLinks:[],createElement:canvas,addEventListener:listen};
  const fire=(name,event={})=>{for(const fn of events.get(name)||[])fn(event);};
  const window={addEventListener:listen,dispatchEvent:e=>{signals.push(e.type);fire(e.type,e);}};
  const local=new Map([['sakura-effects',paused?'off':'on']]);
@@ -27,15 +28,18 @@ function fixture({width=1174,height=753,reading=false,reduced=false,paused=false
  return{field,tools,toggle,gust,root,frames,document,motion,fire,advance,signals,storage,wall,resize(w,h){width=w;height=h;environment.innerWidth=w;environment.innerHeight=h;fire('resize');}};
 }
 const extra=f=>+f.field.dataset.sakuraBurstCount;
+const pool=f=>+f.field.dataset.sakuraBurstPool;
 const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+const temporary=f=>f.field.ctx.items.slice(+f.field.dataset.sakuraBaseCount);
+const spread=items=>Math.max(...items.map(p=>p.x))-Math.min(...items.map(p=>p.x));
 test('one field goes from settled baseline to a visible increment, fades and returns to baseline',()=>{
  const f=fixture();f.advance(5000);assert.equal(f.field.dataset.sakuraBasePool,'14');assert.equal(extra(f),0);
  f.fire('pageshow',{persisted:true});f.advance(800);
- assert.equal(extra(f),28);assert.equal(f.field.dataset.sakuraBurstState,'wind');
- const peak=f.field.ctx.items.slice(+f.field.dataset.sakuraBaseCount).map(p=>p.alpha);
+ assert.ok(pool(f)>=22&&pool(f)<=28);assert.equal(extra(f),pool(f));assert.equal(f.field.dataset.sakuraBurstState,'wind');
+ const peak=temporary(f).map(p=>p.alpha);
  assert.ok(f.field.ctx.items.every(p=>p.size<=18));
  f.advance(1900);assert.equal(f.field.dataset.sakuraBurstState,'fading');assert.ok(extra(f)>0);
- const fading=f.field.ctx.items.slice(+f.field.dataset.sakuraBaseCount).map(p=>p.alpha);
+ const fading=temporary(f).map(p=>p.alpha);
  assert.ok(mean(fading)<mean(peak)*.7,'Temporary petals visibly lose opacity before removal');
  f.advance(2000);assert.equal(extra(f),0);assert.equal(f.field.dataset.sakuraBurstState,'idle');assert.equal(f.field.dataset.sakuraBasePool,'14');
  assert.ok(f.signals.includes('sakura-arrival-end'));
@@ -43,20 +47,54 @@ test('one field goes from settled baseline to a visible increment, fades and ret
 test('the increment appears in stages, never as an instantaneous dense sheet',()=>{
  const f=fixture();f.advance(100);const early=extra(f);f.advance(600);assert.ok(early<extra(f));assert.ok(extra(f)<=28);
 });
-test('a gust strips clusters off one side, then scatters them across the page',()=>{
+test('a section gust strips clusters off the upwind side, then scatters them across the page',()=>{
  const f=fixture(),width=1174;
- const temporary=()=>f.field.ctx.items.slice(+f.field.dataset.sakuraBaseCount);
- const spread=items=>Math.max(...items.map(p=>p.x))-Math.min(...items.map(p=>p.x));
- f.advance(160);const leaving=temporary();
- assert.ok(leaving.length>=4&&leaving.length<28,'Clusters break away one after another');
+ const fromWind=items=>items.map(p=>({...p,x:f.field.dataset.sakuraWindFrom==='left'?p.x:width-p.x}));
+ assert.equal(f.field.dataset.sakuraStyle,'gust');
+ f.advance(160);const leaving=fromWind(temporary(f));
+ assert.ok(leaving.length>=3&&leaving.length<pool(f),'Clusters break away one after another');
  assert.ok(leaving.every(p=>p.x<width*.4),'Every released petal starts from the canopy side');
- f.advance(1240);const scattered=temporary();
- assert.equal(scattered.length,28);
+ f.advance(1240);const scattered=fromWind(temporary(f));
+ assert.equal(scattered.length,pool(f));
  assert.ok(mean(scattered.map(p=>p.x))>mean(leaving.map(p=>p.x))+width*.25,'The gust carries the petals across the page');
- assert.ok(spread(scattered)>width*.35&&spread(scattered)>spread(leaving)*1.8,'Uneven throws pull the clusters apart');
+ assert.ok(spread(scattered)>width*.35&&spread(scattered)>spread(leaving)*1.8,'Uneven gust speeds pull the clusters apart');
+});
+const begin=(f,href='https://example.com/blog')=>{const detail={href,accepted:false};f.fire('sakura-navigation-start',{detail});return detail;};
+test('switching sections blows along the navigation order: rightward from the left, back from the right',()=>{
+ for(const [href,target,from]of[['https://example.com/','https://example.com/reading','left'],['https://example.com/reading/','https://example.com/blog','right'],['https://example.com/about/','https://example.com/','right']]){
+  const f=fixture({href});f.advance(5000);begin(f,target);
+  assert.equal(f.field.dataset.sakuraStyle,'gust');assert.equal(f.field.dataset.sakuraWindFrom,from,`${href} -> ${target}`);
+  f.advance(300);const xs=temporary(f).map(p=>p.x);assert.ok(xs.length>0);
+  assert.ok(from==='left'?xs.every(x=>x<1174*.45):xs.every(x=>x>1174*.55),'Petals leave from the upwind edge');
+  assert.ok(from==='left'?+f.field.dataset.sakuraWindShift>0:+f.field.dataset.sakuraWindShift<0,'The existing field leans with the same wind');
+ }
+});
+test('entering an article lets petals fall softly from above instead of sweeping across',()=>{
+ const f=fixture({href:'https://example.com/blog/'});f.advance(5000);begin(f,'https://example.com/blog/a-quiet-post');
+ assert.equal(f.field.dataset.sakuraStyle,'fall');
+ f.advance(900);const early=temporary(f);assert.ok(pool(f)>=17&&pool(f)<=22);
+ assert.ok(spread(early)>1174*.5,'Petals are released across the width, not from one edge');
+ assert.ok(early.every(p=>p.y<753*.45),'Petals start near the top');
+ f.advance(1400);const later=temporary(f);
+ assert.ok(mean(later.map(p=>p.y))>mean(early.map(p=>p.y))+35,'Petals drift downward');
+ assert.ok(Math.abs(+f.field.dataset.sakuraWindShift)<9,'No strong sweeping gust');
+ f.advance(4000);assert.equal(extra(f),0);assert.equal(f.field.dataset.sakuraBurstState,'idle');
+});
+test('on small screens both styles start inside the short page heading where petals are drawn',()=>{
+ for(const target of ['https://example.com/reading','https://example.com/blog/a-quiet-post']){
+  const f=fixture({width:390,height:844,heroHeight:190,href:'https://example.com/blog/'});f.advance(5000);begin(f,target);
+  let peak=0;for(let t=0;t<2400;t+=100){f.advance(100);peak=Math.max(peak,extra(f));}
+  assert.ok(peak>=pool(f)*.6,`${f.field.dataset.sakuraStyle}: ${peak}/${pool(f)} visible`);
+  assert.ok(f.field.ctx.items.every(p=>p.y<190+18));
+ }
+});
+test('every episode is shaped differently',()=>{
+ const f=fixture(),shapes=[];
+ for(let i=0;i<4;i++){f.advance(5000);f.fire('pageshow',{persisted:true});f.advance(400);shapes.push(temporary(f).slice(0,6).map(p=>Math.round(p.x)+','+Math.round(p.y)).join(' ')+'|'+pool(f));}
+ assert.equal(new Set(shapes).size,4);
 });
 test('repeated lifecycle arrivals replace the bounded temporary pool rather than accumulating',()=>{
- const f=fixture();for(let i=0;i<15;i++){f.fire('pageshow',{persisted:true});f.advance(40);}f.advance(800);assert.equal(extra(f),28);assert.equal(f.field.dataset.sakuraBasePool,'14');
+ const f=fixture();for(let i=0;i<15;i++){f.fire('pageshow',{persisted:true});f.advance(40);}f.advance(800);assert.ok(pool(f)<=28);assert.equal(extra(f),pool(f));assert.equal(f.field.dataset.sakuraBasePool,'14');
  const before=f.field.ctx.items;f.advance(16);assert.ok(f.field.ctx.items.length<=42);assert.ok(before.length<=42);
 });
 test('pause, reduced motion, coastal theme and narrow reading keep all temporary motion off',()=>{
@@ -68,29 +106,29 @@ test('pausing or enabling reduced motion during the breeze clears temporary peta
  }
 });
 test('mobile and data-saver have smaller base and temporary pools with the same finite lifecycle',()=>{
- for(const [options,base,burst]of [[{width:390,height:844},6,12],[{saveData:true},4,6]]){
-  const f=fixture(options);f.advance(800);assert.equal(f.field.dataset.sakuraBasePool,String(base));assert.equal(extra(f),burst);f.advance(4500);assert.equal(extra(f),0);
+ for(const [options,base,[low,high]]of [[{width:390,height:844},6,[9,12]],[{saveData:true},4,[5,6]]]){
+  const f=fixture(options);f.advance(800);assert.equal(f.field.dataset.sakuraBasePool,String(base));
+  assert.ok(pool(f)>=low&&pool(f)<=high);assert.equal(extra(f),pool(f));f.advance(4500);assert.equal(extra(f),0);
  }
 });
 
 test('temporary petals stay visible past a short page heading and then fade by lifetime',()=>{
- const f=fixture({heroHeight:230});f.advance(800);assert.equal(extra(f),28);
+ const f=fixture({heroHeight:230});f.advance(800);assert.equal(extra(f),pool(f));
  f.advance(1900);assert.ok(extra(f)>0);f.advance(2200);assert.equal(extra(f),0);
 });
 
 test('temporary lifetime follows elapsed time on slow frames instead of outliving cleanup',()=>{
- const f=fixture();f.advance(800);assert.equal(extra(f),28);f.advance(4000,120);
+ const f=fixture();f.advance(800);assert.equal(extra(f),pool(f));f.advance(4000,120);
  assert.equal(extra(f),0);assert.equal(f.field.dataset.sakuraBurstState,'idle');
 });
 
 test('an active burst respects the smaller pool after resizing across the mobile breakpoint',()=>{
- const f=fixture({width:800});f.advance(800);assert.equal(extra(f),28);
+ const f=fixture({width:800});f.advance(800);assert.equal(extra(f),pool(f));
  f.resize(767,753);f.advance(80);assert.equal(f.field.dataset.sakuraBasePool,'6');assert.ok(extra(f)<=12);
  f.advance(4500);assert.equal(extra(f),0);
 });
 
 const transferKey='sakura-navigation-scene-v1';
-const begin=(f,href='https://example.com/blog')=>{const detail={href,accepted:false};f.fire('sakura-navigation-start',{detail});return detail;};
 test('click creates visible petals in the OLD scene, and NEW document consumes the same positions/ages',()=>{
  const storage=new Map(),wall={now:0},old=fixture({storage,wall});old.advance(5000);assert.equal(extra(old),0);
  assert.equal(begin(old).accepted,true);old.advance(340);assert.ok(extra(old)>0);assert.equal(old.field.dataset.sakuraSceneSource,'departure');

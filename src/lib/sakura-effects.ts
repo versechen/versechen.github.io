@@ -21,10 +21,12 @@ export function initSakura() {
   let pointerWind = 0, lastPointer = 0, previousX = 0;
   let heroBottom = 0, articleTop = Infinity, articleBottom = -Infinity, releaseAge = -1;
   let safeLeft = 0, safeRight = 0;
-  type Petal = { x: number; y: number; vx: number; vy: number; depth: number; size: number; phase: number; turn: number; speed: number; sprite: number; age: number; lifetime: number };
+  type Petal = { x: number; y: number; vx: number; vy: number; sway: number; curl: number; depth: number; size: number; phase: number; turn: number; speed: number; sprite: number; age: number; lifetime: number };
+  type Style = 'gust' | 'fall';
   let petals: Petal[] = [];
   let temporary: Petal[] = [];
   let pendingTarget = '', capturedOnHide = false, episode = '';
+  let style: Style = 'gust', windDir = 1;
   const handoffKey = 'sakura-navigation-scene-v1';
   const smooth = (value: number) => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
   // Cache three shaded, notched petals. No gradients / paths / DOM allocations per frame.
@@ -42,11 +44,18 @@ export function initSakura() {
   });
   const makePetal = (scatter = true): Petal => {
     const depth = Math.random();
-    return { x: Math.random() * width, y: scatter ? Math.random() * height : -28, vx: 0, vy: 0,
+    return { x: Math.random() * width, y: scatter ? Math.random() * height : -28, vx: 0, vy: 0, sway: 1, curl: 0,
       depth, size: 8 + depth * 10, phase: Math.random() * Math.PI * 2,
       turn: Math.random() * Math.PI * 2, speed: 15 + depth * 23, sprite: Math.floor(Math.random() * 3), age: 0, lifetime: 0 };
   };
-  const burstSize = () => connection?.saveData ? 6 : small ? 12 : 28;
+  const burstCap = () => connection?.saveData ? 6 : small ? 12 : 28;
+  // Small screens only draw temporary petals inside the page heading, so episodes start there.
+  const band = () => small ? Math.min(height, Math.max(heroBottom, article ? 0 : 160)) : height;
+  const pathOf = (href: string) => { try { return new URL(href, location.href).pathname; } catch { return '/'; } };
+  const sectionOf = (path: string) => path.split('/').filter(Boolean)[0] ?? '';
+  const sectionIndex = (path: string) => [...document.querySelectorAll<HTMLAnchorElement>('.nav-link[href]')]
+    .findIndex(link => sectionOf(pathOf(link.href)) === sectionOf(path));
+  const isArticle = (path: string) => /^\/blog\/(?!series(?:\/|$))[^/]+\/?$/.test(path);
   const allowed = () => !quiet && root.dataset.visualTheme !== 'poetize' && enabled && !motion.matches;
   const narrowReading = () => !!article && articleTop < height && articleBottom > 80 && width - safeRight < 138;
   // Hiding the controls to protect text must also stop the motion they control.
@@ -70,7 +79,7 @@ export function initSakura() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const count = connection?.saveData ? 4 : small ? 6 : 14;
     petals = Array.from({ length: count }, () => makePetal());
-    temporary = temporary.slice(0, burstSize());
+    temporary = temporary.slice(0, burstCap());
     if (oldWidth && oldHeight) for (const p of temporary) { p.x *= width / oldWidth; p.y *= height / oldHeight; }
     measure();
   };
@@ -78,22 +87,25 @@ export function initSakura() {
     ctx.clearRect(0, 0, width, height);
     // A small shared bend makes the onset read as one gust, before independent flutter resumes.
     const windResponse = releaseAge < 0 ? 0 : releaseAge < .22 ? smooth(releaseAge / .22) : 1 - smooth((releaseAge - .28) / 1.1);
-    const windShift = windResponse * 24, windLift = windResponse * 6, windTilt = windResponse * .18;
+    // Falling petals only stir the field slightly; a section gust leans it toward the wind.
+    const lean = windDir * (style === 'fall' ? .35 : 1);
+    const windShift = windResponse * 24 * lean, windLift = windResponse * 6 * Math.abs(lean), windTilt = windResponse * .18 * lean;
     const arrivalWind = releaseAge >= 0 && releaseAge < 1.5 ? Math.sin(Math.PI * releaseAge / 1.5) ** 2 * .6 : 0;
-    const wind = 12 + Math.sin(elapsed * .36) * 15 + Math.sin(elapsed * .81) * 8 + gust * 170 + arrivalWind * 85 + pointerWind;
+    const wind = 12 + Math.sin(elapsed * .36) * 15 + Math.sin(elapsed * .81) * 8 + gust * 170 + arrivalWind * 85 * lean + pointerWind;
     let visibleBase = 0, visibleExtra = 0;
     for (let index = 0; index < petals.length + temporary.length; index++) {
       const p = index < petals.length ? petals[index] : temporary[index - petals.length];
       const extra = p.lifetime > 0;
       if (extra) { p.age += lifetimeStep; if (p.age < 0 || p.age >= p.lifetime) continue; }
-      const blown = extra ? Math.min(2.4, Math.abs(p.vx) / 420) : 0;
+      // The gust swells and settles rather than throwing petals, so every start and stop stays soft.
+      const lift = extra ? smooth(p.age / .4) * (1 - smooth((p.age - .6) / 1.6)) : 0;
+      const blown = Math.min(1.1, Math.abs(p.vx) * lift / 650);
       p.phase += step * (1 + p.depth); p.turn += step * (.45 + p.depth + gust * 1.2 + blown);
-      p.x += step * (wind * (.35 + p.depth) + Math.sin(p.phase) * 19);
+      p.x += step * (wind * (.35 + p.depth) + Math.sin(p.phase) * 19 * p.sway);
       p.y += step * (p.speed + Math.cos(p.phase * .8) * 9 - gust * (12 + p.depth * 34));
       if (extra) {
-        // Thrown off the canopy by the gust, then air drag hands each petal back to the breeze.
-        p.x += step * p.vx; p.y += step * p.vy;
-        const drag = Math.exp(-step * 1.5); p.vx *= drag; p.vy *= drag;
+        p.x += step * p.vx * lift;
+        p.y += step * (p.vy + Math.sin(p.age * 2.4 + p.depth * 6.3) * p.curl) * lift;
       }
       if (!extra) {
         if (p.y > height + 35) { p.y = -30; p.x = Math.random() * width; }
@@ -109,19 +121,23 @@ export function initSakura() {
       const left = inArticle ? safeLeft : width * (inHero ? .24 : .15);
       const right = inArticle ? safeRight : width * (inHero ? .76 : .85);
       const edge = Math.max(0, Math.min(1, Math.max(left - x, x - right) / 55));
-      const lifespan = extra ? smooth(p.age / .18) * (1 - smooth((p.age - p.lifetime * .4) / (p.lifetime * .6))) : 1;
+      const fade = extra ? smooth((p.age - p.lifetime * .35) / (p.lifetime * .65)) : 0;
+      const lifespan = extra ? smooth(p.age / .45) * (1 - fade) : 1;
+      // Retiring petals shrink a little as well, as if drifting away rather than switching off.
+      const size = p.size * (1 - fade * .18);
       let alpha = (inArticle ? edge : extra ? .62 + edge * .38 : inHero ? .28 + edge * .72 : edge * .7) * lifespan;
       // Temporary petals may drift past a page heading, but soften before protected reading space.
-      if (extra && article && y < articleTop) alpha *= edge + (1 - edge) * smooth((articleTop - y - p.size) / 60);
-      if (extra && small) alpha *= smooth((Math.max(heroBottom, article ? 0 : 160) - y - p.size) / 60);
-      if (alpha < .01 || x + p.size < 0 || x - p.size > width || y + p.size < 0 || y - p.size > height || (small && y > Math.max(heroBottom, article ? 0 : 160))) continue;
+      if (extra && article && y < articleTop) alpha *= edge + (1 - edge) * smooth((articleTop - y - size) / 60);
+      if (extra && small) alpha *= smooth((Math.max(heroBottom, article ? 0 : 160) - y - size) / 60);
+      if (alpha < .01 || x + size < 0 || x - size > width || y + size < 0 || y - size > height || (small && y > Math.max(heroBottom, article ? 0 : 160))) continue;
       if (extra) visibleExtra++; else visibleBase++;
       ctx.save(); ctx.translate(x, y); ctx.rotate(p.turn + Math.sin(p.phase) * .45 + windTilt);
       ctx.scale(1, .55 + Math.abs(Math.cos(p.phase * .7)) * .45);
       ctx.globalAlpha = alpha * (.4 + p.depth * .45) * (dark ? .86 : 1);
-      ctx.drawImage(sprites[p.sprite], -p.size / 2, -p.size / 2, p.size, p.size); ctx.restore();
+      ctx.drawImage(sprites[p.sprite], -size / 2, -size / 2, size, size); ctx.restore();
     }
     for (let i = temporary.length - 1; i >= 0; i--) if (temporary[i].age >= temporary[i].lifetime) temporary.splice(i, 1);
+    canvas.dataset.sakuraBurstPool = String(temporary.length);
     canvas.dataset.sakuraWindResponse = windResponse.toFixed(3);
     canvas.dataset.sakuraWindShift = windShift.toFixed(2);
     canvas.dataset.sakuraEpisode = episode;
@@ -185,27 +201,51 @@ export function initSakura() {
     // Reuse the same pool: rapid clicks cannot accumulate particles or timers.
     petals.forEach((p, i) => { if (i % 3 === 0) { p.x = Math.random() * width * .2; p.y = Math.random() * height; } });
   };
-  const arrivalBreeze = () => {
+  // Switching sections: a gust strips clusters off an unseen tree at the upwind edge.
+  const gustPetals = (): Petal[] => {
+    const cap = burstCap(), count = cap - Math.floor(Math.random() * (cap > 12 ? 7 : cap > 6 ? 4 : 2));
+    const span = band(), strength = .85 + Math.random() * .3, curl = 16 + Math.random() * 28;
+    const crown = span * (small ? .25 + Math.random() * .3 : .16 + Math.random() * .18);
+    const list: Petal[] = [];
+    for (let cluster = 0, release = 0; list.length < count; cluster++, release += .04 + Math.random() * .05) {
+      const cx = (windDir > 0 ? 0 : width) + windDir * width * (.01 + Math.random() * .11);
+      const cy = crown + (Math.random() - .5) * span * .22;
+      const cvx = windDir * width * (.42 + Math.random() * .24) * strength, cvy = (Math.random() - .45) * 70;
+      // Each cluster has 3–5 petals; uneven speeds pull it apart as it travels.
+      for (let j = 0, n = Math.min(count - list.length, 3 + Math.floor(Math.random() * 3)); j < n; j++) {
+        const p = makePetal();
+        list.push({ ...p, x: cx + (Math.random() - .5) * 28, y: cy + (Math.random() - .5) * 24,
+          vx: cvx * (.8 + Math.random() * .4), vy: cvy + (Math.random() - .5) * 90, curl: curl * (.6 + Math.random() * .8),
+          size: 8 + p.depth * 10, speed: 26 + p.depth * 20,
+          age: -(Math.min(release, .54) + j * .02), lifetime: 3.1 + p.depth * .9 });
+      }
+    }
+    return list;
+  };
+  // Entering an article: no sweeping wind, petals drift down from a branch overhead.
+  const fallingPetals = (): Petal[] => {
+    const cap = burstCap(), count = Math.round(cap * (.6 + Math.random() * .2));
+    const drift = windDir * (14 + Math.random() * 24);
+    return Array.from({ length: count }, (_, i) => {
+      const p = makePetal();
+      return { ...p, x: width * (.04 + Math.random() * .92), y: small ? band() * (-.1 + Math.random() * .5) : height * (-.03 + Math.random() * .24),
+        vx: drift * (.7 + Math.random() * .6), vy: 8 + Math.random() * 12, sway: 1.5 + Math.random() * .8,
+        size: 8 + p.depth * 10, speed: 24 + p.depth * 16,
+        age: -((i / count) * 1.1 + Math.random() * .12), lifetime: 3.3 + p.depth * .9 };
+    });
+  };
+  const arrivalBreeze = (target = location.href) => {
     if (!active()) return;
-    // One bounded episode in the same field: a gust strips clusters off an unseen tree, then each petal retires.
+    // One bounded episode in the same field, then each petal retires on its own.
     gust = 0; releaseAge = 0;
     episode = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     canvas.dataset.sakuraSceneSource = 'fresh';
-    const count = burstSize(), group = count > 12 ? 4 : 3;
-    let cluster = { x: 0, y: 0, vx: 0, vy: 0, delay: 0 };
-    temporary = Array.from({ length: count }, (_, i) => {
-      if (i % group === 0) {
-        // The canopy sits at the left edge; clusters break away one after another.
-        cluster = { x: width * (-.02 + Math.random() * .14), y: height * (.12 + Math.random() * .3),
-          vx: width * (.75 + Math.random() * .35), vy: (Math.random() - .45) * 160, delay: (i / group) * .07 + Math.random() * .04 };
-      }
-      const p = makePetal();
-      // Uneven throw speeds pull each cluster apart as it travels.
-      return { ...p, x: cluster.x + (Math.random() - .5) * 28, y: cluster.y + (Math.random() - .5) * 24,
-        vx: cluster.vx * (.8 + Math.random() * .4), vy: cluster.vy + (Math.random() - .5) * 140,
-        size: 8 + p.depth * 10, speed: 28 + p.depth * 22,
-        age: -(cluster.delay + (i % group) * .018), lifetime: 3 + p.depth * .9 };
-    });
+    const path = pathOf(target), from = sectionIndex(location.pathname), to = sectionIndex(path);
+    style = isArticle(path) ? 'fall' : 'gust';
+    // Moving right along the navigation blows from the left, and back again from the right.
+    windDir = style === 'gust' && from >= 0 && to >= 0 && from !== to ? Math.sign(to - from) : Math.random() < .5 ? -1 : 1;
+    temporary = style === 'fall' ? fallingPetals() : gustPetals();
+    canvas.dataset.sakuraStyle = style; canvas.dataset.sakuraWindFrom = windDir > 0 ? 'left' : 'right';
   };
   toggle.addEventListener('click', () => {
     enabled = !enabled;
@@ -254,14 +294,14 @@ export function initSakura() {
   const saveScene = (target: string) => {
     if (!allowed()) return false;
     try {
-      sessionStorage.setItem(handoffKey, JSON.stringify({ target, at: Date.now(), width, height, elapsed, gust, pointerWind, releaseAge, episode, petals, temporary }));
+      sessionStorage.setItem(handoffKey, JSON.stringify({ target, at: Date.now(), width, height, elapsed, gust, pointerWind, releaseAge, episode, style, windDir, petals, temporary }));
       return true;
     } catch { try { sessionStorage.removeItem(handoffKey); } catch {} return false; }
   };
   window.addEventListener('sakura-navigation-start', event => {
     const request = (event as CustomEvent<{ href: string; accepted: boolean }>).detail;
     if (!active()) return;
-    if (!pendingTarget) arrivalBreeze();
+    if (!pendingTarget) arrivalBreeze(request.href);
     pendingTarget = request.href; capturedOnHide = false;
     canvas.dataset.sakuraSceneSource = 'departure';
     request.accepted = saveScene(pendingTarget);
@@ -287,15 +327,17 @@ export function initSakura() {
       target.searchParams.delete('visual-theme');
       const current = new URL(location.href); current.searchParams.delete('visual-theme');
       const gap = (Date.now() - saved.at) / 1000;
-      const validPetal = (p: Petal) => ['x', 'y', 'vx', 'vy', 'depth', 'size', 'phase', 'turn', 'speed', 'sprite', 'age', 'lifetime'].every(key => Number.isFinite(p[key as keyof Petal])) && Math.abs(p.vx) <= 5000 && Math.abs(p.vy) <= 1000 && p.depth >= 0 && p.depth <= 1 && p.size >= 1 && p.size <= 20 && Number.isInteger(p.sprite) && p.sprite >= 0 && p.sprite < 3 && p.lifetime >= 0 && p.lifetime <= 4 && p.age >= -1 && p.age <= 5 && p.speed >= 0 && p.speed <= 100;
-      if (target.origin !== current.origin || target.pathname.replace(/\/$/, '') !== current.pathname.replace(/\/$/, '') || target.search !== current.search || gap < 0 || gap > 10 || !Number.isFinite(saved.at) || !Number.isFinite(saved.width) || !Number.isFinite(saved.height) || saved.width <= 0 || saved.height <= 0 || ![saved.elapsed, saved.gust, saved.pointerWind, saved.releaseAge].every(Number.isFinite) || saved.releaseAge < -1 || saved.releaseAge > 5 || typeof saved.episode !== 'string' || saved.episode.length > 80 || !Array.isArray(saved.petals) || saved.petals.length > 14 || !saved.petals.every(validPetal) || !Array.isArray(saved.temporary) || saved.temporary.length > 28 || !saved.temporary.every(validPetal)) return false;
+      const validPetal = (p: Petal) => ['x', 'y', 'vx', 'vy', 'sway', 'curl', 'depth', 'size', 'phase', 'turn', 'speed', 'sprite', 'age', 'lifetime'].every(key => Number.isFinite(p[key as keyof Petal])) && Math.abs(p.vx) <= 5000 && Math.abs(p.vy) <= 1000 && p.sway >= 0 && p.sway <= 3 && p.curl >= 0 && p.curl <= 200 && p.depth >= 0 && p.depth <= 1 && p.size >= 1 && p.size <= 20 && Number.isInteger(p.sprite) && p.sprite >= 0 && p.sprite < 3 && p.lifetime >= 0 && p.lifetime <= 4.5 && p.age >= -1.5 && p.age <= 6 && p.speed >= 0 && p.speed <= 100;
+      if (target.origin !== current.origin || target.pathname.replace(/\/$/, '') !== current.pathname.replace(/\/$/, '') || target.search !== current.search || gap < 0 || gap > 10 || !Number.isFinite(saved.at) || !Number.isFinite(saved.width) || !Number.isFinite(saved.height) || saved.width <= 0 || saved.height <= 0 || ![saved.elapsed, saved.gust, saved.pointerWind, saved.releaseAge].every(Number.isFinite) || saved.releaseAge < -1 || saved.releaseAge > 6 || typeof saved.episode !== 'string' || saved.episode.length > 80 || (saved.style !== 'gust' && saved.style !== 'fall') || (saved.windDir !== 1 && saved.windDir !== -1) || !Array.isArray(saved.petals) || saved.petals.length > 14 || !saved.petals.every(validPetal) || !Array.isArray(saved.temporary) || saved.temporary.length > 28 || !saved.temporary.every(validPetal)) return false;
       const scale = (p: Petal): Petal => ({ ...p, x: width === saved.width ? p.x : p.x * width / saved.width, y: height === saved.height ? p.y : p.y * height / saved.height });
       const count = petals.length;
       petals = saved.petals.slice(0, count).map(scale);
       while (petals.length < count) petals.push(makePetal());
-      temporary = saved.temporary.slice(0, burstSize()).map((p: Petal) => ({ ...scale(p), age: p.age + gap })).filter((p: Petal) => p.lifetime > 0 && p.age < p.lifetime);
+      temporary = saved.temporary.slice(0, burstCap()).map((p: Petal) => ({ ...scale(p), age: p.age + gap })).filter((p: Petal) => p.lifetime > 0 && p.age < p.lifetime);
       elapsed = saved.elapsed + gap; gust = saved.gust * Math.exp(-gap * 1.6); pointerWind = saved.pointerWind * Math.exp(-gap * 2.5);
       releaseAge = saved.releaseAge < 0 ? -1 : saved.releaseAge + gap; episode = saved.episode;
+      style = saved.style; windDir = saved.windDir;
+      canvas.dataset.sakuraStyle = style; canvas.dataset.sakuraWindFrom = windDir > 0 ? 'left' : 'right';
       canvas.dataset.sakuraSceneSource = 'continued';
       root.dataset.sakuraContinuing = 'true';
       return true;

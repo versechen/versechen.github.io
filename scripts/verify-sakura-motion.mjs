@@ -17,7 +17,7 @@ async function setup(options={}) {
  });
  const page=await context.newPage();page.on('pageerror',e=>{if(/^Failed to fetch dynamically imported module: https:\/\/cdn\.jsdelivr\.net\/npm\/mermaid@/.test(e.message))externalErrors.add(e.message);else errors.push(e.message)});return {context,page};
 }
-const state=p=>p.evaluate(()=>({motion:document.documentElement.dataset.sakuraMotion,arrival:document.documentElement.dataset.sakuraArrival,hidden:document.querySelector('#sakura-petals').hidden,frames:window.sakuraProbe.frames,maxDraws:window.sakuraProbe.maxDraws,shows:window.sakuraProbe.shows,id:window.sakuraProbe.id,overflow:document.documentElement.scrollWidth>innerWidth,basePool:+document.querySelector('#sakura-petals').dataset.sakuraBasePool,extra:+document.querySelector('#sakura-petals').dataset.sakuraBurstCount,burst:document.querySelector('#sakura-petals').dataset.sakuraBurstState,episode:document.querySelector('#sakura-petals').dataset.sakuraEpisode,sceneSource:document.querySelector('#sakura-petals').dataset.sakuraSceneSource,age:+document.querySelector('#sakura-petals').dataset.sakuraReleaseAge}));
+const state=p=>p.evaluate(()=>({motion:document.documentElement.dataset.sakuraMotion,arrival:document.documentElement.dataset.sakuraArrival,hidden:document.querySelector('#sakura-petals').hidden,frames:window.sakuraProbe.frames,maxDraws:window.sakuraProbe.maxDraws,shows:window.sakuraProbe.shows,id:window.sakuraProbe.id,overflow:document.documentElement.scrollWidth>innerWidth,basePool:+document.querySelector('#sakura-petals').dataset.sakuraBasePool,extra:+document.querySelector('#sakura-petals').dataset.sakuraBurstCount,burst:document.querySelector('#sakura-petals').dataset.sakuraBurstState,episode:document.querySelector('#sakura-petals').dataset.sakuraEpisode,sceneSource:document.querySelector('#sakura-petals').dataset.sakuraSceneSource,age:+document.querySelector('#sakura-petals').dataset.sakuraReleaseAge,style:document.querySelector('#sakura-petals').dataset.sakuraStyle,windFrom:document.querySelector('#sakura-petals').dataset.sakuraWindFrom}));
 async function settled(p){await p.waitForFunction(()=>document.documentElement.dataset.sakuraArrival!=='active',null,{timeout:6000});assert.equal((await state(p)).arrival,undefined);}
 async function screenshot(p,name){await p.screenshot({path:`${out}/${name}.png`});}
 try {
@@ -33,6 +33,7 @@ try {
  await p.waitForFunction(()=>document.documentElement.dataset.sakuraDeparture==='active'&&+document.querySelector('#sakura-petals').dataset.sakuraBurstCount>0);
  assert.equal(new URL(p.url()).pathname,'/','Petals must become visible while the OLD page is still present');
  const leaving=await state(p);await screenshot(p,'old-page-wind');
+ assert.equal(leaving.style,'gust');assert.equal(leaving.windFrom,'left','Moving right along the navigation blows from the left');
  await crossing;await p.waitForURL(/\/blog\/?$/);
  const continued=await state(p);
  assert.notEqual(continued.id,oldDocument.id);assert.equal(continued.sceneSource,'continued');
@@ -66,6 +67,12 @@ try {
  assert.equal(await p.locator('#sakura-petals').count(),1);
  await p.locator('.nav-link[href="/about"]').focus();await p.keyboard.press('Enter');await p.waitForURL(/\/about\/?$/);await settled(p);
  results.push('Rapid repeated navigation and keyboard Enter reach the final page with one canvas');
+ await p.goto(base+'/blog/');await settled(p);
+ const entering=p.locator('.post-link').first().click();
+ await p.waitForFunction(()=>document.documentElement.dataset.sakuraDeparture==='active');
+ assert.equal((await state(p)).style,'fall','Opening an article lets petals fall instead of sweeping');
+ await entering;await p.waitForURL(/\/blog\/(?!series)[^/]+\/?$/);await settled(p);
+ results.push('Section links blow along the navigation order; opening an article lets petals fall softly from above');
  await p.goto(base+'/blog/markdown-style-guide/');await settled(p);
  await p.evaluate(()=>scrollTo({top:document.querySelector('.article-main').getBoundingClientRect().top+scrollY+240,behavior:'instant'}));await p.waitForTimeout(300);
  const clearText=await p.evaluate(()=>{
