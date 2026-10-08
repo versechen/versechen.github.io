@@ -44,12 +44,13 @@ html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .pro
   content: ''; position: absolute; bottom: -1px; left: -100%; width: 300%; height: 58px; background: var(--bg);
   mask: url('/themes/poetize-wave.svg') left bottom / calc(100% / 3) 100% repeat-x; pointer-events: none; z-index: 3;
   animation: poetize-wave-drift 42s linear infinite, poetize-wave-swell 7s ease-in-out infinite;
+  animation-delay: var(--coastal-wave-delay, 0s), var(--coastal-wave-delay, 0s);
 }
 html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero, .hero-wrap)::before { bottom: 10px; opacity: .48; height: 68px; animation-duration: 28s, 5.2s; animation-direction: reverse, normal; }
 /* One mask tile is exactly one hero width, so shifting a third of the 300%-wide strip loops seamlessly. */
 @keyframes poetize-wave-drift { to { transform: translateX(calc(100% / 3)); } }
 @keyframes poetize-wave-swell { 50% { translate: 0 5px; } }
-html[data-visual-theme='poetize'] .coastal-scene img { transform-origin: 50% 62%; animation: coastal-scene-drift 46s ease-in-out infinite alternate; }
+html[data-visual-theme='poetize'] .coastal-scene :is(img, .coastal-boats) { transform-origin: 50% 62%; animation: coastal-scene-drift 46s ease-in-out infinite alternate; }
 @keyframes coastal-scene-drift { to { scale: 1.045; translate: -.8% -.4%; } }
 html[data-visual-theme='poetize'] :is(.post-header, .page-hero, .blog-head, .projects-hero) :is(h1, p, .gradient-text, .post-meta, .post-toolbar a) { color: #fff; background: none; -webkit-text-fill-color: currentColor; text-shadow: 0 2px 14px #143d5b66; }
 html[data-visual-theme='poetize'] .post-header { min-height: 360px; padding-top: 95px; padding-bottom: 60px; }
@@ -221,11 +222,11 @@ html[data-visual-theme='poetize']:has(#notes-app, .docs-shell) :is(.poetize-tool
 @media (max-width: 520px) { html[data-visual-theme='poetize'] .masonry { grid-template-columns: 1fr; } }
 html[data-poetize-motion='off'] :is(.hero-wrap, .post-header, .page-hero, .blog-head, .projects-hero)::before,
 html[data-poetize-motion='off'] :is(.hero-wrap, .post-header, .page-hero, .blog-head, .projects-hero)::after,
-html[data-poetize-motion='off'] :is(.poetize-explore svg, .poetize-pet-body, .coastal-scene img) { animation-play-state: paused; }
+html[data-poetize-motion='off'] :is(.poetize-explore svg, .poetize-pet-body, .coastal-scene img, .coastal-boats) { animation-play-state: paused; }
 html[data-poetize-motion='off'] :is(.coastal-trail-bubble, .coastal-ripple) { display: none; }
 @media (prefers-reduced-motion: reduce) {
  html[data-visual-theme='poetize'] .animate-in { animation: none; opacity: 1; transform: none; }
- html[data-visual-theme='poetize'] .coastal-scene img { animation: none; }
+ html[data-visual-theme='poetize'] .coastal-scene :is(img, .coastal-boats) { animation: none; }
  .poetize-pet-body { animation: none !important; }
  :is(.coastal-trail-bubble, .coastal-ripple) { display: none; }
 }

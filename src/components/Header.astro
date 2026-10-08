@@ -1,5 +1,6 @@
 ---
 import CoastalIcon from './CoastalIcon.astro';
+import SakuraIcon from './SakuraIcon.astro';
 import { SITE_TITLE } from '../consts';
 
 const navLinks = [
@@ -35,6 +36,7 @@ const isActive = (href: string) =>
             class:list={['nav-link', { active: isActive(href) }]}
             aria-current={isActive(href) ? 'page' : undefined}
           >
+            <SakuraIcon href={href} />
             <CoastalIcon href={href} /><span>{label}</span>
           </a>
         </li>
@@ -141,7 +143,10 @@ const isActive = (href: string) =>
   }
 
   .nav-link {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
     padding: 0.35rem 0.85rem;
     border-radius: var(--radius-full);
     font-size: 0.9rem;
@@ -223,6 +228,13 @@ const isActive = (href: string) =>
   }
   .hamburger-btn.open .hamburger-line:nth-child(3) {
     transform: translateY(-6px) rotate(-45deg);
+  }
+
+  /* Keep the complete illustrated Sakura navigation on one line on small laptops. */
+  @media (min-width: 769px) and (max-width: 1000px) {
+    :global(html:not([data-visual-theme='poetize'])) .nav-inner { padding-inline: 16px; gap: 12px; }
+    :global(html:not([data-visual-theme='poetize'])) .nav-links { gap: 0; }
+    :global(html:not([data-visual-theme='poetize'])) .nav-link { gap: 4px; padding-inline: 5px; font-size: .85rem; }
   }
 
   /* Mobile */

@@ -32,7 +32,7 @@ function fixture({path='/',width=1440,height=900,dark=false,record,active=true}=
  const advance=(ms,step=1000/60)=>{for(const end=time+ms;time<end-1e-9;){time+=step;const work=[...frames.values()];frames.clear();for(const fn of work)fn(time);}};
  const start=href=>fire('coastal-navigation-start',{href:`https://example.com${href}`,accepted:false}).detail.accepted;
  const saved=()=>storage.has(KEY)?JSON.parse(storage.get(KEY)):null;
- return{tide,canvas,root,storage,state,frames,fills,fire,advance,start,saved,width,height,body:()=>fills[0]};
+ return{tide,canvas,root,storage,state,document:env.document,frames,fills,fire,advance,start,saved,width,height,body:()=>fills[0]};
 }
 
 test('section changes sweep in navigation order and articles raise the tide',()=>{
@@ -63,7 +63,7 @@ test('the new page continues from the saved front and lets every bit of water ou
 test('saved tides are only continued on the intended page, shortly after leaving',()=>{
  const now=Date.now(),ok={target:'https://example.com/blog?visual-theme=poetize',at:now-400,kind:'sweep',dir:-1,seed:.3,front:.55,clock:.6,episode:'abc'};
  const scene=lib.parseTideScene(JSON.stringify(ok),'https://example.com/blog/',now);
- assert.equal(scene.kind,'sweep');assert.equal(scene.dir,-1);assert.ok(Math.abs(scene.clock-1)<1e-9);assert.ok(Math.abs(scene.gap-.4)<1e-9);
+ assert.equal(scene.kind,'sweep');assert.equal(scene.dir,-1);assert.ok(Math.abs(scene.clock-.6)<1e-9);assert.ok(Math.abs(scene.gap-.4)<1e-9);
  for(const bad of[{target:'https://example.com/reading'},{target:'https://elsewhere.test/blog'},{target:'https://example.com/blog?page=2'},{at:now-11000},{at:now+2000},{kind:'flood'},{dir:0},{seed:1},{front:3},{front:'x'},{clock:-1},{episode:7}])
   assert.equal(lib.parseTideScene(JSON.stringify({...ok,...bad}),'https://example.com/blog',now),null,JSON.stringify(bad));
  for(const raw of[null,'','{',`"${'x'.repeat(2100)}"`])assert.equal(lib.parseTideScene(raw,'https://example.com/blog',now),null);
@@ -90,7 +90,7 @@ test('opening an article raises the tide from the bottom',()=>{
 test('the arriving page drains the same tide, removes the painted water line, then rests',()=>{
  const f=fixture({path:'/blog/hello-world',record:{target:'https://example.com/blog/hello-world',at:Date.now()-300,kind:'rise',dir:1,seed:.42,front:.62,clock:.5,episode:'e'}});
  assert.equal(f.storage.has(KEY),false,'The record is consumed once');assert.equal(f.canvas.hidden,false);assert.equal(f.canvas.dataset.tideSource,'continued');
- assert.equal(f.root.dataset.coastalArrival,'rise','Kept until the Canvas paints');
+ assert.equal(f.root.dataset.coastalArrival,undefined,'First frame is painted synchronously');
  f.advance(17);assert.equal(f.root.dataset.coastalArrival,undefined);assert.equal(f.root.style.props['--coastal-tide'],undefined);
  const first=f.body().minY;assert.ok(Math.abs(first-f.height*.38)<40,'Starts at the saved water line');
  f.advance(lib.ARRIVE_SECONDS.rise*1000+50);
@@ -126,4 +126,33 @@ test('dark pages use a deeper night sea',()=>{
  for(const f of[light,dark]){f.start('/blog');f.advance(200);}
  assert.notEqual(light.body().style.stops[0][1],dark.body().style.stops[0][1]);
  assert.match(dark.body().style.stops[0][1],/^rgba\(80, 162, 192,/);
+});
+
+test('a delayed first animation callback cannot skip the arriving wave',()=>{
+ const f=fixture({path:'/blog',record:{target:'https://example.com/blog',at:Date.now(),kind:'sweep',dir:1,seed:.2,front:.55,clock:.6,episode:'late'}});
+ assert.ok(f.body(),'The arriving water is painted before requesting another frame');
+ const first=f.body().maxX;f.advance(3000,3000);
+ assert.equal(f.canvas.hidden,false);assert.ok(Math.abs(f.body().maxX-first)<20);
+ f.advance(lib.ARRIVE_SECONDS.sweep*1000+100);assert.equal(f.canvas.hidden,true);
+});
+test('hide pauses the wave and preserves the final handoff through pagehide',()=>{
+ const f=fixture();f.start('/blog');f.advance(350);f.fire('coastal-navigation-handoff','https://example.com/blog');
+ const before=f.body().maxX;
+ f.document.hidden=true;f.tide.setActive(false);f.advance(3000);
+ assert.equal(f.frames.size,0);assert.equal(f.canvas.hidden,false);assert.equal(f.body().maxX,before);
+ f.fire('pagehide');f.state.active=false;f.tide.setActive(false);
+ assert.ok(f.saved().front>.5);assert.equal(f.canvas.hidden,false);
+ const g=fixture({path:'/blog',record:f.saved()});g.advance(300);
+ g.document.hidden=true;g.tide.setActive(false);g.advance(4000);
+ g.document.hidden=false;g.tide.setActive(true);g.advance(100);
+ assert.equal(g.canvas.hidden,false);
+ g.advance(lib.ARRIVE_SECONDS.sweep*1000);assert.equal(g.canvas.hidden,true);
+});
+test('the new page first frame exactly matches the saved geometry and colours',()=>{
+ for(const path of ['/reading','/blog/hello-world']) {
+  const old=fixture();old.start(path);old.advance(700);old.fire('pagehide');
+  const record=old.saved();record.at=Date.now()-1400;
+  const next=fixture({path,record});
+  assert.equal(JSON.stringify(next.body()),JSON.stringify(old.body()),'Network time must not jump the wave phase');
+ }
 });

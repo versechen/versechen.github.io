@@ -1,0 +1,118 @@
+---
+interface Props { href: string }
+const { href } = Astro.props;
+
+// Each destination has a distinct spring motif, sharing an ink-and-watercolour palette.
+const shapes: Record<string, string> = {
+  // Cherry blossom branch.
+  '/': `
+    <path class="spring-bark" d="M29 29C23 25 18 21 12 12m11 11 3-9"/>
+    <g class="spring-blossom spring-tint">
+      <path d="M12 12C8 9 7 5 10 3l2 2 2-2c3 2 2 6-2 9Z"/>
+      <path d="M12 12C8 9 7 5 10 3l2 2 2-2c3 2 2 6-2 9Z" transform="rotate(72 12 12)"/>
+      <path d="M12 12C8 9 7 5 10 3l2 2 2-2c3 2 2 6-2 9Z" transform="rotate(144 12 12)"/>
+      <path d="M12 12C8 9 7 5 10 3l2 2 2-2c3 2 2 6-2 9Z" transform="rotate(216 12 12)"/>
+      <path d="M12 12C8 9 7 5 10 3l2 2 2-2c3 2 2 6-2 9Z" transform="rotate(288 12 12)"/>
+      <path d="M26 14c-4-2-3-5 0-6 3 2 3 4 0 6Z"/>
+    </g>
+    <circle class="spring-amber" cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/>
+  `,
+  // Returning swallow, with swept wings and a forked tail.
+  '/blog': `
+    <path class="spring-slate spring-tint" d="M16 14C12 10 8 7 2 6c2 7 6 12 12 14l-3 9 7-5 6 3-3-8c3-1 5-3 6-5l3-1-4-1c-1-2-3-2-5-1 3-3 5-6 6-9-6 2-10 6-11 12Z"/>
+    <path d="M6 10c4 2 7 5 10 8m2-4 4-6m-6 12 2 4"/>
+    <circle cx="24" cy="13.5" r=".8" fill="currentColor" stroke="none"/>
+  `,
+  // A book opened in spring sunlight.
+  '/reading': `
+    <g class="spring-amber">
+      <circle class="spring-tint" cx="22" cy="7" r="4"/>
+      <path d="M22 1v1m6 5h2M16 7h-2m12-4 1.5-1.5M18 3l-1.5-1.5"/>
+    </g>
+    <path class="spring-paper" d="M3 14c5-1 9 0 13 3 4-3 8-4 13-3v13c-5-1-9 0-13 3-4-3-8-4-13-3Z"/>
+    <path d="M16 17v13M6 18c3 0 5 1 7 2m-7 2c3 0 5 1 7 2m6-4c2-1 4-2 7-2m-7 6c2-1 4-2 7-2"/>
+  `,
+  // A kite and its winding ribbon.
+  '/projects': `
+    <path class="spring-sage spring-tint" d="m17 2 12 11-13 10L4 12Z"/>
+    <path class="spring-amber spring-tint" d="m17 2-1 21L4 12Z"/>
+    <path d="m17 2-1 21M4 12l25 1m-13 10c0 5-8 2-8 7"/>
+    <path class="spring-bark" d="m12 27-3-3v5Zm0 0 3-1v4Z"/>
+  `,
+  // First-flush tea, without reusing a botanical ornament.
+  '/life': `
+    <path class="spring-sage spring-tint" d="M5 13h19v7c0 4-4 6-9.5 6S5 24 5 20Z"/>
+    <ellipse class="spring-sage" cx="14.5" cy="13" rx="9.5" ry="2.5"/>
+    <path d="M24 16h2a3.5 3.5 0 0 1 0 7h-3M3 28c8 3 17 3 25 0"/>
+    <path class="spring-bark" d="M10 8c-3-3 3-3 0-6m8 6c-3-3 3-3 0-6"/>
+  `,
+  // A journal under a passing spring shower.
+  '/notes': `
+    <path class="spring-paper" d="M13 7H6a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h17a2 2 0 0 0 2-2v-7"/>
+    <path d="M8 7v22m4-6h9m-9-4h4"/>
+    <path class="spring-rain spring-tint" d="M17 12a3.5 3.5 0 1 1 0-7 5 5 0 0 1 9-1 4 4 0 1 1 1 8Z"/>
+    <path class="spring-rain" d="m18 15-1 2m6-2-1 3m6-3-1 2"/>
+  `,
+  // A butterfly, with broad wings rather than another sprig.
+  '/friends': `
+    <g class="spring-mauve spring-tint">
+      <path d="M15 16C5 18 1 9 4 5c3-3 9 2 11 11Zm2 0C27 18 31 9 28 5c-3-3-9 2-11 11Z"/>
+      <path d="M15 17C7 15 3 22 7 26c4 3 8-3 8-9Zm2 0c8-2 12 5 8 9-4 3-8-3-8-9Z"/>
+    </g>
+    <path d="M16 11v13m0-13c0-4-2-7-4-8m4 8c0-4 2-7 4-8M7 9l6 5m12-5-6 5M9 22l4-3m10 3-4-3"/>
+  `,
+  // Distant hills and a path for a spring walk.
+  '/about': `
+    <path class="spring-slate spring-tint" d="M2 19 10 7l8 12m-6-3 8-13 10 16"/>
+    <path class="spring-sage spring-tint" d="M2 22c7-6 14-6 28 0v8H2Z"/>
+    <path class="spring-paper" d="M17 19c-9 3-10 5-1 6 5 1 4 3 0 5h8c4-4 0-6-6-7-5-1-5-2 1-3"/>
+    <path d="m7 11 3 1 2-1m6-5 2 2 2-1"/>
+  `,
+};
+---
+
+<svg class="sakura-nav-icon" viewBox="0 0 32 32" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+  <Fragment set:html={shapes[href] ?? ''} />
+</svg>
+
+<style>
+  .sakura-nav-icon {
+    --spring-sage: #6b846d;
+    --spring-blossom: #ae788b;
+    --spring-amber: #b08a53;
+    --spring-bark: #927967;
+    --spring-slate: #6e8595;
+    --spring-rain: #718fa6;
+    --spring-mauve: #937e9d;
+    --spring-paper: #fbf7f0;
+    display: block;
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    color: #67727a;
+  }
+
+  .sakura-nav-icon :global(.spring-sage) { color: var(--spring-sage); stroke: var(--spring-sage); }
+  .sakura-nav-icon :global(.spring-blossom) { color: var(--spring-blossom); stroke: var(--spring-blossom); }
+  .sakura-nav-icon :global(.spring-amber) { color: var(--spring-amber); stroke: var(--spring-amber); }
+  .sakura-nav-icon :global(.spring-bark) { color: var(--spring-bark); stroke: var(--spring-bark); }
+  .sakura-nav-icon :global(.spring-slate) { color: var(--spring-slate); stroke: var(--spring-slate); }
+  .sakura-nav-icon :global(.spring-rain) { color: var(--spring-rain); stroke: var(--spring-rain); }
+  .sakura-nav-icon :global(.spring-mauve) { color: var(--spring-mauve); stroke: var(--spring-mauve); }
+  .sakura-nav-icon :global(.spring-tint) { fill: currentColor; fill-opacity: .16; }
+  .sakura-nav-icon :global(.spring-paper) { fill: var(--spring-paper); }
+
+  :global(html.dark) .sakura-nav-icon {
+    --spring-sage: #a2b89e;
+    --spring-blossom: #c69aa8;
+    --spring-amber: #c9aa76;
+    --spring-bark: #baa28f;
+    --spring-slate: #9eb5c7;
+    --spring-rain: #9ebdd3;
+    --spring-mauve: #b7a4c2;
+    --spring-paper: #252334;
+    color: #b7bdc4;
+  }
+
+  :global(html[data-visual-theme='poetize']) .sakura-nav-icon { display: none; }
+</style>

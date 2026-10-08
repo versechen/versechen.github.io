@@ -112,3 +112,14 @@ test('a fresh tide record paints the water line before the new page scripts run'
  for(const options of[{session:record({target:'https://example.com/blog'})},{session:record({at:Date.now()-20000})},{session:record({kind:'flood'})},{session:record(),paused:true},{session:record(),reduced:true},{session:record(),theme:'original',coastal:false}])
   assert.equal(fixture({coastal:true,...options}).root.dataset.coastalArrival,undefined,JSON.stringify(options).slice(0,80));
 });
+
+test('motion observer preserves the coastal handoff in either hide event order',()=>{
+ for(const pagehideFirst of [true,false]){
+  const f=fixture({coastal:true});f.click('/blog');f.advance(340);
+  const count=types(f).filter(t=>t==='coastal-navigation-cancel').length;
+  if(pagehideFirst)f.fire('pagehide');
+  f.document.hidden=true;f.fire('visibilitychange');f.coastalMotion('off');
+  if(!pagehideFirst)f.fire('pagehide');
+  assert.equal(types(f).filter(t=>t==='coastal-navigation-cancel').length,count);
+ }
+});

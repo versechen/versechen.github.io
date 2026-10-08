@@ -8,7 +8,7 @@ export type TideScene = { kind: TideKind; dir: 1 | -1; seed: number; front: numb
 export const TIDE_KEY = 'coastal-navigation-tide-v1';
 /** Matches the navigation hold, so the water reaches mid-screen as the request leaves. */
 export const DEPART_SECONDS = .34;
-export const ARRIVE_SECONDS: Record<TideKind, number> = { sweep: 1.1, rise: 1.15 };
+export const ARRIVE_SECONDS: Record<TideKind, number> = { sweep: 2, rise: 2.2 };
 export const RETREAT_SECONDS = .42;
 /** Fronts are viewport fractions: the crest's distance from the upwind edge, or the water level from the bottom. */
 export const START_FRONT: Record<TideKind, number> = { sweep: -.1, rise: -.08 };
@@ -62,7 +62,7 @@ export function parseTideScene(raw: string | null, href: string, now: number): T
     if ((saved.kind !== 'sweep' && saved.kind !== 'rise') || (saved.dir !== 1 && saved.dir !== -1)) return null;
     if (![saved.seed, saved.front, saved.clock].every(Number.isFinite) || saved.seed < 0 || saved.seed >= 1 || saved.front < -.2 || saved.front > 1 || saved.clock < 0 || saved.clock > 60) return null;
     if (typeof saved.episode !== 'string' || saved.episode.length > 80) return null;
-    return { kind: saved.kind, dir: saved.dir, seed: saved.seed, front: saved.front, clock: saved.clock + gap, episode: saved.episode, gap };
+    return { kind: saved.kind, dir: saved.dir, seed: saved.seed, front: saved.front, clock: saved.clock, episode: saved.episode, gap };
   } catch { return null; }
 }
 
@@ -87,7 +87,7 @@ export function initCoastalTide(canvas: HTMLCanvasElement, { active }: { active:
   const settle = () => { delete root.dataset.coastalArrival; root.style.removeProperty('--coastal-tide'); };
   const ctx = canvas.getContext('2d');
   if (!ctx) { settle(); return null; }
-  let width = 0, height = 0, small = false, raf = 0, started = 0, last = 0;
+  let width = 0, height = 0, small = false, raf = 0, elapsed = 0, last = 0, leaving = false;
   let phase: Phase = 'idle', kind: TideKind = 'sweep', dir: 1 | -1 = 1, seed = 0;
   let front = 0, from = 0, clock = 0, episode = '', pending = '';
   let phases = [0, 0], foam: Foam[] = [];
@@ -180,8 +180,12 @@ export function initCoastalTide(canvas: HTMLCanvasElement, { active }: { active:
   const frame = (now: number) => {
     raf = 0;
     if (!active()) { stop(); return; }
-    const t = Math.max(0, now - started) / 1000;
-    clock += Math.min(.05, Math.max(0, now - last) / 1000); last = now;
+    if (leaving || document.hidden) return;
+    // Advance visible frames only. A delayed first callback or hidden tab must
+    // not consume the arrival before the user has seen it.
+    const delta = Math.min(.05, Math.max(0, now - last) / 1000);
+    const t = elapsed += delta;
+    clock += delta; last = now;
     let fade = 1;
     if (phase === 'depart') front = departFront(kind, t, from);
     else if (phase === 'arrive') {
@@ -196,9 +200,11 @@ export function initCoastalTide(canvas: HTMLCanvasElement, { active }: { active:
     raf = requestAnimationFrame(frame);
   };
   const begin = (next: Phase, at: number) => {
-    phase = next; from = front = at; started = last = performance.now();
+    phase = next; from = front = at; elapsed = 0; last = performance.now();
     canvas.dataset.tidePhase = next; canvas.hidden = false;
-    if (!raf) raf = requestAnimationFrame(frame);
+    // Reproduce the outgoing frame before removing the first-paint fallback.
+    paint(1); settle();
+    if (!raf && !document.hidden) raf = requestAnimationFrame(frame);
   };
   const resize = () => {
     width = innerWidth; height = innerHeight; small = width <= 640;
@@ -240,12 +246,13 @@ export function initCoastalTide(canvas: HTMLCanvasElement, { active }: { active:
   });
   // The last live frame stays painted for the outgoing document; history restore starts dry.
   window.addEventListener('pagehide', () => {
+    leaving = true;
     if (pending) save(pending);
     cancelAnimationFrame(raf); raf = 0;
   });
   window.addEventListener('pageshow', event => {
     if (!event.persisted) return;
-    pending = ''; forget(); stop();
+    leaving = false; pending = ''; forget(); stop();
   });
 
   resize();
@@ -260,7 +267,12 @@ export function initCoastalTide(canvas: HTMLCanvasElement, { active }: { active:
   root.dataset.coastalReady = 'true';
 
   return {
-    setActive(next) { if (!next && phase !== 'idle') stop(); },
+    setActive(next) {
+      if (leaving) return; // Preserve the outgoing frame and saved scene.
+      if (!active()) { stop(); return; }
+      if (!next) { cancelAnimationFrame(raf); raf = 0; return; }
+      if (!raf && phase !== 'idle') { last = performance.now(); raf = requestAnimationFrame(frame); }
+    },
     resize,
   };
 }

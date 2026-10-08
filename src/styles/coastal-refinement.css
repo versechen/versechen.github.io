@@ -30,6 +30,8 @@ html[data-visual-theme='poetize'] .wall-section {
  padding-top: 38px;
 }
 html[data-visual-theme='poetize'] .coastal-scene { display: block; position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.coastal-scene picture { display: block; width: 100%; height: 100%; }
+.coastal-boats { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 html[data-visual-theme='poetize'] .coastal-scene img { width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: center 53%; }
 html[data-visual-theme='poetize'] .coastal-scene::after { content:''; position:absolute; inset:0; background: linear-gradient(180deg,#082c4855, #11374b18 35%,#082c4848); }
 html.dark[data-visual-theme='poetize'] .coastal-scene::after { background: linear-gradient(180deg,#092c4966,#092c4928 40%,#092c4970); }

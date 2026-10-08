@@ -15,6 +15,8 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
     const allowed = () => !quiet && !coastal() && !motion.matches && enabled;
     // The coastal renderer folds its own pause, reading focus and visibility into poetizeMotion.
     const tideAllowed = () => !quiet && coastal() && !motion.matches && root.dataset.coastalReady === 'true' && root.dataset.poetizeMotion === 'on';
+    // 1092s is a common period of the hero waves (42s, 28s, 7s and 5.2s).
+    root.style.setProperty('--coastal-wave-delay', `${-(Date.now() % 1092000) / 1000}s`);
     // Paint the saved water line before first paint; the tide Canvas replaces it on its first frame.
     try {
       const tide = JSON.parse(sessionStorage.getItem('coastal-navigation-tide-v1') || 'null');
@@ -48,7 +50,11 @@ const quiet = /^\/(notes|editor-preview)(\/|$)/.test(Astro.url.pathname) || Astr
       if (document.readyState !== 'loading') finishLater();
     };
     // A theme change mid-hold must also stop the departure owned by the other renderer.
-    const sync = () => { if ((coastal() ? !tideAllowed() : !allowed()) || (destination && departing !== (coastal() ? 'coastal' : 'sakura'))) clear(); };
+    const sync = () => {
+      // Leaving/hidden documents update motion too; that must not erase the handoff.
+      if (pageLeaving || (inFlight && document.hidden)) return;
+      if ((coastal() ? !tideAllowed() : !allowed()) || (destination && departing !== (coastal() ? 'coastal' : 'sakura'))) clear();
+    };
     readPreference(); arrive();
     document.addEventListener('DOMContentLoaded', finishLater, { once: true });
     window.addEventListener('sakura-arrival-end', clearArrival);
