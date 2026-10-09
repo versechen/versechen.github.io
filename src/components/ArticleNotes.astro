@@ -1,93 +1,192 @@
 ---
+import { icon } from '../lib/notes-icons';
 interface Props { slug?: string; title?: string; revision?: string; }
 const { slug = '', title = '', revision = '' } = Astro.props;
 ---
-<section class="article-notes" data-article-notes data-layout={slug ? 'sidebar' : 'page'} data-open="false" data-slug={slug} data-title={title} data-revision={revision} hidden={Boolean(slug)}>
+<section class="article-notes" data-article-notes data-layout={slug ? 'sidebar' : 'page'} data-open="false" data-slug={slug} data-title={title} data-revision={revision} hidden={Boolean(slug)} aria-label="阅读笔记本">
   <div class="notes-rail-header">
-    <h2>阅读笔记</h2>
-    <button type="button" data-notes-toggle aria-expanded="false" aria-controls="reading-notes-panel">阅读笔记</button>
+    <div class="note-book-title"><Fragment set:html={icon('bookOpen', 21)} /><div><h2>阅读笔记</h2><span>把思考留在页边</span></div></div>
+    <button type="button" data-notes-toggle aria-expanded="false" aria-controls="reading-notes-panel" aria-label="打开阅读笔记">
+      <span class="note-toggle-book"><Fragment set:html={icon('bookOpen', 19)} /></span>
+      <span class="note-toggle-close"><Fragment set:html={icon('close', 18)} /></span>
+      <span data-note-toggle-label>阅读笔记</span>
+    </button>
   </div>
-  <p data-note-status role="status" aria-live="polite">管理员连接后可做阅读笔记。</p>
-  <a href="/notes" data-note-connect>连接 GitHub</a>
+  <a href="/notes" data-note-connect>连接 GitHub，打开我的笔记本</a>
   <div data-note-workspace hidden>
     <div data-note-selection hidden class="note-selection" role="toolbar" aria-label="选择标注方式">
-      <button type="button" data-annotation-kind="highlight"><span aria-hidden="true">★</span> 重点</button>
-      <button type="button" data-annotation-kind="question"><span aria-hidden="true">?</span> 疑问</button>
-      <button type="button" data-annotation-kind="comment"><span aria-hidden="true">✎</span> 注释</button>
+      <button type="button" data-annotation-kind="highlight"><Fragment set:html={icon('highlight', 20)} /><span>重点</span></button>
+      <button type="button" data-annotation-kind="question"><Fragment set:html={icon('question', 20)} /><span>疑问</span></button>
+      <button type="button" data-annotation-kind="comment"><Fragment set:html={icon('edit', 20)} /><span>注释</span></button>
+    </div>
+    <div data-note-popover hidden class="note-popover" role="dialog" aria-label="原文笔记" tabindex="-1">
+      <div class="note-popover-header"><span>原文笔记</span><button type="button" data-note-popover-close aria-label="关闭笔记内容"><Fragment set:html={icon('close', 18)} /></button></div>
+      <div data-note-popover-content class="note-popover-content"></div>
     </div>
     <div data-note-panel id="reading-notes-panel" hidden>
-      <div class="note-actions">
-        <button type="button" data-note-sync>同步笔记</button>
-        <a href="/questions">全部疑问</a>
-        <button type="button" data-note-new>整篇笔记</button>
+      <div class="note-book-toolbar">
+        <button type="button" data-note-sync><Fragment set:html={icon('cloud', 18)} /><span>同步笔记</span></button>
+        <a href="/questions"><Fragment set:html={icon('sidebar', 17)} /><span>全部疑问</span></a>
+        <button type="button" data-note-new class="note-new-button" aria-label="新建整篇笔记"><Fragment set:html={icon('plus', 18)} /><span>新笔记</span></button>
       </div>
-      <p class="notes-selection-hint">选中文字，在选区右上角选择标注方式。</p>
-      <div data-note-editor hidden>
-      <form data-note-form data-kind="highlight">
-        <h3 data-note-editor-title>添加重点</h3>
-        <input type="hidden" name="kind" value="highlight" />
-        <div class="note-kind-tabs" role="group" aria-label="标注方式">
-          <button type="button" data-editor-kind="highlight" aria-pressed="true">★ 重点</button>
-          <button type="button" data-editor-kind="question" aria-pressed="false">? 疑问</button>
-          <button type="button" data-editor-kind="comment" aria-pressed="false">✎ 注释</button>
+      <div class="note-book-pages">
+        <p class="notes-selection-hint">划选正文记笔记，点击已有标记查看内容。</p>
+        <div data-note-editor hidden>
+          <form data-note-form data-kind="highlight">
+            <div class="note-sheet-heading"><span class="note-sheet-eyebrow">这一刻的想法</span><h3 data-note-editor-title>添加重点</h3></div>
+            <input type="hidden" name="kind" value="highlight" />
+            <div class="note-kind-tabs" role="group" aria-label="标注方式">
+              <button type="button" data-editor-kind="highlight" aria-pressed="true"><Fragment set:html={icon('highlight', 20)} /><span>重点</span></button>
+              <button type="button" data-editor-kind="question" aria-pressed="false"><Fragment set:html={icon('question', 20)} /><span>疑问</span></button>
+              <button type="button" data-editor-kind="comment" aria-pressed="false"><Fragment set:html={icon('edit', 20)} /><span>注释</span></button>
+            </div>
+            <label class="note-quote-field"><span><Fragment set:html={icon('quote', 13)} />选中原文</span><textarea name="quote" readonly rows="2" placeholder="没有选中原文 · 记录对整篇文章的思考"></textarea></label>
+            <label class="note-writing-field"><span>笔记内容</span><textarea name="body" rows="5" maxlength="10000" placeholder="写下你的理解，或一个值得追问的问题…"></textarea></label>
+            <div class="note-editor-footer"><button type="button" data-note-cancel>取消编辑</button><button type="submit" class="note-save-button"><Fragment set:html={icon('check', 16)} /><span>保存笔记</span></button></div>
+          </form>
         </div>
-        <label>选中原文 <textarea name="quote" readonly rows="2" placeholder="先选中文章中的文字；也可不选文字，记录整篇笔记"></textarea></label>
-        <label>笔记内容 <textarea name="body" rows="3" maxlength="10000" placeholder="写下问题、自己的理解或实验结果"></textarea></label>
-        <button type="submit">保存笔记</button>
-        <button type="button" data-note-cancel>取消编辑</button>
-      </form>
+        <div class="note-list-heading"><label><span class="sr-only">查看笔记</span><select data-note-filter aria-label="查看笔记"><option value="all">全部笔记</option><option value="highlight">重点</option><option value="question">待解答疑问</option><option value="resolved">已解答疑问</option><option value="comment">注释</option></select></label><span data-note-count>0 条</span></div>
+        <div data-note-list></div>
+        <details class="notes-follow-up">
+          <summary><Fragment set:html={icon('list', 16)} /><span>整理待解答疑问</span><Fragment set:html={icon('chevronDown', 14)} /></summary>
+          <div class="note-actions"><button type="button" data-note-task>复制待解答任务</button><button type="button" data-note-draft>生成补充任务草稿</button></div>
+          <p>把疑问整理成一页，留待慢慢解答。</p>
+        </details>
+        <details class="notes-storage"><summary>保存与同步说明</summary><p>笔记先保存到本机，点击同步可跨设备读取。笔记不会进入正文；云端使用未公开列出的 Gist，持有链接者仍可访问。</p></details>
       </div>
-      <label>查看 <select data-note-filter><option value="all">全部笔记</option><option value="highlight">重点</option><option value="question">待解答疑问</option><option value="resolved">已解答疑问</option><option value="comment">注释</option></select></label>
-      <div data-note-list></div>
-      <details class="notes-follow-up">
-        <summary>整理待解答疑问</summary>
-        <div class="note-actions"><button type="button" data-note-task>复制待解答任务</button><button type="button" data-note-draft>生成补充任务草稿</button></div>
-        <p>草稿会整理原文和疑问，后续再生成解答并更新文章。</p>
-      </details>
-      <details class="notes-storage"><summary>保存与同步说明</summary><p>笔记先保存到本机，点击同步可跨设备读取。笔记不会进入正文；云端使用未公开列出的 Gist，持有链接者仍可访问。</p></details>
     </div>
   </div>
+  <div class="note-status-bar"><span class="note-status-dot" aria-hidden="true"></span><p data-note-status role="status" aria-live="polite">连接后即可开始记录。</p></div>
 </section>
 <style is:global>
-  .article-notes { margin: 1.5rem auto; padding: 1rem; border: 1px solid var(--border); border-radius: 16px; max-width: 850px; background: var(--bg); color: var(--text-1); box-sizing: border-box; }
-  .article-notes[hidden] { display: none !important; }
-  .article-notes[data-layout='sidebar'] { position: sticky; top: calc(var(--nav-height, 64px) + 16px); grid-column: 2; width: 320px; margin: 0; max-height: calc(100dvh - var(--nav-height, 64px) - 32px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; box-shadow: var(--shadow); z-index: 40; }
-  .article-notes[data-layout='sidebar'][data-open='false'] { position: fixed; top: calc(var(--nav-height, 64px) + 24px); right: 16px; width: auto; padding: .35rem; overflow: visible; }
-  .article-notes[data-open='false'][data-layout='sidebar'] :is(.notes-rail-header h2,[data-note-status],[data-note-connect]) { display: none; }
-  .notes-rail-header { display: flex; justify-content: space-between; gap: .5rem; align-items: center; }
-  .notes-rail-header h2 { font: inherit; font-weight: 700; margin: 0; }
-  .article-notes [hidden] { display: none !important; }
-  .article-notes button, .article-notes select, .article-notes input, .article-notes textarea { font: inherit; color: var(--text-1); background: var(--bg); border: 1px solid #81949c; border-radius: 6px; padding: .45rem .65rem; }
-  .article-notes button { cursor: pointer; }
-  .article-notes .note-selection { position: fixed; left: 12px; top: 80px; z-index: 110; display: flex; gap: 4px; padding: 6px; max-width: calc(100vw - 16px); box-sizing: border-box; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); box-shadow: var(--shadow-lg); white-space: nowrap; }
-  .note-selection::after { content: ''; position: absolute; bottom: -5px; left: var(--note-arrow-left, calc(100% - 24px)); width: 8px; height: 8px; background: var(--bg); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); transform: rotate(45deg); }
+  .article-notes {
+    --note-ink: #303c4d; --note-muted: #738092; --note-line: #e0e5ea;
+    --note-shell: #f0f2f5; --note-paper: #fffefa; --note-ui: #ffffff;
+    --note-blue: #3e6296; --note-bar: #3e587f; --note-blue-wash: #e9f0fa;
+    --note-rule: #59789d12; --note-shadow: 0 8px 28px #23355012, 0 1px 3px #23355008;
+    margin: 1.5rem auto; max-width: 850px; border: 1px solid var(--note-line); border-radius: 15px;
+    background: var(--note-shell); color: var(--note-ink); box-shadow: var(--note-shadow);
+    box-sizing: border-box; scroll-margin-top: calc(var(--nav-height, 64px) + 16px); font: 400 13px/1.65 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  html.dark .article-notes {
+    --note-ink: #e0e5ed; --note-muted: #9ba9bc; --note-line: #3a4556;
+    --note-shell: #222a36; --note-paper: #2b3340; --note-ui: #303b4c;
+    --note-blue: #abc7f1; --note-bar: #344c70; --note-blue-wash: #3c4d66;
+    --note-rule: #aac1e916; --note-shadow: 0 10px 30px #0003;
+  }
+  .article-notes[hidden], .article-notes [hidden] { display: none !important; }
+  .article-notes, .article-notes * { box-sizing: border-box; }
+  .article-notes .notes-icon { flex-shrink: 0; display: block; }
+  .article-notes :is(h2,h3,p,blockquote) { margin: 0; }
+  .article-notes :is(button, select, textarea, input) { font: inherit; color: inherit; }
+  .article-notes :is(button,a) { -webkit-tap-highlight-color: transparent; }
+  .article-notes button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 7px; padding: 7px 10px; min-height: 34px; background: transparent; cursor: pointer; transition: background .15s, color .15s; }
+  .article-notes button:hover { background: var(--note-blue-wash); color: var(--note-blue); }
+  .article-notes :is(button,a,select,textarea,input,summary):focus-visible { outline: 2px solid var(--note-blue); outline-offset: 3px; }
+  .article-notes a { color: var(--note-blue); text-decoration: none; }
+  .article-notes a:hover { text-decoration: underline; }
+  .article-notes[data-layout='sidebar'] { position: sticky; top: calc(var(--nav-height, 64px) + 16px); grid-column: 2; width: 344px; margin: 0; z-index: 95; }
+  .article-notes[data-layout='sidebar'][data-open='false'] { position: fixed; right: 18px; top: calc(var(--nav-height, 64px) + 24px); width: auto; border-radius: 12px; }
+  .notes-rail-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 15px 16px; background: var(--note-bar); color: #fff; border-radius: 14px 14px 0 0; }
+  .note-book-title { display: flex; align-items: center; gap: 10px; }
+  .note-book-title h2 { font-family: inherit; font-size: 15px; line-height: 1.4; font-weight: 600; letter-spacing: .04em; color: inherit; }
+  .note-book-title span { display: block; margin-top: 2px; font-size: 10px; color: #d9e3f2; letter-spacing: .07em; }
+  .article-notes [data-notes-toggle] { padding: 7px; color: inherit; }
+  .article-notes [data-notes-toggle]:hover { background: #ffffff20; color: #fff; }
+  .note-toggle-book { display: none; }
+  .article-notes[data-open='true'] [data-note-toggle-label] { display: none; }
+  .article-notes[data-open='false'][data-layout='sidebar'] :is(.note-book-title,.note-toggle-close,.note-status-bar,[data-note-connect]) { display: none; }
+  .article-notes[data-open='false'][data-layout='sidebar'] .notes-rail-header { border-radius: 11px; padding: 3px 6px; }
+  .article-notes[data-open='false'][data-layout='sidebar'] .note-toggle-book { display: block; }
+  .article-notes [data-note-connect] { display: block; padding: 18px; }
+  .note-book-toolbar { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 3px; padding: 8px 10px; background: var(--note-ui); border-bottom: 1px solid var(--note-line); }
+  .note-book-toolbar :is(button,a) { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; white-space: nowrap; padding: 6px; min-height: 34px; border-radius: 6px; }
+  .note-book-toolbar [data-note-sync] { color: var(--note-muted); }
+  .note-book-toolbar .note-new-button { background: var(--note-blue-wash); color: var(--note-blue); }
+  .article-notes[data-layout='page'] [data-note-new] { display: none; }
+  .article-notes[data-layout='sidebar'] [data-note-panel] { max-height: calc(100dvh - var(--nav-height, 64px) - 166px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #8797ac55 transparent; }
+  .note-book-pages { padding: 14px; }
+  .notes-selection-hint { font-size: 11px; color: var(--note-muted); text-align: center; padding: 2px 0 14px; }
+  .article-notes .note-selection { position: fixed; left: 12px; top: 80px; z-index: 110; display: flex; align-items: center; gap: 3px; padding: 5px; max-width: calc(100vw - 16px); border: 1px solid var(--note-line); border-radius: 11px; background: var(--note-ui); box-shadow: 0 6px 22px #1e355f26; white-space: nowrap; }
+  .note-selection::after { content: ''; position: absolute; bottom: -5px; left: var(--note-arrow-left, calc(100% - 24px)); width: 8px; height: 8px; background: var(--note-ui); border-right: 1px solid var(--note-line); border-bottom: 1px solid var(--note-line); transform: rotate(45deg); }
   .note-selection[data-below='true']::after { top: -5px; bottom: auto; transform: rotate(225deg); }
-  .article-notes .note-selection button { min-height: 40px; padding: .45rem .65rem; border: 0; }
-  .article-notes :is([data-annotation-kind='highlight'],[data-editor-kind='highlight']) { --kind-color: #c69a22; }
-  .article-notes :is([data-annotation-kind='question'],[data-editor-kind='question']) { --kind-color: #db775c; }
-  .article-notes :is([data-annotation-kind='comment'],[data-editor-kind='comment']) { --kind-color: #4b9bc8; }
-  .article-notes :is([data-annotation-kind],[data-editor-kind]):hover, .article-notes [data-editor-kind][aria-pressed='true'] { background: color-mix(in srgb, var(--kind-color) 20%, var(--bg)); border-color: var(--kind-color); }
-  .note-kind-tabs { display: flex; flex-wrap: wrap; gap: .35rem; }
-  [data-note-editor] { margin-top: .8rem; padding: .8rem; border: 1px solid var(--border); border-radius: 12px; }
-  [data-note-editor-title] { font-size: .95rem; margin: 0 0 .6rem; }
-  .article-notes [data-note-status] { font-size: .75rem; color: var(--text-muted); }
-  .article-notes label { display: block; margin: .7rem 0; }
-  .article-notes textarea { width: 100%; box-sizing: border-box; display: block; margin-top: .3rem; }
-  .article-notes p { font-size: .9rem; line-height: 1.7; }
-  .note-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .8rem; }
-  .note-card { --note-accent: #4b9bc8; border: 1px solid color-mix(in srgb, var(--note-accent) 40%, var(--border)); border-left: 4px solid var(--note-accent); border-radius: 10px; margin-top: .8rem; padding: .8rem; background: color-mix(in srgb, var(--note-accent) 8%, var(--bg)); overflow-wrap: anywhere; }
-  .note-card[data-kind='highlight'] { --note-accent: #c69a22; }
-  .note-card[data-kind='question'] { --note-accent: #db775c; border-left-style: double; border-left-width: 6px; }
-  .note-card[data-kind='comment'] { --note-accent: #4b9bc8; border-style: dashed; border-left-style: solid; }
-  .note-card[data-kind='question'][data-resolved='true'] { --note-accent: #58a887; }
-  .note-card .note-heading { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; font-size: .83rem; }
-  .note-kind-badge { display: inline-flex; align-items: center; gap: .3rem; border-radius: 6px; padding: .2rem .45rem; background: color-mix(in srgb, var(--note-accent) 18%, var(--bg)); }
-  .note-card blockquote { margin: .6rem 0; padding-left: .6rem; border-left: 2px solid var(--note-accent); font-size: .8rem; color: var(--text-2); white-space: pre-wrap; max-height: 8rem; overflow: auto; }
-  .note-card .note-meta { font-size: .72rem; color: var(--text-muted); }
-  .note-card input { width: 100%; box-sizing: border-box; }
-  .note-card-tools summary, .notes-follow-up summary, .notes-storage summary { cursor: pointer; font-size: .8rem; padding: .5rem 0; }
-  .note-card .note-body { white-space: pre-wrap; }
-  .note-source-missing { color: #aa6341; }
+  .article-notes .note-selection button { min-height: 40px; padding: 6px 11px; gap: 7px; font-size: 12px; position: relative; }
+  .article-notes .note-popover { position: fixed; z-index: 111; display: flex; flex-direction: column; width: 340px; max-width: calc(100vw - 16px); border: 1px solid var(--note-line); border-radius: 12px; background: var(--note-paper); box-shadow: 0 10px 35px #1e355f30; overflow: hidden; }
+  .note-popover-header { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; padding: 6px 10px 6px 16px; border-bottom: 1px solid var(--note-line); background: var(--note-ui); font-size: 11px; color: var(--note-muted); }
+  .note-popover-content { overflow-y: auto; overscroll-behavior: contain; padding: 0 16px; }
+  .note-popover-entry { padding: 15px 0 10px; overflow-wrap: anywhere; }
+  .note-popover-entry + .note-popover-entry { border-top: 1px solid var(--note-line); }
+  .article-notes .note-popover-entry blockquote { margin-top: 10px; padding-left: 9px; border-left: 2px solid var(--kind-color); color: var(--note-muted); font-size: 11px; max-height: 5rem; overflow: auto; white-space: pre-wrap; }
+  .article-notes .note-popover-entry .note-body { margin: 12px 0 8px; font-size: 14px; line-height: 1.9; white-space: pre-wrap; }
+  .article-notes .note-popover-entry button { padding-inline: 0; color: var(--note-blue); font-size: 11px; }
+  [data-annotation-body].annotation-hover { cursor: pointer; }
+  .article-notes :is([data-annotation-kind='highlight'],[data-editor-kind='highlight'],[data-kind='highlight']) { --kind-color: #a98220; --kind-wash: #f9edbb; }
+  .article-notes :is([data-annotation-kind='question'],[data-editor-kind='question'],[data-kind='question']) { --kind-color: #b76f56; --kind-wash: #fae4d9; }
+  .article-notes :is([data-annotation-kind='comment'],[data-editor-kind='comment'],[data-kind='comment']) { --kind-color: #567fad; --kind-wash: #e2edf8; }
+  .article-notes :is([data-annotation-kind],[data-editor-kind]) .notes-icon { color: var(--kind-color); }
+  .article-notes :is([data-annotation-kind],[data-editor-kind]):hover, .article-notes [data-editor-kind][aria-pressed='true'] { background: color-mix(in srgb, var(--kind-wash) 65%, var(--note-ui)); color: var(--note-ink); }
+  .article-notes [data-note-editor] { margin-bottom: 22px; }
+  .article-notes [data-note-form] { background: var(--note-paper); border: 1px solid var(--note-line); border-radius: 4px 10px 10px 4px; padding: 18px 16px 12px; box-shadow: 0 3px 8px #2439540a, 3px 3px 0 -1px var(--note-paper), 3px 3px 0 var(--note-line); border-top: 3px solid var(--kind-color); }
+  .note-sheet-eyebrow { display: block; font-size: 10px; letter-spacing: .12em; color: var(--note-muted); margin-bottom: 3px; }
+  .article-notes [data-note-editor-title] { font-size: 17px; font-weight: 600; color: var(--note-ink); }
+  .note-kind-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 16px 0; padding: 4px; background: var(--note-shell); border-radius: 9px; }
+  .article-notes .note-kind-tabs button { flex-direction: column; gap: 4px; min-height: 56px; padding: 7px 4px; font-size: 10px; border: 1px solid transparent; }
+  .article-notes .note-kind-tabs [aria-pressed='true'] { box-shadow: 0 1px 3px #28384e10; border-color: color-mix(in srgb, var(--kind-color) 28%, transparent); }
+  .article-notes .note-quote-field { display: block; border-left: 2px solid var(--kind-color); padding: 10px 11px; background: color-mix(in srgb, var(--kind-wash) 25%, var(--note-paper)); border-radius: 0 5px 5px 0; }
+  .article-notes .note-quote-field > span { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--note-muted); }
+  .article-notes textarea { display: block; width: 100%; border: 0; border-radius: 0; background: transparent; resize: vertical; }
+  .article-notes .note-quote-field textarea { font-size: 12px; line-height: 1.8; min-height: 46px; max-height: 150px; padding: 4px 0 0; margin: 0; color: var(--note-ink); resize: none; }
+  .article-notes .note-writing-field { display: block; margin-top: 16px; }
+  .note-writing-field > span { font-size: 10px; letter-spacing: .06em; color: var(--note-muted); }
+  .article-notes .note-writing-field textarea { min-height: 160px; margin-top: 8px; padding: 0 2px; font-size: 14px; line-height: 30px; background-image: linear-gradient(transparent 29px, var(--note-rule) 29px); background-size: 100% 30px; background-attachment: local; }
+  .article-notes textarea::placeholder { color: var(--note-muted); opacity: .75; }
+  .note-editor-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--note-line); font-size: 11px; }
+  .article-notes [data-note-cancel] { color: var(--note-muted); }
+  .article-notes .note-save-button { background: var(--note-bar); color: #fff; padding-inline: 13px; }
+  .article-notes .note-save-button:hover { background: #496fa3; color: #fff; }
+  .note-list-heading { display: flex; justify-content: space-between; align-items: center; margin: 2px 0 12px; }
+  .article-notes .note-list-heading select { max-width: 210px; font-size: 11px; border: 0; background: transparent; color: var(--note-blue); padding: 5px 5px 5px 0; font-weight: 600; cursor: pointer; }
+  .note-list-heading > span { color: var(--note-muted); font-size: 10px; }
+  .note-card { position: relative; border: 1px solid var(--note-line); border-radius: 4px 9px 9px 4px; margin-bottom: 12px; padding: 15px; background: var(--note-paper); overflow-wrap: anywhere; box-shadow: 0 2px 6px #1e344609; }
+  .note-card::before { content: ''; position: absolute; top: -1px; right: 17px; width: 11px; height: 19px; background: var(--kind-color); opacity: .65; clip-path: polygon(0 0,100% 0,100% 100%,50% 75%,0 100%); }
+  .note-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding-right: 22px; }
+  .note-kind-badge { display: inline-flex; align-items: center; gap: 5px; color: var(--kind-color); font-size: 11px; font-weight: 600; }
+  .note-resolved { font-size: 10px; font-weight: 400; color: var(--note-muted); }
+  .note-article-title { flex-basis: 100%; font-size: 13px; margin-top: 4px; font-weight: 500; }
+  .article-notes .note-card blockquote { margin: 12px 0 8px; padding: 0 0 0 10px; border-left: 2px solid color-mix(in srgb, var(--kind-color) 45%, transparent); font-size: 12px; line-height: 1.8; color: var(--note-muted); white-space: pre-wrap; max-height: 8rem; overflow: auto; }
+  .article-notes .note-card .note-body { font-size: 13px; line-height: 1.95; white-space: pre-wrap; margin: 10px 0 12px; }
+  .note-card .note-meta { font-size: 10px; line-height: 1.6; color: var(--note-muted); }
+  .note-card .note-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .note-card-footer { display: flex; align-items: start; justify-content: space-between; border-top: 1px solid var(--note-line); padding-top: 7px; margin-top: 12px; gap: 6px; }
+  .note-card-footer > .note-actions { flex-shrink: 0; }
+  .article-notes .note-card :is(button, .note-actions a) { font-size: 10px; padding: 4px 6px; min-height: 28px; color: var(--note-blue); }
+  .article-notes .note-card [data-note-delete] { color: #b26760; }
+  .note-card-tools { min-width: 0; text-align: right; }
+  .note-card-tools[open] { flex: 1; }
+  .note-card-footer:has(.note-card-tools[open]) { flex-wrap: wrap; }
+  .note-card-footer .note-card-tools[open] { flex-basis: 100%; text-align: left; }
+  .note-card-tools summary { cursor: pointer; font-size: 10px; color: var(--note-muted); padding: 5px; list-style: none; }
+  .note-card-tools summary::-webkit-details-marker { display: none; }
+  .note-card-tools label { display: block; font-size: 10px; color: var(--note-muted); margin: 8px 0; text-align: left; }
+  .note-card input { width: 100%; border: 1px solid var(--note-line); border-radius: 5px; padding: 7px; margin-top: 5px; background: var(--note-ui); color: var(--note-ink); }
+  .article-notes .note-source-missing { font-size: 10px; color: #ae805a; margin-top: 8px; }
+  .note-empty { padding: 28px 16px 32px; text-align: center; border: 1px dashed var(--note-line); border-radius: 10px; background: radial-gradient(var(--note-rule) .8px, transparent .8px) 0 0/10px 10px, var(--note-paper); }
+  .note-empty > .notes-icon { width: 32px; height: 32px; color: #91a4bd; margin: 0 auto 15px; }
+  .note-empty h3 { font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+  .note-empty p { font-size: 11px; color: var(--note-muted); max-width: 220px; margin: auto; line-height: 1.9; }
+  .notes-follow-up { margin-top: 16px; border-top: 1px solid var(--note-line); padding-top: 6px; }
+  .notes-follow-up summary { display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 11px; color: var(--note-muted); padding: 9px 0; list-style: none; }
+  .notes-follow-up summary::-webkit-details-marker { display: none; }
+  .notes-follow-up summary .notes-icon:last-child { margin-left: auto; }
+  .notes-follow-up[open] summary .notes-icon:last-child { rotate: 180deg; }
+  .notes-follow-up .note-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+  .notes-follow-up .note-actions button { font-size: 10px; background: var(--note-ui); border: 1px solid var(--note-line); }
+  .notes-follow-up p, .notes-storage p { margin-top: 8px; font-size: 10px; color: var(--note-muted); line-height: 1.8; }
+  .notes-storage { margin-top: 10px; color: var(--note-muted); font-size: 10px; }
+  .notes-storage summary { cursor: pointer; }
+  .note-status-bar { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--note-line); background: var(--note-ui); border-radius: 0 0 14px 14px; }
+  .note-status-dot { width: 5px; height: 5px; flex-shrink: 0; border-radius: 50%; background: #8b9db5; }
+  .article-notes [data-note-status] { color: var(--note-muted); font-size: 10px; line-height: 1.6; }
   .annotation-focus { outline: 2px solid #d0ad4b; outline-offset: 4px; }
   .annotation-marked { border-inline-start: 3px solid #d0ad4b; padding-inline-start: .6rem; }
   .annotation-marked.annotation-question { border-color: #db775c; border-inline-start-style: double; }
@@ -95,8 +194,20 @@ const { slug = '', title = '', revision = '' } = Astro.props;
   ::highlight(article-highlight) { background: #efd26366; }
   ::highlight(article-question) { background: #edab8b55; text-decoration: underline; }
   ::highlight(article-comment) { background: #8dbfdf55; }
-  @media (max-width: 1279px) { .article-notes[data-layout='sidebar'][data-open='true'] { position: fixed; right: 12px; top: calc(var(--nav-height, 64px) + 12px); width: min(360px, calc(100vw - 24px)); max-height: calc(100dvh - var(--nav-height, 64px) - 24px); box-shadow: var(--shadow-xl); } }
-  @media (max-width: 600px) { .article-notes { padding: .75rem; } .note-actions button { flex: 1 1 auto; } }
+  html.dark .article-notes :is([data-annotation-kind],[data-editor-kind],[data-kind]) { --kind-wash: #38475a; }
+  html.dark .article-notes :is([data-annotation-kind='highlight'],[data-editor-kind='highlight'],[data-kind='highlight']) { --kind-color: #d9bc68; }
+  html.dark .article-notes :is([data-annotation-kind='question'],[data-editor-kind='question'],[data-kind='question']) { --kind-color: #e0a18c; }
+  html.dark .article-notes :is([data-annotation-kind='comment'],[data-editor-kind='comment'],[data-kind='comment']) { --kind-color: #9dbbe1; }
+  @media (max-width: 1279px) { .article-notes[data-layout='sidebar'][data-open='true'] { position: fixed; right: 12px; top: calc(var(--nav-height, 64px) + 12px); width: min(360px, calc(100vw - 24px)); box-shadow: 0 12px 45px #13264130; } }
+  @media (max-width: 600px) {
+    .article-notes[data-layout='sidebar'][data-open='true'] { left: 8px; right: 8px; top: auto; bottom: max(8px, env(safe-area-inset-bottom)); width: auto; }
+    .article-notes[data-layout='sidebar'] [data-note-panel] { max-height: calc(100dvh - var(--nav-height, 64px) - 155px); }
+    .article-notes[data-layout='sidebar'][data-open='false'] { top: auto; bottom: max(24px, env(safe-area-inset-bottom)); left: 12px; right: auto; }
+    .article-notes .note-writing-field textarea { font-size: 16px; }
+    .article-notes :is(button, .note-book-toolbar a) { min-height: 40px; }
+    .article-notes .note-card :is(button, .note-actions a) { min-height: 36px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .article-notes button { transition: none; } }
 </style>
 <script>
   import { initArticleNotes } from '../lib/article-notes-app';

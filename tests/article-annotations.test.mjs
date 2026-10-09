@@ -45,10 +45,18 @@ test('invalid storage is rejected, rather than silently replaced during sync', (
 
 const appSource = readFileSync(new URL('../src/lib/article-notes-app.ts', import.meta.url), 'utf8');
 const appCode = ts.transpileModule(appSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+const iconsSource = readFileSync(new URL('../src/lib/notes-icons.ts', import.meta.url), 'utf8');
+const iconsCode = ts.transpileModule(iconsSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
+const icons = await import(`data:text/javascript;base64,${Buffer.from(iconsCode).toString('base64')}`);
 const component = readFileSync(new URL('../src/components/ArticleNotes.astro', import.meta.url), 'utf8').match(/<section[\s\S]*?<\/section>/)[0];
 const tick = () => new Promise(resolve => setImmediate(resolve));
-async function fixture({ login = 'versechen', article = true, initial = store(), remoteError = false } = {}) {
+async function fixture({ login = 'versechen', article = true, initial = store(), remoteError = false, rects = () => [], nativeHighlights = false } = {}) {
   const window = new Window({ url: 'https://example.test/' });
+  window.Range.prototype.getClientRects = function () { return rects(this); };
+  if (nativeHighlights) {
+    window.Highlight = class { constructor(...ranges) { this.ranges = ranges; } };
+    window.CSS.highlights = new Map();
+  }
   window.document.body.innerHTML = (article ? '<div data-annotation-body><p>左边梯度，右边梯度。</p></div>' : '') + component;
   const root = window.document.querySelector('[data-article-notes]');
   root.dataset.slug = article ? 'ddp' : ''; root.dataset.title = 'DDP'; root.dataset.revision = 'v1';
@@ -59,7 +67,7 @@ async function fixture({ login = 'versechen', article = true, initial = store(),
     pushAnnotations: async (_, data) => { pushed = structuredClone(data); }, TOKEN_KEY: 'token', LOGIN_KEY: 'login' };
   const notes = { createNote: () => ({ id: 'draft-one' }), loadLocalStore: () => drafts, saveLocalStore: () => {}, ACTIVE_KEY: 'active' };
   const exports = {};
-  vm.runInNewContext(appCode, { exports, require: path => path.includes('article-annotations') ? { parseAnnotations, mergeAnnotations, locateQuote, questionTask, selectionMenuPosition, ANNOTATIONS_KEY: 'codeverse.annotations.v1' } : path.endsWith('notes-remote') ? remote : notes,
+  vm.runInNewContext(appCode, { exports, require: path => path.includes('article-annotations') ? { parseAnnotations, mergeAnnotations, locateQuote, questionTask, selectionMenuPosition, ANNOTATIONS_KEY: 'codeverse.annotations.v1' } : path.endsWith('notes-remote') ? remote : path.endsWith('notes-icons') ? icons : notes,
     window, document: window.document, localStorage: window.localStorage, location: window.location, navigator: window.navigator,
     crypto: globalThis.crypto, CSS: { highlights: new Map() }, Node: window.Node, NodeFilter: window.NodeFilter, Element: window.Element, Error, console });
   window.confirm = () => true;
@@ -163,14 +171,146 @@ test('selecting text shows three choices; choosing a type opens the side editor 
   window.document.dispatchEvent(new window.Event('pointerup')); assert.equal(popup.hidden, true);
   root.querySelector('[name=body]').value = '为什么同步？'; root.querySelector('form').dispatchEvent(new window.Event('submit', { cancelable: true }));
   assert.equal(f.stored().items[0].kind, 'question'); assert.equal(root.querySelector('.note-card').dataset.kind, 'question');
-  assert.match(root.querySelector('.note-kind-badge').textContent, /\? 疑问/);
+  assert.equal(root.querySelector('.note-kind-badge').textContent, '疑问');
   assert.equal(root.querySelector('[data-note-editor]').hidden, true);
   await window.happyDOM.close();
 });
 test('types have distinct badges; keyboard close does not discard saved notes', async () => {
   const f = await fixture({ initial: store(item(), item({ id: 'two', kind: 'highlight' }), item({ id: 'three', kind: 'comment' })) });
-  assert.deepEqual([...f.root.querySelectorAll('.note-kind-badge')].map(x => x.textContent), ['? 疑问', '★ 重点', '✎ 注释']);
+  assert.deepEqual([...f.root.querySelectorAll('.note-kind-badge')].map(x => x.textContent), ['疑问', '重点', '注释']);
   f.window.document.dispatchEvent(new f.window.KeyboardEvent('keyup', { key: 'Escape' }));
   assert.equal(f.root.dataset.open, 'false'); assert.equal(f.stored().items.length, 3);
   await f.window.happyDOM.close();
+});
+
+test('notebook filters update the count and show an empty page without losing stored notes', async () => {
+  const f = await fixture({ initial: store(item(), item({ id: 'two', kind: 'highlight' })) });
+  const filter = f.root.querySelector('[data-note-filter]');
+  assert.equal(f.root.querySelector('[data-note-count]').textContent, '2 条');
+  filter.value = 'comment'; filter.dispatchEvent(new f.window.Event('change'));
+  assert.equal(f.root.querySelector('[data-note-count]').textContent, '0 条');
+  assert.ok(f.root.querySelector('.note-empty'));
+  filter.value = 'all'; filter.dispatchEvent(new f.window.Event('change'));
+  assert.equal(f.root.querySelectorAll('.note-card').length, 2);
+  assert.equal(f.stored().items.length, 2);
+  await f.window.happyDOM.close();
+});
+
+test('closing and reopening the notebook retains the draft and restores keyboard focus', async () => {
+  const f = await fixture();
+  f.root.querySelector('[data-note-new]').click();
+  const field = f.root.querySelector('[name=body]'); field.value = '尚未保存的想法'; field.focus();
+  f.window.document.dispatchEvent(new f.window.KeyboardEvent('keyup', { key: 'Escape' }));
+  const toggle = f.root.querySelector('[data-notes-toggle]');
+  assert.equal(f.window.document.activeElement, toggle);
+  assert.equal(toggle.getAttribute('aria-label'), '打开阅读笔记');
+  toggle.click();
+  assert.equal(field.value, '尚未保存的想法');
+  assert.equal(f.root.querySelector('[data-note-editor]').hidden, false);
+  assert.equal(toggle.getAttribute('aria-label'), '收起阅读笔记');
+  await f.window.happyDOM.close();
+});
+
+test('whole-paragraph selection accepts a trailing boundary, but a cross-paragraph selection clears the old menu', async () => {
+  const f = await fixture(); const { window, root } = f;
+  const article = window.document.querySelector('[data-annotation-body]');
+  const next = window.document.createElement('p'); next.textContent = '下一段原文'; article.append(next);
+  const text = article.querySelector('p').firstChild;
+  const choose = end => {
+    window.getSelection().removeAllRanges();
+    const range = window.document.createRange(); range.setStart(text, 0); range.setEnd(next.firstChild, end);
+    window.getSelection().addRange(range); window.document.dispatchEvent(new window.Event('pointerup'));
+  };
+  choose(0);
+  assert.equal(root.querySelector('[data-note-selection]').hidden, false);
+  assert.equal(root.querySelector('[name=quote]').value, text.textContent);
+  choose(2);
+  assert.equal(root.querySelector('[data-note-selection]').hidden, true);
+  assert.match(root.querySelector('[data-note-status]').textContent, /一个段落/);
+  await window.happyDOM.close();
+});
+
+test('a new selection while editing creates its own note and keeps the earlier note intact', async () => {
+  const f = await fixture({ initial: store(item()) }); const { window, root } = f;
+  f.click('编辑');
+  const text = window.document.querySelector('[data-annotation-body] p').firstChild;
+  const range = window.document.createRange(); range.setStart(text, 0); range.setEnd(text, 2);
+  window.getSelection().addRange(range); window.document.dispatchEvent(new window.Event('pointerup'));
+  root.querySelector('[data-annotation-kind=comment]').click();
+  assert.equal(root.querySelector('[name=body]').value, '');
+  root.querySelector('[name=body]').value = '新的理解'; root.querySelector('form').dispatchEvent(new window.Event('submit', { cancelable: true }));
+  assert.equal(f.stored().items.length, 2);
+  assert.equal(f.stored().items.find(x => x.id === 'one').body, '哪里同步？');
+  assert.equal(f.stored().items.find(x => x.id !== 'one').quote, '左边');
+  await window.happyDOM.close();
+});
+
+const noteLine = { left: 80, right: 160, top: 200, bottom: 220, width: 80, height: 20 };
+function clickPassage(f, x = 100, y = 210) {
+  const passage = f.window.document.querySelector('[data-annotation-body] p');
+  passage.dispatchEvent(new f.window.MouseEvent('click', { bubbles: true, clientX: x, clientY: y }));
+}
+test('clicking a saved CSS highlight shows its content without opening the notebook or losing a draft', async () => {
+  const f = await fixture({ initial: store(item({ prefix: '左边', body: '<b>我的疑问</b>' })), nativeHighlights: true, rects: () => [noteLine] });
+  f.root.querySelector('[data-note-new]').click();
+  f.root.querySelector('[name=body]').value = '另一条未保存的草稿';
+  f.root.querySelector('[data-notes-toggle]').click();
+  clickPassage(f);
+  const popup = f.root.querySelector('[data-note-popover]');
+  assert.equal(popup.hidden, false);
+  assert.equal(f.root.dataset.open, 'false');
+  assert.equal(popup.querySelector('.note-body').textContent, '<b>我的疑问</b>');
+  assert.equal(popup.querySelector('b'), null);
+  assert.equal(f.root.querySelector('[name=body]').value, '另一条未保存的草稿');
+  assert.equal(f.window.document.activeElement, popup);
+  f.window.document.dispatchEvent(new f.window.KeyboardEvent('keyup', { key: 'Escape' }));
+  assert.equal(popup.hidden, true);
+  assert.equal(f.window.document.activeElement, f.root.querySelector('[data-notes-toggle]'));
+  await f.window.happyDOM.close();
+});
+test('wrapped highlight hit testing ignores empty space, links, and text-selection gestures', async () => {
+  const f = await fixture({ initial: store(item({ prefix: '左边' })), rects: () => [noteLine, { left: 20, right: 50, top: 224, bottom: 244, width: 30, height: 20 }] });
+  const popup = f.root.querySelector('[data-note-popover]');
+  clickPassage(f, 70, 234); assert.equal(popup.hidden, true);
+  const paragraph = f.window.document.querySelector('[data-annotation-body] p');
+  const range = f.window.document.createRange(); range.setStart(paragraph.firstChild, 0); range.setEnd(paragraph.firstChild, 4);
+  f.window.getSelection().addRange(range); clickPassage(f); assert.equal(popup.hidden, true);
+  f.window.getSelection().removeAllRanges();
+  const link = f.window.document.createElement('a'); link.textContent = '正文链接'; paragraph.append(link);
+  link.dispatchEvent(new f.window.MouseEvent('click', { bubbles: true, clientX: 100, clientY: 210 }));
+  assert.equal(popup.hidden, true);
+  clickPassage(f, 30, 234); assert.equal(popup.hidden, false);
+  f.window.document.body.dispatchEvent(new f.window.Event('pointerdown', { bubbles: true }));
+  assert.equal(popup.hidden, true);
+  await f.window.happyDOM.close();
+});
+test('overlapping annotations appear together and editing from the popup updates the chosen note', async () => {
+  const f = await fixture({ initial: store(item({ prefix: '左边' }), item({ id: 'two', prefix: '左边', kind: 'highlight', body: '' })), rects: () => [noteLine] });
+  clickPassage(f);
+  const popup = f.root.querySelector('[data-note-popover]');
+  assert.equal(popup.querySelectorAll('.note-popover-entry').length, 2);
+  assert.match(popup.textContent, /尚未添加文字笔记/);
+  popup.querySelector('.note-popover-entry[data-kind=question] button').click();
+  assert.equal(popup.hidden, true); assert.equal(f.root.dataset.open, 'true');
+  assert.equal(f.root.querySelector('[name=body]').value, '哪里同步？');
+  f.root.querySelector('[name=body]').value = '修改后的疑问';
+  f.root.querySelector('form').dispatchEvent(new f.window.Event('submit', { cancelable: true }));
+  assert.equal(f.stored().items.length, 2);
+  assert.equal(f.stored().items.find(x => x.id === 'one').body, '修改后的疑问');
+  clickPassage(f); assert.match(popup.textContent, /修改后的疑问/);
+  await f.window.happyDOM.close();
+});
+test('deleting a note or disconnecting clears the popup and stale hit targets', async () => {
+  const f = await fixture({ initial: store(item({ prefix: '左边' })), rects: () => [noteLine] });
+  const popup = f.root.querySelector('[data-note-popover]');
+  clickPassage(f); assert.equal(popup.hidden, false);
+  f.click('删除'); assert.equal(popup.hidden, true); assert.equal(popup.querySelector('.note-body'), null);
+  clickPassage(f); assert.equal(popup.hidden, true);
+  await f.window.happyDOM.close();
+  const owner = await fixture({ initial: store(item({ prefix: '左边' })), rects: () => [noteLine] });
+  clickPassage(owner); owner.logout();
+  const privatePopup = owner.root.querySelector('[data-note-popover]');
+  assert.equal(privatePopup.hidden, true); assert.equal(privatePopup.querySelector('.note-body'), null);
+  clickPassage(owner); assert.equal(privatePopup.hidden, true);
+  await owner.window.happyDOM.close();
 });
