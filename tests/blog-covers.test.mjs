@@ -66,8 +66,10 @@ test('exhaustion does not partly write articles or the registry', () => {
 const esm = source => ts.transpile(source, { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext });
 const moduleUrl = source => `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
 const notesUrl = moduleUrl(esm(readFileSync(new URL('../src/lib/notes.ts', import.meta.url), 'utf8')));
+const annotationsUrl = moduleUrl(esm(readFileSync(new URL('../src/lib/article-annotations.ts', import.meta.url), 'utf8')));
 const publisherSource = esm(readFileSync(new URL('../src/lib/notes-remote.ts', import.meta.url), 'utf8'))
   .replace("'./notes'", JSON.stringify(notesUrl))
+  .replace("'./article-annotations'", JSON.stringify(annotationsUrl))
   .replace("'./blog-covers.mjs'", JSON.stringify(new URL('../src/lib/blog-covers.mjs', import.meta.url).href));
 const { publishBlogPost } = await import(moduleUrl(publisherSource));
 
