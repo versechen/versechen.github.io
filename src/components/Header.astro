@@ -4,14 +4,14 @@ import SakuraIcon from './SakuraIcon.astro';
 import { SITE_TITLE } from '../consts';
 
 const navLinks = [
-  { href: '/',         label: '首页' },
-  { href: '/blog',     label: '博客' },
-  { href: '/reading',  label: '读书' },
-  { href: '/projects', label: '项目' },
-  { href: '/life',     label: '生活' },
-  { href: '/notes',    label: '记录', ownerOnly: true },
-  { href: '/friends',  label: '友链' },
-  { href: '/about',    label: '关于' },
+  { href: '/',         label: '首页', verse: '春日序章' },
+  { href: '/blog',     label: '博客', verse: '风中札记' },
+  { href: '/reading',  label: '读书', verse: '书页生香' },
+  { href: '/projects', label: '项目', verse: '新枝初长' },
+  { href: '/life',     label: '生活', verse: '晴日慢行' },
+  { href: '/notes',    label: '记录', verse: '拾光成笺', ownerOnly: true },
+  { href: '/friends',  label: '友链', verse: '春山来信' },
+  { href: '/about',    label: '关于', verse: '见字如面' },
 ];
 
 const pathname = new URL(Astro.request.url).pathname;
@@ -29,7 +29,7 @@ const isActive = (href: string) =>
 
     <!-- Desktop nav -->
     <ul class="nav-links" id="nav-links">
-      {navLinks.map(({ href, label, ownerOnly }) => (
+      {navLinks.map(({ href, label, verse, ownerOnly }) => (
         <li hidden={ownerOnly} data-owner-nav={ownerOnly ? '' : undefined}>
           <a
             href={href}
@@ -37,7 +37,11 @@ const isActive = (href: string) =>
             aria-current={isActive(href) ? 'page' : undefined}
           >
             <SakuraIcon href={href} />
-            <CoastalIcon href={href} /><span>{label}</span>
+            <CoastalIcon href={href} />
+            <span class="nav-copy">
+              <span class="nav-label">{label}</span>
+              <span class="nav-verse" aria-hidden="true">{verse}</span>
+            </span>
           </a>
         </li>
       ))}
@@ -156,6 +160,19 @@ const isActive = (href: string) =>
     transition: all var(--transition);
   }
 
+  .nav-copy {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    min-width: 0;
+    line-height: 1.15;
+  }
+
+  .nav-verse {
+    display: none;
+  }
+
   .nav-link:hover {
     color: var(--primary);
     background: rgba(232, 121, 164, 0.08);
@@ -235,6 +252,7 @@ const isActive = (href: string) =>
     :global(html:not([data-visual-theme='poetize'])) .nav-inner { padding-inline: 16px; gap: 12px; }
     :global(html:not([data-visual-theme='poetize'])) .nav-links { gap: 0; }
     :global(html:not([data-visual-theme='poetize'])) .nav-link { gap: 4px; padding-inline: 5px; font-size: .85rem; }
+    :global(html:not([data-visual-theme='poetize'])) .nav-verse { display: none; }
   }
 
   /* Mobile */
