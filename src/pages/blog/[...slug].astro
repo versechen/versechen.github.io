@@ -121,7 +121,6 @@ function formatDate(date: Date) {
         <div class="prose animate-fade-up animate-delay-1" data-annotation-body>
           <Content />
         </div>
-        <ArticleNotes slug={post.id} title={post.data.title} revision={createHash('sha256').update(post.body ?? '').digest('hex').slice(0, 16)} />
 
         <!-- Navigation -->
         <nav class="post-nav animate-fade-up animate-delay-2" aria-label="文章翻页">
@@ -143,6 +142,9 @@ function formatDate(date: Date) {
           <a href="/blog" class="btn btn-outline">← 返回博客列表</a>
         </div>
       </div>
+      <aside class="article-notes-rail" aria-label="文章批注">
+        <ArticleNotes slug={post.id} title={post.data.title} revision={createHash('sha256').update(post.body ?? '').digest('hex').slice(0, 16)} />
+      </aside>
     </div>
   </article>
 </BaseLayout>
@@ -288,6 +290,17 @@ function formatDate(date: Date) {
 
   .article-layout {
     display: block;
+  }
+  .article-notes-rail { display: contents; }
+  @media (min-width: 1280px) {
+    .article-layout:has([data-article-notes][data-open='true']) {
+      display: grid;
+      grid-template-columns: minmax(0, 860px) 320px;
+      gap: 32px;
+      align-items: start;
+      max-width: 1280px;
+    }
+    .article-layout:has([data-article-notes][data-open='true']) .article-main { grid-column: 1; }
   }
 
   .article-main {

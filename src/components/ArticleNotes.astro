@@ -2,51 +2,100 @@
 interface Props { slug?: string; title?: string; revision?: string; }
 const { slug = '', title = '', revision = '' } = Astro.props;
 ---
-<section class="article-notes" data-article-notes data-slug={slug} data-title={title} data-revision={revision}>
-  <p data-note-status role="status" aria-live="polite">管理员连接后可做阅读笔记。<a href="/notes">连接 GitHub</a></p>
+<section class="article-notes" data-article-notes data-layout={slug ? 'sidebar' : 'page'} data-open="false" data-slug={slug} data-title={title} data-revision={revision} hidden={Boolean(slug)}>
+  <div class="notes-rail-header">
+    <h2>阅读笔记</h2>
+    <button type="button" data-notes-toggle aria-expanded="false" aria-controls="reading-notes-panel">阅读笔记</button>
+  </div>
+  <p data-note-status role="status" aria-live="polite">管理员连接后可做阅读笔记。</p>
+  <a href="/notes" data-note-connect>连接 GitHub</a>
   <div data-note-workspace hidden>
-    <button type="button" data-note-selection hidden class="note-selection">为选中文字做笔记</button>
-    <button type="button" data-notes-toggle aria-expanded="false">阅读笔记</button>
-    <div data-note-panel hidden>
+    <div data-note-selection hidden class="note-selection" role="toolbar" aria-label="选择标注方式">
+      <button type="button" data-annotation-kind="highlight"><span aria-hidden="true">★</span> 重点</button>
+      <button type="button" data-annotation-kind="question"><span aria-hidden="true">?</span> 疑问</button>
+      <button type="button" data-annotation-kind="comment"><span aria-hidden="true">✎</span> 注释</button>
+    </div>
+    <div data-note-panel id="reading-notes-panel" hidden>
       <div class="note-actions">
         <button type="button" data-note-sync>同步笔记</button>
         <a href="/questions">全部疑问</a>
-        <button type="button" data-note-task>复制待解答任务</button>
-        <button type="button" data-note-draft>生成补充任务草稿</button>
+        <button type="button" data-note-new>整篇笔记</button>
       </div>
-      <p>选择文章中的一段文字，再添加重点、疑问或注释。笔记先保存到本机，点击同步可跨设备读取。不会进入公开正文。云端使用未公开列出的 Gist，持有链接者仍可访问。</p>
-      <p>补充任务草稿整理原文和疑问，便于后续生成答案；不会自动调用模型或改写已发布文章。</p>
-      <form data-note-form>
-        <label>类型 <select name="kind"><option value="highlight">重点</option><option value="question">疑问</option><option value="comment">注释</option></select></label>
+      <p class="notes-selection-hint">选中文字，在选区右上角选择标注方式。</p>
+      <div data-note-editor hidden>
+      <form data-note-form data-kind="highlight">
+        <h3 data-note-editor-title>添加重点</h3>
+        <input type="hidden" name="kind" value="highlight" />
+        <div class="note-kind-tabs" role="group" aria-label="标注方式">
+          <button type="button" data-editor-kind="highlight" aria-pressed="true">★ 重点</button>
+          <button type="button" data-editor-kind="question" aria-pressed="false">? 疑问</button>
+          <button type="button" data-editor-kind="comment" aria-pressed="false">✎ 注释</button>
+        </div>
         <label>选中原文 <textarea name="quote" readonly rows="2" placeholder="先选中文章中的文字；也可不选文字，记录整篇笔记"></textarea></label>
         <label>笔记内容 <textarea name="body" rows="3" maxlength="10000" placeholder="写下问题、自己的理解或实验结果"></textarea></label>
         <button type="submit">保存笔记</button>
         <button type="button" data-note-cancel>取消编辑</button>
       </form>
+      </div>
       <label>查看 <select data-note-filter><option value="all">全部笔记</option><option value="highlight">重点</option><option value="question">待解答疑问</option><option value="resolved">已解答疑问</option><option value="comment">注释</option></select></label>
       <div data-note-list></div>
+      <details class="notes-follow-up">
+        <summary>整理待解答疑问</summary>
+        <div class="note-actions"><button type="button" data-note-task>复制待解答任务</button><button type="button" data-note-draft>生成补充任务草稿</button></div>
+        <p>草稿会整理原文和疑问，后续再生成解答并更新文章。</p>
+      </details>
+      <details class="notes-storage"><summary>保存与同步说明</summary><p>笔记先保存到本机，点击同步可跨设备读取。笔记不会进入正文；云端使用未公开列出的 Gist，持有链接者仍可访问。</p></details>
     </div>
   </div>
 </section>
 <style is:global>
-  .article-notes { margin: 1.5rem auto; padding: 1rem; border: 1px solid var(--border); border-radius: 12px; max-width: 850px; }
+  .article-notes { margin: 1.5rem auto; padding: 1rem; border: 1px solid var(--border); border-radius: 16px; max-width: 850px; background: var(--bg); color: var(--text-1); box-sizing: border-box; }
+  .article-notes[hidden] { display: none !important; }
+  .article-notes[data-layout='sidebar'] { position: sticky; top: calc(var(--nav-height, 64px) + 16px); grid-column: 2; width: 320px; margin: 0; max-height: calc(100dvh - var(--nav-height, 64px) - 32px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; box-shadow: var(--shadow); z-index: 40; }
+  .article-notes[data-layout='sidebar'][data-open='false'] { position: fixed; top: calc(var(--nav-height, 64px) + 24px); right: 16px; width: auto; padding: .35rem; overflow: visible; }
+  .article-notes[data-open='false'][data-layout='sidebar'] :is(.notes-rail-header h2,[data-note-status],[data-note-connect]) { display: none; }
+  .notes-rail-header { display: flex; justify-content: space-between; gap: .5rem; align-items: center; }
+  .notes-rail-header h2 { font: inherit; font-weight: 700; margin: 0; }
   .article-notes [hidden] { display: none !important; }
   .article-notes button, .article-notes select, .article-notes input, .article-notes textarea { font: inherit; color: var(--text-1); background: var(--bg); border: 1px solid #81949c; border-radius: 6px; padding: .45rem .65rem; }
   .article-notes button { cursor: pointer; }
-  .article-notes .note-selection { position: fixed; bottom: 1.5rem; right: 1rem; z-index: 50; background: var(--bg); box-shadow: 0 3px 18px #0002; }
+  .article-notes .note-selection { position: fixed; left: 12px; top: 80px; z-index: 110; display: flex; gap: 4px; padding: 6px; max-width: calc(100vw - 16px); box-sizing: border-box; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); box-shadow: var(--shadow-lg); white-space: nowrap; }
+  .note-selection::after { content: ''; position: absolute; bottom: -5px; left: var(--note-arrow-left, calc(100% - 24px)); width: 8px; height: 8px; background: var(--bg); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); transform: rotate(45deg); }
+  .note-selection[data-below='true']::after { top: -5px; bottom: auto; transform: rotate(225deg); }
+  .article-notes .note-selection button { min-height: 40px; padding: .45rem .65rem; border: 0; }
+  .article-notes :is([data-annotation-kind='highlight'],[data-editor-kind='highlight']) { --kind-color: #c69a22; }
+  .article-notes :is([data-annotation-kind='question'],[data-editor-kind='question']) { --kind-color: #db775c; }
+  .article-notes :is([data-annotation-kind='comment'],[data-editor-kind='comment']) { --kind-color: #4b9bc8; }
+  .article-notes :is([data-annotation-kind],[data-editor-kind]):hover, .article-notes [data-editor-kind][aria-pressed='true'] { background: color-mix(in srgb, var(--kind-color) 20%, var(--bg)); border-color: var(--kind-color); }
+  .note-kind-tabs { display: flex; flex-wrap: wrap; gap: .35rem; }
+  [data-note-editor] { margin-top: .8rem; padding: .8rem; border: 1px solid var(--border); border-radius: 12px; }
+  [data-note-editor-title] { font-size: .95rem; margin: 0 0 .6rem; }
+  .article-notes [data-note-status] { font-size: .75rem; color: var(--text-muted); }
   .article-notes label { display: block; margin: .7rem 0; }
   .article-notes textarea { width: 100%; box-sizing: border-box; display: block; margin-top: .3rem; }
   .article-notes p { font-size: .9rem; line-height: 1.7; }
   .note-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .8rem; }
-  .note-card { border-top: 1px solid #81949c55; margin-top: 1rem; padding: 1rem 0; overflow-wrap: anywhere; }
-  .note-card blockquote { margin: .6rem 0; padding-left: .8rem; border-left: 3px solid #d0ad4b; white-space: pre-wrap; }
+  .note-card { --note-accent: #4b9bc8; border: 1px solid color-mix(in srgb, var(--note-accent) 40%, var(--border)); border-left: 4px solid var(--note-accent); border-radius: 10px; margin-top: .8rem; padding: .8rem; background: color-mix(in srgb, var(--note-accent) 8%, var(--bg)); overflow-wrap: anywhere; }
+  .note-card[data-kind='highlight'] { --note-accent: #c69a22; }
+  .note-card[data-kind='question'] { --note-accent: #db775c; border-left-style: double; border-left-width: 6px; }
+  .note-card[data-kind='comment'] { --note-accent: #4b9bc8; border-style: dashed; border-left-style: solid; }
+  .note-card[data-kind='question'][data-resolved='true'] { --note-accent: #58a887; }
+  .note-card .note-heading { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; font-size: .83rem; }
+  .note-kind-badge { display: inline-flex; align-items: center; gap: .3rem; border-radius: 6px; padding: .2rem .45rem; background: color-mix(in srgb, var(--note-accent) 18%, var(--bg)); }
+  .note-card blockquote { margin: .6rem 0; padding-left: .6rem; border-left: 2px solid var(--note-accent); font-size: .8rem; color: var(--text-2); white-space: pre-wrap; max-height: 8rem; overflow: auto; }
+  .note-card .note-meta { font-size: .72rem; color: var(--text-muted); }
+  .note-card input { width: 100%; box-sizing: border-box; }
+  .note-card-tools summary, .notes-follow-up summary, .notes-storage summary { cursor: pointer; font-size: .8rem; padding: .5rem 0; }
   .note-card .note-body { white-space: pre-wrap; }
   .note-source-missing { color: #aa6341; }
   .annotation-focus { outline: 2px solid #d0ad4b; outline-offset: 4px; }
   .annotation-marked { border-inline-start: 3px solid #d0ad4b; padding-inline-start: .6rem; }
+  .annotation-marked.annotation-question { border-color: #db775c; border-inline-start-style: double; }
+  .annotation-marked.annotation-comment { border-color: #4b9bc8; border-inline-start-style: dashed; }
   ::highlight(article-highlight) { background: #efd26366; }
   ::highlight(article-question) { background: #edab8b55; text-decoration: underline; }
   ::highlight(article-comment) { background: #8dbfdf55; }
+  @media (max-width: 1279px) { .article-notes[data-layout='sidebar'][data-open='true'] { position: fixed; right: 12px; top: calc(var(--nav-height, 64px) + 12px); width: min(360px, calc(100vw - 24px)); max-height: calc(100dvh - var(--nav-height, 64px) - 24px); box-shadow: var(--shadow-xl); } }
   @media (max-width: 600px) { .article-notes { padding: .75rem; } .note-actions button { flex: 1 1 auto; } }
 </style>
 <script>

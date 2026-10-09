@@ -7,6 +7,16 @@ export type Annotation = {
 export type AnnotationStore = { items: Annotation[]; deleted: { id: string; at: string }[] };
 export const ANNOTATIONS_KEY = 'codeverse.annotations.v1';
 
+/** Fixed-position menu beside the selection, clamped clear of the header and screen edges. */
+export function selectionMenuPosition(rect: { right: number; top: number; bottom: number },
+  viewport: { width: number; height: number; top: number }, menu: { width: number; height: number }) {
+  const left = Math.max(8, Math.min(rect.right - menu.width, viewport.width - menu.width - 8));
+  const below = rect.top - menu.height - 8 < viewport.top;
+  const top = Math.max(viewport.top, Math.min(below ? rect.bottom + 8 : rect.top - menu.height - 8,
+    viewport.height - menu.height - 8));
+  return { left, top, below };
+}
+
 export function parseAnnotations(input: unknown): AnnotationStore {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid annotations');
   const raw = input as Partial<AnnotationStore> | null;

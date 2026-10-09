@@ -7,7 +7,7 @@ import { Window } from 'happy-dom';
 
 const source = readFileSync(new URL('../src/lib/article-annotations.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
-const { parseAnnotations, mergeAnnotations, locateQuote, questionTask } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+const { parseAnnotations, mergeAnnotations, locateQuote, questionTask, selectionMenuPosition } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 const item = (overrides = {}) => ({ id: 'one', slug: 'ddp', title: 'DDP', revision: 'v1', kind: 'question', quote: '梯度', prefix: '', suffix: '', section: '同步', body: '哪里同步？', resolved: false, answer: '', updatedAt: '2026-10-09T01:00:00.000Z', ...overrides });
 const store = (...items) => ({ items, deleted: [] });
 
@@ -59,9 +59,9 @@ async function fixture({ login = 'versechen', article = true, initial = store(),
     pushAnnotations: async (_, data) => { pushed = structuredClone(data); }, TOKEN_KEY: 'token', LOGIN_KEY: 'login' };
   const notes = { createNote: () => ({ id: 'draft-one' }), loadLocalStore: () => drafts, saveLocalStore: () => {}, ACTIVE_KEY: 'active' };
   const exports = {};
-  vm.runInNewContext(appCode, { exports, require: path => path.includes('article-annotations') ? { parseAnnotations, mergeAnnotations, locateQuote, questionTask, ANNOTATIONS_KEY: 'codeverse.annotations.v1' } : path.endsWith('notes-remote') ? remote : notes,
+  vm.runInNewContext(appCode, { exports, require: path => path.includes('article-annotations') ? { parseAnnotations, mergeAnnotations, locateQuote, questionTask, selectionMenuPosition, ANNOTATIONS_KEY: 'codeverse.annotations.v1' } : path.endsWith('notes-remote') ? remote : notes,
     window, document: window.document, localStorage: window.localStorage, location: window.location, navigator: window.navigator,
-    crypto: globalThis.crypto, CSS: { highlights: new Map() }, Node: window.Node, NodeFilter: window.NodeFilter, Error, console });
+    crypto: globalThis.crypto, CSS: { highlights: new Map() }, Node: window.Node, NodeFilter: window.NodeFilter, Element: window.Element, Error, console });
   window.confirm = () => true;
   exports.initArticleNotes(); await tick();
   return { window, root, drafts, pushed: () => pushed, logout: () => { token = ''; window.dispatchEvent(new window.Event('codeverse:owner-nav')); },
@@ -139,4 +139,38 @@ test('cloud sync refuses public or truncated stores before writing', async () =>
   const truncated = remoteFixture({ ...gist, public: false, files: { 'annotations.json': { content: '{}', truncated: true } } });
   await assert.rejects(truncated.api.pullAnnotations('test-only-token'), /过大/);
   assert.equal(truncated.requests.some(x => x.method), false);
+});
+
+test('selection menu opens near the upper-right and stays inside a narrow viewport', () => {
+  const viewport = { width: 1000, height: 800, top: 72 }, menu = { width: 260, height: 52 };
+  assert.deepEqual(selectionMenuPosition({ right: 640, top: 200, bottom: 220 }, viewport, menu), { left: 380, top: 140, below: false });
+  assert.deepEqual(selectionMenuPosition({ right: 100, top: 76, bottom: 96 }, viewport, menu), { left: 8, top: 104, below: true });
+  const edge = selectionMenuPosition({ right: 500, top: 740, bottom: 760 }, { ...viewport, width: 320 }, menu);
+  assert.equal(edge.left, 52); assert.ok(edge.top + menu.height <= viewport.height - 8);
+});
+test('selecting text shows three choices; choosing a type opens the side editor without losing the quote', async () => {
+  const f = await fixture(); const { window, root } = f;
+  const range = window.document.createRange(), text = window.document.querySelector('[data-annotation-body] p').firstChild;
+  range.setStart(text, 2); range.setEnd(text, 4); window.getSelection().addRange(range);
+  window.document.dispatchEvent(new window.Event('pointerup'));
+  const popup = root.querySelector('[data-note-selection]'); assert.equal(popup.hidden, false);
+  assert.equal(popup.querySelectorAll('[data-annotation-kind]').length, 3);
+  assert.equal(root.querySelector('[data-note-editor]').hidden, true);
+  popup.querySelector('[data-annotation-kind=question]').click();
+  assert.equal(popup.hidden, true); assert.equal(root.dataset.open, 'true');
+  assert.equal(root.querySelector('[data-note-editor]').hidden, false);
+  assert.equal(root.querySelector('[name=quote]').value, '梯度'); assert.equal(root.querySelector('[name=kind]').value, 'question');
+  window.document.dispatchEvent(new window.Event('pointerup')); assert.equal(popup.hidden, true);
+  root.querySelector('[name=body]').value = '为什么同步？'; root.querySelector('form').dispatchEvent(new window.Event('submit', { cancelable: true }));
+  assert.equal(f.stored().items[0].kind, 'question'); assert.equal(root.querySelector('.note-card').dataset.kind, 'question');
+  assert.match(root.querySelector('.note-kind-badge').textContent, /\? 疑问/);
+  assert.equal(root.querySelector('[data-note-editor]').hidden, true);
+  await window.happyDOM.close();
+});
+test('types have distinct badges; keyboard close does not discard saved notes', async () => {
+  const f = await fixture({ initial: store(item(), item({ id: 'two', kind: 'highlight' }), item({ id: 'three', kind: 'comment' })) });
+  assert.deepEqual([...f.root.querySelectorAll('.note-kind-badge')].map(x => x.textContent), ['? 疑问', '★ 重点', '✎ 注释']);
+  f.window.document.dispatchEvent(new f.window.KeyboardEvent('keyup', { key: 'Escape' }));
+  assert.equal(f.root.dataset.open, 'false'); assert.equal(f.stored().items.length, 3);
+  await f.window.happyDOM.close();
 });
