@@ -7,7 +7,8 @@
     "cover-markdown.svg",
     "cover-garden.svg",
     "cover-spring.svg",
-    "cover-music.svg"
+    "cover-music.svg",
+    "cover-communication.svg"
   ],
   "assigned": {
     "first-post": "cover-code.svg",
@@ -15,6 +16,9 @@
     "third-post": "cover-architecture.svg",
     "markdown-style-guide": "cover-markdown.svg",
     "using-mdx": "cover-markdown.svg",
-    "ddp-basics-two-cpu-processes": "cover-spring.svg"
+    "ddp-basics-two-cpu-processes": "cover-spring.svg",
+    "ddp-collective-hang-diagnosis": "cover-music.svg",
+    "ddp-global-loss-metrics": "cover-communication.svg",
+    "ddp-gradient-accumulation": "cover-garden.svg"
   }
 }

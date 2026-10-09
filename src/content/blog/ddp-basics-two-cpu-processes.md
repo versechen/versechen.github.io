@@ -590,7 +590,7 @@ DDP 初始化时同步模型状态。之后两个进程从相同参数出发，�
 
 本次使用 CPU 和 Gloo，验证的是数据划分、梯度同步和参数更新的正确性。这些日志没有提供 NCCL 带宽、GPU 利用率或多卡加速比的证据。
 
-下一篇先继续验证 DDP 的 batch、梯度累积和指标统计，再进入 NCCL 的集合通信与性能诊断。此后学习 Ray 调度、DeepSpeed 显存分片、Megatron-Core 并行，以及 TensorRT-LLM 和 NVIDIA Triton Inference Server 部署时，都可以回到这份小例子，分清“谁处理数据、谁同步什么、在哪里发生更新”。
+下一篇：[梯度累积与有效全局 batch](/blog/ddp-gradient-accumulation/)。然后继续验证全局 loss 统计、集合通信错位，再进入 NCCL 的集合通信与性能诊断。此后学习 Ray 调度、DeepSpeed 显存分片、Megatron-Core 并行，以及 TensorRT-LLM 和 NVIDIA Triton Inference Server 部署时，都可以回到这份小例子，分清“谁处理数据、谁同步什么、在哪里发生更新”。
 
 ### 官方文档索引
 
