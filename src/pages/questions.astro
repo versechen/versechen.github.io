@@ -1,0 +1,11 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ArticleNotes from '../components/ArticleNotes.astro';
+---
+<BaseLayout title="阅读疑问" description="管理员的阅读笔记与待解答疑问清单" noindex>
+  <main class="container" style="padding-top:7rem;min-height:70vh">
+    <h1>阅读疑问与笔记</h1>
+    <p>按文章整理阅读中的疑问，补充答案后记录解答位置。</p>
+    <ArticleNotes />
+  </main>
+</BaseLayout>

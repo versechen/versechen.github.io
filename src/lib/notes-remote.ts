@@ -1,9 +1,65 @@
 import { parseStore, readYamlBoolean, serializeStore, setYamlBoolean, type NoteStore } from './notes';
 import { assignBlogCover, parseCoverRegistry } from './blog-covers.mjs';
+import { parseAnnotations, type AnnotationStore } from './article-annotations';
 
 export const TOKEN_KEY = 'codeverse.notes.githubToken';
 export const GIST_KEY = 'codeverse.notes.gistId';
 export const LOGIN_KEY = 'codeverse.notes.githubLogin';
+const ANNOTATION_GIST_KEY = 'codeverse.annotations.gistId';
+const ANNOTATION_DESCRIPTION = 'codeverse-article-annotations';
+
+async function annotationGist(token: string): Promise<Gist | null> {
+  const cached = read(ANNOTATION_GIST_KEY);
+  if (/^[a-f0-9]+$/i.test(cached)) {
+    const response = await github(token, `/gists/${cached}`);
+    if (response.ok) {
+      const gist = await response.json() as Gist & { owner?: { login?: string }; public?: boolean };
+      if (gist.description === ANNOTATION_DESCRIPTION && isSiteOwner(gist.owner?.login ?? '')) {
+        if (gist.public !== false) throw new NotesRemoteError('云端阅读笔记是公开 Gist，已停止同步，请先处理其可见性');
+        return gist;
+      }
+    } else if (response.status !== 404) throw new NotesRemoteError('无法读取云端阅读笔记');
+    localStorage.removeItem(ANNOTATION_GIST_KEY);
+  }
+  for (let page = 1; page <= 10; page++) {
+    const response = await github(token, `/gists?per_page=100&page=${page}`);
+    if (!response.ok) throw new NotesRemoteError('无法查找云端阅读笔记');
+    const list = await response.json() as Gist[];
+    const found = list.find(x => x.description === ANNOTATION_DESCRIPTION);
+    if (found) {
+      localStorage.setItem(ANNOTATION_GIST_KEY, found.id);
+      const detail = await github(token, `/gists/${found.id}`);
+      if (!detail.ok) throw new NotesRemoteError('无法读取云端阅读笔记');
+      const gist = await detail.json() as Gist & { owner?: { login?: string }; public?: boolean };
+      if (!isSiteOwner(gist.owner?.login ?? '')) throw new NotesRemoteError('云端阅读笔记不属于管理员账号');
+      if (gist.public !== false) throw new NotesRemoteError('云端阅读笔记是公开 Gist，已停止同步，请先处理其可见性');
+      return gist;
+    }
+    if (list.length < 100) return null;
+  }
+  throw new NotesRemoteError('Gist 数量过多，无法完成阅读笔记查找；请稍后重试');
+}
+
+export async function pullAnnotations(token: string): Promise<AnnotationStore> {
+  const gist = await annotationGist(token);
+  if (!gist) return { items: [], deleted: [] };
+  const file = gist.files?.['annotations.json'];
+  if (!file || file.truncated || typeof file.content !== 'string') throw new NotesRemoteError('云端阅读笔记文件缺失或过大，未覆盖本机数据');
+  try { return parseAnnotations(JSON.parse(file.content ?? '{}')); }
+  catch { throw new NotesRemoteError('云端阅读笔记格式错误，未覆盖本机数据'); }
+}
+
+export async function pushAnnotations(token: string, store: AnnotationStore): Promise<void> {
+  const gist = await annotationGist(token);
+  const response = await github(token, gist ? `/gists/${gist.id}` : '/gists', {
+    method: gist ? 'PATCH' : 'POST',
+    body: JSON.stringify({ description: ANNOTATION_DESCRIPTION, ...(!gist ? { public: false } : {}),
+      files: { 'annotations.json': { content: JSON.stringify(store) } } }),
+  });
+  if (!response.ok) throw new NotesRemoteError('阅读笔记同步失败，本机内容仍然保留');
+  const saved = await response.json() as Gist;
+  localStorage.setItem(ANNOTATION_GIST_KEY, saved.id);
+}
 
 const API = 'https://api.github.com';
 const DESCRIPTION = 'codeverse-notes';
