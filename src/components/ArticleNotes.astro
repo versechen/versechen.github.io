@@ -1,0 +1,55 @@
+---
+interface Props { slug?: string; title?: string; revision?: string; }
+const { slug = '', title = '', revision = '' } = Astro.props;
+---
+<section class="article-notes" data-article-notes data-slug={slug} data-title={title} data-revision={revision}>
+  <p data-note-status role="status" aria-live="polite">管理员连接后可做阅读笔记。<a href="/notes">连接 GitHub</a></p>
+  <div data-note-workspace hidden>
+    <button type="button" data-note-selection hidden class="note-selection">为选中文字做笔记</button>
+    <button type="button" data-notes-toggle aria-expanded="false">阅读笔记</button>
+    <div data-note-panel hidden>
+      <div class="note-actions">
+        <button type="button" data-note-sync>同步笔记</button>
+        <a href="/questions">全部疑问</a>
+        <button type="button" data-note-task>复制待解答任务</button>
+        <button type="button" data-note-draft>生成补充任务草稿</button>
+      </div>
+      <p>选择文章中的一段文字，再添加重点、疑问或注释。笔记先保存到本机，点击同步可跨设备读取。不会进入公开正文。云端使用未公开列出的 Gist，持有链接者仍可访问。</p>
+      <p>补充任务草稿整理原文和疑问，便于后续生成答案；不会自动调用模型或改写已发布文章。</p>
+      <form data-note-form>
+        <label>类型 <select name="kind"><option value="highlight">重点</option><option value="question">疑问</option><option value="comment">注释</option></select></label>
+        <label>选中原文 <textarea name="quote" readonly rows="2" placeholder="先选中文章中的文字；也可不选文字，记录整篇笔记"></textarea></label>
+        <label>笔记内容 <textarea name="body" rows="3" maxlength="10000" placeholder="写下问题、自己的理解或实验结果"></textarea></label>
+        <button type="submit">保存笔记</button>
+        <button type="button" data-note-cancel>取消编辑</button>
+      </form>
+      <label>查看 <select data-note-filter><option value="all">全部笔记</option><option value="highlight">重点</option><option value="question">待解答疑问</option><option value="resolved">已解答疑问</option><option value="comment">注释</option></select></label>
+      <div data-note-list></div>
+    </div>
+  </div>
+</section>
+<style is:global>
+  .article-notes { margin: 1.5rem auto; padding: 1rem; border: 1px solid var(--border); border-radius: 12px; max-width: 850px; }
+  .article-notes [hidden] { display: none !important; }
+  .article-notes button, .article-notes select, .article-notes input, .article-notes textarea { font: inherit; color: var(--text-1); background: var(--bg); border: 1px solid #81949c; border-radius: 6px; padding: .45rem .65rem; }
+  .article-notes button { cursor: pointer; }
+  .article-notes .note-selection { position: fixed; bottom: 1.5rem; right: 1rem; z-index: 50; background: var(--bg); box-shadow: 0 3px 18px #0002; }
+  .article-notes label { display: block; margin: .7rem 0; }
+  .article-notes textarea { width: 100%; box-sizing: border-box; display: block; margin-top: .3rem; }
+  .article-notes p { font-size: .9rem; line-height: 1.7; }
+  .note-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .8rem; }
+  .note-card { border-top: 1px solid #81949c55; margin-top: 1rem; padding: 1rem 0; overflow-wrap: anywhere; }
+  .note-card blockquote { margin: .6rem 0; padding-left: .8rem; border-left: 3px solid #d0ad4b; white-space: pre-wrap; }
+  .note-card .note-body { white-space: pre-wrap; }
+  .note-source-missing { color: #aa6341; }
+  .annotation-focus { outline: 2px solid #d0ad4b; outline-offset: 4px; }
+  .annotation-marked { border-inline-start: 3px solid #d0ad4b; padding-inline-start: .6rem; }
+  ::highlight(article-highlight) { background: #efd26366; }
+  ::highlight(article-question) { background: #edab8b55; text-decoration: underline; }
+  ::highlight(article-comment) { background: #8dbfdf55; }
+  @media (max-width: 600px) { .article-notes { padding: .75rem; } .note-actions button { flex: 1 1 auto; } }
+</style>
+<script>
+  import { initArticleNotes } from '../lib/article-notes-app';
+  initArticleNotes();
+</script>

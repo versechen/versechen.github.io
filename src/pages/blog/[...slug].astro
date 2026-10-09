@@ -2,6 +2,8 @@
 import CoastalScene from '../../components/CoastalScene.astro';
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import TableOfContents from '../../components/TableOfContents.astro';
+import ArticleNotes from '../../components/ArticleNotes.astro';
+import { createHash } from 'node:crypto';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { hasMath } from '../../utils/math';
 import { hasMermaid } from '../../lib/diagrams';
@@ -116,9 +118,10 @@ function formatDate(date: Date) {
           <div class="poetize-abstract"><span>写在前面</span><p>{post.data.description}</p></div>
           {post.data.heroImage && <button type="button" class="poetize-cover-button" aria-label="查看文章封面大图"><img class="poetize-article-cover" src={post.data.heroImage.src} width={post.data.heroImage.width} height={post.data.heroImage.height} alt={post.data.title} loading="lazy" /><span>查看封面 ↗</span></button>}
         </div>
-        <div class="prose animate-fade-up animate-delay-1">
+        <div class="prose animate-fade-up animate-delay-1" data-annotation-body>
           <Content />
         </div>
+        <ArticleNotes slug={post.id} title={post.data.title} revision={createHash('sha256').update(post.body ?? '').digest('hex').slice(0, 16)} />
 
         <!-- Navigation -->
         <nav class="post-nav animate-fade-up animate-delay-2" aria-label="文章翻页">
