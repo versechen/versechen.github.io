@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+<title id="title">NCCL 通信性能主题封面</title>
+<desc id="desc">深海蓝背景上四块芯片沿环形光路连接，金色光点与波纹表现通信和测量。</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#071d33"/><stop offset=".65" stop-color="#124d68"/><stop offset="1" stop-color="#317e87"/></linearGradient>
+<radialGradient id="glow"><stop stop-color="#9fe8d8" stop-opacity=".3"/><stop offset="1" stop-color="#9fe8d8" stop-opacity="0"/></radialGradient>
+<g id="chip"><rect x="-48" y="-48" width="96" height="96" rx="15" fill="#103d53" stroke="#a1e3dc" stroke-width="3"/><rect x="-28" y="-28" width="56" height="56" rx="6" fill="#1a6376" stroke="#e0fff4" stroke-width="2"/><path d="M-22-60v12M0-60v12M22-60v12M-22 48v12M0 48v12M22 48v12M-60-22h12M-60 0h12M-60 22h12M48-22h12M48 0h12M48 22h12" stroke="#8fd9d7" stroke-width="4"/></g>
+</defs>
+<rect width="1200" height="630" fill="url(#bg)"/>
+<ellipse cx="600" cy="315" rx="470" ry="300" fill="url(#glow)"/>
+<g fill="none" stroke="#8fd9d7"><rect x="300" y="175" width="600" height="280" rx="80" stroke-width="4" opacity=".8"/><rect x="325" y="200" width="550" height="230" rx="65" stroke-width="1" opacity=".35"/><path d="M0 550Q300 445 600 550T1200 550M0 580Q300 475 600 580T1200 580" stroke-width="2" opacity=".2"/></g>
+<use href="#chip" x="300" y="175"/><use href="#chip" x="900" y="175"/><use href="#chip" x="300" y="455"/><use href="#chip" x="900" y="455"/>
+<g fill="#f6c98c"><circle cx="530" cy="175" r="7"/><circle cx="900" cy="300" r="7"/><circle cx="690" cy="455" r="7"/><circle cx="300" cy="340" r="7"/></g>
+<g fill="none" stroke="#b9f0e5" stroke-width="3" opacity=".7"><path d="M455 335h34l14-38 21 65 21-83 21 56h47l14-24 20 37 20-72 20 59h55"/></g>
+</svg>

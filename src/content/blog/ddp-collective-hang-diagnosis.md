@@ -225,5 +225,5 @@ print(f"rank={rank} step={step} after loss all_reduce", flush=True)
 资料核对日期：2026-10-09。参考 [PyTorch 分布式调试说明](https://docs.pytorch.org/docs/stable/distributed.html#torch-distributed-debug)、[DDP 内部通信顺序](https://docs.pytorch.org/docs/stable/notes/ddp.html)。
 
 上一篇：[正确统计全局 loss](/blog/ddp-global-loss-metrics/)  
-下一课计划进入 NCCL：比较 all-reduce、all-gather、reduce-scatter 与 broadcast 的数据变化。CPU／Gloo 只能演示通信语义，NCCL 带宽需要实际多 GPU 环境验证。
+下一篇：[测量 AllReduce，定位 NCCL 通信瓶颈](/blog/nccl-allreduce-baseline/)。CPU／Gloo 只能演示通信语义和测量方法，NCCL 带宽需要实际多 GPU 环境验证。
 
