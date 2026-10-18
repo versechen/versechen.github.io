@@ -9,7 +9,16 @@
     "cover-spring.svg",
     "cover-music.svg",
     "cover-communication.svg",
-    "cover-nccl.svg"
+    "cover-nccl.svg",
+    "cover-ros2-01.svg",
+    "cover-ros2-02.svg",
+    "cover-ros2-03.svg",
+    "cover-ros2-04.svg",
+    "cover-ros2-05.svg",
+    "cover-ros2-06.svg",
+    "cover-ros2-07.svg",
+    "cover-ros2-08.svg",
+    "cover-ros2-09.svg"
   ],
   "assigned": {
     "first-post": "cover-code.svg",
@@ -21,6 +30,15 @@
     "ddp-collective-hang-diagnosis": "cover-music.svg",
     "ddp-global-loss-metrics": "cover-communication.svg",
     "ddp-gradient-accumulation": "cover-garden.svg",
-    "nccl-allreduce-baseline": "cover-nccl.svg"
+    "nccl-allreduce-baseline": "cover-nccl.svg",
+    "ros2-control-cycle-and-mock-hardware": "cover-ros2-08.svg",
+    "ros2-controller-manager-and-services": "cover-ros2-09.svg",
+    "ros2-interfaces-and-hardware-mapping": "cover-ros2-03.svg",
+    "ros2-node-executor-and-spin": "cover-ros2-01.svg",
+    "ros2-pluginlib-and-plugin-lifecycle": "cover-ros2-05.svg",
+    "ros2-robot-startup-and-architecture": "cover-ros2-04.svg",
+    "ros2-rrbot-docker-and-motion-check": "cover-ros2-07.svg",
+    "ros2-series-guide": "cover-ros2-06.svg",
+    "ros2-statistics-and-performance": "cover-ros2-02.svg"
   }
 }

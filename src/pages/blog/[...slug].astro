@@ -24,9 +24,16 @@ const { Content, headings } = await render(post);
 const allPosts = (await getCollection('blog'))
   .filter(isListedPost)
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
-const postIndex = allPosts.findIndex((entry) => entry.id === post.id);
-const newerPost = postIndex > 0 ? allPosts[postIndex - 1] : undefined;
-const olderPost = postIndex >= 0 ? allPosts[postIndex + 1] : undefined;
+const navigationPosts = post.data.series
+  ? allPosts
+      .filter((entry) => entry.data.series === post.data.series)
+      .sort((a, b) =>
+        (a.data.seriesOrder ?? 99) - (b.data.seriesOrder ?? 99)
+        || a.data.pubDate.valueOf() - b.data.pubDate.valueOf())
+  : allPosts;
+const postIndex = navigationPosts.findIndex((entry) => entry.id === post.id);
+const previousPost = postIndex > 0 ? navigationPosts[postIndex - 1] : undefined;
+const nextPost = postIndex >= 0 ? navigationPosts[postIndex + 1] : undefined;
 
 function formatDate(date: Date) {
   return date.toLocaleDateString('zh-CN', {
@@ -124,16 +131,16 @@ function formatDate(date: Date) {
 
         <!-- Navigation -->
         <nav class="post-nav animate-fade-up animate-delay-2" aria-label="文章翻页">
-          {newerPost ? (
-            <a href={`/blog/${newerPost.id}`} class="post-nav-link post-nav-prev">
+          {previousPost ? (
+            <a href={`/blog/${previousPost.id}`} class="post-nav-link post-nav-prev">
               <span>上一篇</span>
-              <strong>{newerPost.data.title}</strong>
+              <strong>{previousPost.data.title}</strong>
             </a>
           ) : <span></span>}
-          {olderPost ? (
-            <a href={`/blog/${olderPost.id}`} class="post-nav-link post-nav-next">
+          {nextPost ? (
+            <a href={`/blog/${nextPost.id}`} class="post-nav-link post-nav-next">
               <span>下一篇</span>
-              <strong>{olderPost.data.title}</strong>
+              <strong>{nextPost.data.title}</strong>
             </a>
           ) : <span></span>}
         </nav>

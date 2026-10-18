@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">ROS 2 机器人控制主题封面 7</title>
+  <desc id="desc">连接节点与机械臂关节组成的机器人控制网络示意。</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#25223e"/><stop offset="1" stop-color="#76536f"/></linearGradient>
+    <radialGradient id="glow"><stop stop-color="#efbfd9" stop-opacity=".18"/><stop offset="1" stop-color="#efbfd9" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#efbfd9" stroke-opacity=".055"/></pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <ellipse cx="640" cy="305" rx="450" ry="300" fill="url(#glow)"/>
+  <g transform="rotate(8 600 315)">
+    <g fill="none" stroke="#efbfd9" stroke-width="2" stroke-opacity=".45"><path d="M275 210 Q600 300 595 135"/><path d="M595 135 Q600 300 930 240"/><path d="M930 240 Q600 300 850 455"/><path d="M850 455 Q600 300 430 465"/><path d="M430 465 Q600 300 275 210"/></g>
+    <ellipse cx="600" cy="315" rx="155" ry="145" fill="none" stroke="#efbfd9" stroke-opacity=".15" stroke-dasharray="5 10"/>
+    <g transform="translate(275 210)"><rect x="-45" y="-30" width="90" height="60" rx="18" fill="#25223e" stroke="#efbfd9" stroke-width="2.5"/><circle r="9" fill="#b5e6e3"/></g><g transform="translate(595 135)"><rect x="-45" y="-30" width="90" height="60" rx="18" fill="#25223e" stroke="#efbfd9" stroke-width="2.5"/><circle r="9" fill="#b5e6e3"/></g><g transform="translate(930 240)"><rect x="-45" y="-30" width="90" height="60" rx="18" fill="#25223e" stroke="#efbfd9" stroke-width="2.5"/><circle r="9" fill="#b5e6e3"/></g><g transform="translate(850 455)"><rect x="-45" y="-30" width="90" height="60" rx="18" fill="#25223e" stroke="#efbfd9" stroke-width="2.5"/><circle r="9" fill="#b5e6e3"/></g><g transform="translate(430 465)"><rect x="-45" y="-30" width="90" height="60" rx="18" fill="#25223e" stroke="#efbfd9" stroke-width="2.5"/><circle r="9" fill="#b5e6e3"/></g>
+    <path d="M515 412H665M560 412V350L644 284L604 217L701 185" fill="none" stroke="#efbfd9" stroke-width="20" stroke-linejoin="round" stroke-linecap="round"/>
+    <g fill="#25223e" stroke="#b5e6e3" stroke-width="5"><circle cx="560" cy="350" r="15"/><circle cx="644" cy="284" r="15"/><circle cx="604" cy="217" r="15"/></g>
+    <path d="M698 180L733 169L747 192M698 180L722 208L747 192" fill="none" stroke="#b5e6e3" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="72" y="83" fill="#efbfd9" font-size="24" font-family="system-ui,sans-serif" letter-spacing="6">ROS 2</text>
+  <text x="72" y="579" fill="#efbfd9" opacity=".7" font-size="14" font-family="system-ui,sans-serif" letter-spacing="4">ROBOTICS / CONTROL</text>
+</svg>
